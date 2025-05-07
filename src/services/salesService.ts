@@ -192,9 +192,13 @@ export const updateSale = async (
 };
 
 export const deleteSale = async (id: string): Promise<void> => {
+  // The system is freezing during deletion, so let's add some error handling and improve the transaction flow
   try {
+    console.log("Beginning deletion process for sale:", id);
+    
     // Start a transaction
     await beginTransaction();
+    console.log("Transaction started");
     
     // Get the sale items to restore produced item quantities
     const { data: saleItemsData, error: getSaleItemsError } = await supabase
@@ -202,30 +206,65 @@ export const deleteSale = async (id: string): Promise<void> => {
       .select("*")
       .eq("sale_id", id);
     
-    if (getSaleItemsError) throw getSaleItemsError;
+    if (getSaleItemsError) {
+      console.error("Error getting sale items:", getSaleItemsError);
+      await abortTransaction();
+      throw getSaleItemsError;
+    }
+    
+    console.log(`Found ${saleItemsData?.length || 0} sale items to process`);
     
     // Restore remaining quantities
-    for (const item of saleItemsData) {
-      // Get current remaining quantity
-      const { data: producedItemData, error: fetchError } = await supabase
-        .from("produced_items")
-        .select("remaining_quantity")
-        .eq("id", item.produced_item_id)
-        .single();
-      
-      if (fetchError) throw fetchError;
-      
-      // Calculate new remaining quantity
-      const newRemainingQty = producedItemData.remaining_quantity + item.quantity;
-      
-      // Update the produced item
-      const { error: updateError } = await supabase
-        .from("produced_items")
-        .update({ remaining_quantity: newRemainingQty })
-        .eq("id", item.produced_item_id);
-      
-      if (updateError) throw updateError;
+    for (const item of saleItemsData || []) {
+      console.log(`Processing item: ${item.id} for produced item: ${item.produced_item_id}`);
+      try {
+        // Get current remaining quantity
+        const { data: producedItemData, error: fetchError } = await supabase
+          .from("produced_items")
+          .select("remaining_quantity")
+          .eq("id", item.produced_item_id)
+          .single();
+        
+        if (fetchError) {
+          console.error("Error fetching produced item data:", fetchError);
+          await abortTransaction();
+          throw fetchError;
+        }
+        
+        if (!producedItemData) {
+          console.error("No produced item data found for:", item.produced_item_id);
+          await abortTransaction();
+          throw new Error(`No data found for produced item: ${item.produced_item_id}`);
+        }
+        
+        console.log(`Current remaining quantity: ${producedItemData.remaining_quantity}, Adding back: ${item.quantity}`);
+        
+        // Calculate new remaining quantity
+        const newRemainingQty = producedItemData.remaining_quantity + item.quantity;
+        
+        console.log(`New remaining quantity will be: ${newRemainingQty}`);
+        
+        // Update the produced item
+        const { error: updateError } = await supabase
+          .from("produced_items")
+          .update({ remaining_quantity: newRemainingQty })
+          .eq("id", item.produced_item_id);
+        
+        if (updateError) {
+          console.error("Error updating produced item quantity:", updateError);
+          await abortTransaction();
+          throw updateError;
+        }
+        
+        console.log(`Successfully updated remaining quantity for: ${item.produced_item_id}`);
+      } catch (itemError) {
+        console.error(`Error processing sale item ${item.id}:`, itemError);
+        await abortTransaction();
+        throw itemError;
+      }
     }
+    
+    console.log("All produced item quantities updated, now deleting sale items");
     
     // Delete sale items
     const { error: saleItemsError } = await supabase
@@ -233,7 +272,13 @@ export const deleteSale = async (id: string): Promise<void> => {
       .delete()
       .eq("sale_id", id);
     
-    if (saleItemsError) throw saleItemsError;
+    if (saleItemsError) {
+      console.error("Error deleting sale items:", saleItemsError);
+      await abortTransaction();
+      throw saleItemsError;
+    }
+    
+    console.log("Sale items deleted, now deleting the sale");
     
     // Delete the sale
     const { error } = await supabase
@@ -241,13 +286,26 @@ export const deleteSale = async (id: string): Promise<void> => {
       .delete()
       .eq("id", id);
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error deleting sale:", error);
+      await abortTransaction();
+      throw error;
+    }
+    
+    console.log("Sale deleted successfully, committing transaction");
     
     // Commit the transaction
     await endTransaction();
+    console.log("Transaction committed successfully");
   } catch (error) {
     // Rollback on error
-    await abortTransaction();
+    console.error("Error in delete sale operation, rolling back:", error);
+    try {
+      await abortTransaction();
+      console.log("Transaction aborted successfully");
+    } catch (rollbackError) {
+      console.error("Error during rollback:", rollbackError);
+    }
     throw error;
   }
 };
