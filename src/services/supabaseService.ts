@@ -475,11 +475,9 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
 export const createProductionBatch = async (
   batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">
 ): Promise<ProductionBatch> => {
-  // Cannot use transaction functions due to SQL syntax error
-  // We'll manually manage the transaction with BEGIN, COMMIT and ROLLBACK
-  
+  // We'll use the transaction functions here
   try {
-    // Start a transaction with BEGIN
+    // Start a transaction
     await supabase.rpc('begin_transaction');
     
     // Insert the production batch
