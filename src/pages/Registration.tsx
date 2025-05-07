@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -99,7 +98,15 @@ const Registration = () => {
   
   // Submit handlers
   const onProductSubmit = (data: ProductFormValues) => {
-    addProduct(data);
+    // Ensure all required fields are present for the Product type
+    const productData = {
+      name: data.name,
+      code: data.code,
+      unitOfMeasure: data.unitOfMeasure,
+      description: data.description
+    };
+    
+    addProduct(productData);
     toast({
       title: "Produto cadastrado",
       description: `Produto ${data.name} cadastrado com sucesso.`,
@@ -108,7 +115,19 @@ const Registration = () => {
   };
   
   const onMaterialSubmit = (data: MaterialFormValues) => {
-    addMaterial(data);
+    // Cast the type to match the expected Material type values
+    const materialType = data.type as "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro";
+    
+    // Ensure all required fields are present for the Material type
+    const materialData = {
+      name: data.name,
+      code: data.code,
+      type: materialType,
+      unitOfMeasure: data.unitOfMeasure,
+      description: data.description
+    };
+    
+    addMaterial(materialData);
     toast({
       title: "Insumo cadastrado",
       description: `Insumo ${data.name} cadastrado com sucesso.`,
@@ -117,7 +136,15 @@ const Registration = () => {
   };
   
   const onSupplierSubmit = (data: SupplierFormValues) => {
-    addSupplier(data);
+    // Ensure all required fields are present for the Supplier type
+    const supplierData = {
+      name: data.name,
+      code: data.code,
+      contacts: data.contacts,
+      notes: data.notes
+    };
+    
+    addSupplier(supplierData);
     toast({
       title: "Fornecedor cadastrado",
       description: `Fornecedor ${data.name} cadastrado com sucesso.`,

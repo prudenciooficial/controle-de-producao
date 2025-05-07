@@ -1,9 +1,8 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useData } from "@/context/DataContext";
-import { LayoutDashboard, ShoppingCart, Package, DollarSign } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory } from "lucide-react";
 
 const Dashboard = () => {
   const { 
