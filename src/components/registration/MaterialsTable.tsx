@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useData } from "@/context/DataContext";
+import { Material } from "@/types"; // Add this import for the Material type
 import { Button } from "@/components/ui/button";
 import { 
   Table, 
