@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   ProductionBatch,
@@ -14,20 +13,20 @@ import {
 } from "../types";
 import { 
   fetchProducts, 
-  fetchMaterials, 
-  fetchSuppliers,
-  fetchMaterialBatches,
-  fetchProductionBatches,
   createProduct,
   updateProduct as updateProductApi,
   deleteProduct as deleteProductApi,
+  fetchMaterials, 
   createMaterial,
   updateMaterial as updateMaterialApi,
   deleteMaterial as deleteMaterialApi,
+  fetchMaterialBatches,
+  fetchSuppliers,
   createSupplier,
   updateSupplier as updateSupplierApi,
-  deleteSupplier as deleteSupplierApi
-} from "../services/supabaseService";
+  deleteSupplier as deleteSupplierApi,
+  fetchProductionBatches
+} from "../services";
 import { useToast } from "@/hooks/use-toast";
 
 interface DataContextType {
