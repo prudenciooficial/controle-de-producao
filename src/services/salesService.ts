@@ -85,7 +85,7 @@ export const createSale = async (
     
     const saleId = saleData.id;
     
-    // Insert sale items
+    // Insert sale items - don't specify ID, let Supabase generate it
     for (const item of sale.items) {
       const { error: itemError } = await supabase
         .from("sale_items")

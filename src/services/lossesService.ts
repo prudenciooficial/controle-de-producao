@@ -2,65 +2,39 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Loss } from "../types";
 
-export const fetchLosses = async (): Promise<Loss[]> => {
-  const { data, error } = await supabase
+export const fetchLossesWithDetails = async (): Promise<Loss[]> => {
+  const { data: lossesData, error: lossesError } = await supabase
     .from("losses")
     .select("*")
     .order("date", { ascending: false });
   
-  if (error) throw error;
+  if (lossesError) throw lossesError;
   
-  return data.map(loss => ({
+  // Map the losses to our type
+  const losses: Loss[] = lossesData.map(loss => ({
     id: loss.id,
     date: new Date(loss.date),
     productionBatchId: loss.production_batch_id,
-    batchNumber: "", // We need to fetch batch number separately
-    machine: loss.machine as "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro",
+    batchNumber: loss.batch_number || "",
+    machine: loss.machine,
     quantity: loss.quantity,
     unitOfMeasure: loss.unit_of_measure,
-    productType: loss.product_type as "Goma" | "Fécula" | "Embalagem" | "Sorbato" | "Produto Acabado" | "Outro",
+    productType: loss.product_type,
     notes: loss.notes,
     createdAt: new Date(loss.created_at),
     updatedAt: new Date(loss.updated_at)
   }));
+  
+  return losses;
 };
 
-export const fetchLossesWithDetails = async (): Promise<Loss[]> => {
-  const { data, error } = await supabase
-    .from("losses")
-    .select(`
-      *,
-      production_batches:production_batch_id (
-        batch_number
-      )
-    `)
-    .order("date", { ascending: false });
-  
-  if (error) throw error;
-  
-  return data.map(loss => ({
-    id: loss.id,
-    date: new Date(loss.date),
-    productionBatchId: loss.production_batch_id,
-    batchNumber: loss.production_batches?.batch_number || "",
-    machine: loss.machine as "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro",
-    quantity: loss.quantity,
-    unitOfMeasure: loss.unit_of_measure,
-    productType: loss.product_type as "Goma" | "Fécula" | "Embalagem" | "Sorbato" | "Produto Acabado" | "Outro",
-    notes: loss.notes,
-    createdAt: new Date(loss.created_at),
-    updatedAt: new Date(loss.updated_at)
-  }));
-};
-
-export const createLoss = async (
-  loss: Omit<Loss, "id" | "createdAt" | "updatedAt">
-): Promise<Loss> => {
+export const createLoss = async (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">): Promise<Loss> => {
   const { data, error } = await supabase
     .from("losses")
     .insert({
       date: loss.date instanceof Date ? loss.date.toISOString() : loss.date,
       production_batch_id: loss.productionBatchId,
+      batch_number: loss.batchNumber,
       machine: loss.machine,
       quantity: loss.quantity,
       unit_of_measure: loss.unitOfMeasure,
@@ -73,31 +47,21 @@ export const createLoss = async (
   if (error) throw error;
   
   return {
-    ...data,
+    ...loss,
     id: data.id,
-    date: new Date(data.date),
-    productionBatchId: data.production_batch_id,
-    batchNumber: loss.batchNumber, // Use the provided batch number
-    machine: data.machine as "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro",
-    quantity: data.quantity,
-    unitOfMeasure: data.unit_of_measure,
-    productType: data.product_type as "Goma" | "Fécula" | "Embalagem" | "Sorbato" | "Produto Acabado" | "Outro",
-    notes: data.notes,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
 };
 
-export const updateLoss = async (
-  id: string,
-  loss: Partial<Loss>
-): Promise<void> => {
+export const updateLoss = async (id: string, loss: Partial<Loss>): Promise<void> => {
   const updates: any = {};
   
   if (loss.date) {
     updates.date = loss.date instanceof Date ? loss.date.toISOString() : loss.date;
   }
   if (loss.productionBatchId) updates.production_batch_id = loss.productionBatchId;
+  if (loss.batchNumber) updates.batch_number = loss.batchNumber;
   if (loss.machine) updates.machine = loss.machine;
   if (loss.quantity !== undefined) updates.quantity = loss.quantity;
   if (loss.unitOfMeasure) updates.unit_of_measure = loss.unitOfMeasure;

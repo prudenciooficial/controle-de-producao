@@ -17,7 +17,7 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
   
   // For each batch, fetch used materials and produced items
   for (const batch of batchesData) {
-    // Fetch used materials for this batch
+    // Fetch used materials for this batch with correct nested joins
     const { data: usedMaterialsData, error: usedMaterialsError } = await supabase
       .from("used_materials")
       .select(`
@@ -33,18 +33,24 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
     
     if (usedMaterialsError) throw usedMaterialsError;
     
-    // Format used materials
-    const usedMaterials: UsedMaterial[] = usedMaterialsData.map(material => ({
-      id: material.id,
-      materialBatchId: material.material_batch_id,
-      materialName: material.material_batches.materials.name,
-      materialType: material.material_batches.materials.type,
-      batchNumber: material.material_batches.batch_number,
-      quantity: material.quantity,
-      unitOfMeasure: material.unit_of_measure,
-      createdAt: new Date(material.created_at),
-      updatedAt: new Date(material.updated_at)
-    }));
+    // Format used materials with improved data access and error checking
+    const usedMaterials: UsedMaterial[] = usedMaterialsData.map(material => {
+      // Ensure we have properly nested data
+      const materialBatch = material.material_batches || {};
+      const materialInfo = materialBatch.materials || {};
+      
+      return {
+        id: material.id,
+        materialBatchId: material.material_batch_id,
+        materialName: materialInfo.name || 'Nome não encontrado',
+        materialType: materialInfo.type || 'Tipo não encontrado',
+        batchNumber: materialBatch.batch_number || 'Lote não encontrado',
+        quantity: material.quantity,
+        unitOfMeasure: material.unit_of_measure,
+        createdAt: new Date(material.created_at),
+        updatedAt: new Date(material.updated_at)
+      };
+    });
     
     // Fetch produced items for this batch
     const { data: producedItemsData, error: producedItemsError } = await supabase
@@ -59,11 +65,11 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
     
     if (producedItemsError) throw producedItemsError;
     
-    // Format produced items
+    // Format produced items with improved error handling
     const producedItems: ProducedItem[] = producedItemsData.map(item => ({
       id: item.id,
       productId: item.product_id,
-      productName: item.products.name,
+      productName: item.products?.name || 'Nome não encontrado',
       batchNumber: item.batch_number,
       quantity: item.quantity,
       remainingQuantity: item.remaining_quantity,
