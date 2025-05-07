@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,6 +16,11 @@ const Inventory = () => {
   const availableProducts = getAvailableProducts();
   const availableMaterials = getAvailableMaterials();
   
+  // Debugging: log material batches when they change
+  useEffect(() => {
+    console.log("Available materials:", availableMaterials);
+  }, [availableMaterials]);
+  
   // Filter products
   const filteredProducts = availableProducts.filter(
     (product) =>
@@ -25,14 +31,14 @@ const Inventory = () => {
   // Filter materials
   const filteredMaterials = availableMaterials.filter(
     (material) =>
-      material.materialName.toLowerCase().includes(materialSearch.toLowerCase()) ||
-      material.batchNumber.toLowerCase().includes(materialSearch.toLowerCase()) ||
-      material.materialType.toLowerCase().includes(materialSearch.toLowerCase())
+      material.materialName?.toLowerCase().includes(materialSearch.toLowerCase()) ||
+      material.batchNumber?.toLowerCase().includes(materialSearch.toLowerCase()) ||
+      material.materialType?.toLowerCase().includes(materialSearch.toLowerCase())
   );
   
-  // Group materials by type
+  // Group materials by type with null/undefined check
   const groupedMaterials = filteredMaterials.reduce((acc, material) => {
-    const type = material.materialType;
+    const type = material.materialType || "Desconhecido";
     if (!acc[type]) {
       acc[type] = [];
     }
@@ -212,7 +218,7 @@ const Inventory = () => {
                           <TableBody>
                             {materials.map((material) => (
                               <TableRow key={material.id}>
-                                <TableCell>{material.materialName}</TableCell>
+                                <TableCell>{material.materialName || "Nome não disponível"}</TableCell>
                                 <TableCell>{material.batchNumber}</TableCell>
                                 <TableCell>{material.suppliedQuantity}</TableCell>
                                 <TableCell>{material.remainingQuantity}</TableCell>

@@ -20,7 +20,7 @@ import {
   createMaterial,
   updateMaterial as updateMaterialApi,
   deleteMaterial as deleteMaterialApi,
-  fetchMaterialBatches,
+  fetchMaterialBatchesWithDetails,
   fetchSuppliers,
   createSupplier,
   updateSupplier as updateSupplierApi,
@@ -264,7 +264,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       try {
         setIsLoading(prev => ({ ...prev, materialBatches: true }));
-        const materialBatchesData = await fetchMaterialBatches();
+        const materialBatchesData = await fetchMaterialBatchesWithDetails();
         setMaterialBatches(materialBatchesData);
       } catch (error) {
         console.error("Error loading material batches:", error);
@@ -396,7 +396,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refetchMaterialBatches = async () => {
     try {
       setIsLoading(prev => ({ ...prev, materialBatches: true }));
-      const materialBatchesData = await fetchMaterialBatches();
+      const materialBatchesData = await fetchMaterialBatchesWithDetails();
       setMaterialBatches(materialBatchesData);
     } catch (error) {
       console.error("Error refetching material batches:", error);

@@ -85,17 +85,20 @@ export const createSale = async (
     
     const saleId = saleData.id;
     
-    // Insert sale items - don't specify ID, let Supabase generate it
+    // Insert sale items - let Supabase generate the IDs
     for (const item of sale.items) {
+      // Insert each sale item individually, removing the ID field to let Supabase generate it
+      const itemToInsert = {
+        sale_id: saleId,
+        product_id: item.productId,
+        produced_item_id: item.producedItemId,
+        quantity: item.quantity,
+        unit_of_measure: item.unitOfMeasure
+      };
+      
       const { error: itemError } = await supabase
         .from("sale_items")
-        .insert({
-          sale_id: saleId,
-          product_id: item.productId,
-          produced_item_id: item.producedItemId,
-          quantity: item.quantity,
-          unit_of_measure: item.unitOfMeasure
-        });
+        .insert(itemToInsert);
       
       if (itemError) throw itemError;
       
@@ -128,12 +131,36 @@ export const createSale = async (
     // Commit the transaction
     await endTransaction();
     
-    // Return the complete sale
+    // Fetch the inserted sale items to get their IDs
+    const { data: insertedItems, error: fetchItemsError } = await supabase
+      .from("sale_items")
+      .select(`
+        *,
+        products:product_id (name),
+        produced_items:produced_item_id (batch_number)
+      `)
+      .eq("sale_id", saleId);
+    
+    if (fetchItemsError) throw fetchItemsError;
+    
+    // Map the inserted items to our SaleItem type
+    const items: SaleItem[] = insertedItems.map(item => ({
+      id: item.id,
+      productId: item.product_id,
+      productName: item.products.name,
+      producedItemId: item.produced_item_id,
+      batchNumber: item.produced_items.batch_number,
+      quantity: item.quantity,
+      unitOfMeasure: item.unit_of_measure
+    }));
+    
+    // Return the complete sale with correctly generated IDs
     return {
       ...sale,
       id: saleId,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      items,
+      createdAt: new Date(saleData.created_at),
+      updatedAt: new Date(saleData.updated_at)
     };
   } catch (error) {
     // Rollback on error

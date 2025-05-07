@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, UsedMaterial, ProducedItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -17,15 +16,16 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
   
   // For each batch, fetch used materials and produced items
   for (const batch of batchesData) {
-    // Fetch used materials for this batch with correct nested joins
+    // Fetch used materials for this batch with explicit path to nested material info
     const { data: usedMaterialsData, error: usedMaterialsError } = await supabase
       .from("used_materials")
       .select(`
         *,
-        material_batches:material_batch_id (
+        material_batches!inner (
           *,
-          materials:material_id (
-            name, type
+          materials!inner (
+            name,
+            type
           )
         )
       `)
@@ -33,18 +33,14 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
     
     if (usedMaterialsError) throw usedMaterialsError;
     
-    // Format used materials with improved data access and error checking
+    // Format used materials with improved data access
     const usedMaterials: UsedMaterial[] = usedMaterialsData.map(material => {
-      // Ensure we have properly nested data
-      const materialBatch = material.material_batches || {};
-      const materialInfo = materialBatch.materials || {};
-      
       return {
         id: material.id,
         materialBatchId: material.material_batch_id,
-        materialName: materialInfo.name || 'Nome não encontrado',
-        materialType: materialInfo.type || 'Tipo não encontrado',
-        batchNumber: materialBatch.batch_number || 'Lote não encontrado',
+        materialName: material.material_batches?.materials?.name || 'Nome não encontrado',
+        materialType: material.material_batches?.materials?.type || 'Tipo não encontrado',
+        batchNumber: material.material_batches?.batch_number || 'Lote não encontrado',
         quantity: material.quantity,
         unitOfMeasure: material.unit_of_measure,
         createdAt: new Date(material.created_at),
@@ -65,7 +61,7 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
     
     if (producedItemsError) throw producedItemsError;
     
-    // Format produced items with improved error handling
+    // Format produced items
     const producedItems: ProducedItem[] = producedItemsData.map(item => ({
       id: item.id,
       productId: item.product_id,

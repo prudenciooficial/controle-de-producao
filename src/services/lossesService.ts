@@ -5,21 +5,21 @@ import { Loss } from "../types";
 export const fetchLossesWithDetails = async (): Promise<Loss[]> => {
   const { data: lossesData, error: lossesError } = await supabase
     .from("losses")
-    .select("*")
+    .select("*, production_batches(batch_number)")
     .order("date", { ascending: false });
   
   if (lossesError) throw lossesError;
   
-  // Map the losses to our type
+  // Map the losses to our type, ensuring types match the expected enum values
   const losses: Loss[] = lossesData.map(loss => ({
     id: loss.id,
     date: new Date(loss.date),
     productionBatchId: loss.production_batch_id,
-    batchNumber: loss.batch_number || "",
-    machine: loss.machine,
+    batchNumber: loss.production_batches?.batch_number || "",
+    machine: loss.machine as "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro",
     quantity: loss.quantity,
     unitOfMeasure: loss.unit_of_measure,
-    productType: loss.product_type,
+    productType: loss.product_type as "Goma" | "Fécula" | "Embalagem" | "Sorbato" | "Produto Acabado" | "Outro",
     notes: loss.notes,
     createdAt: new Date(loss.created_at),
     updatedAt: new Date(loss.updated_at)
