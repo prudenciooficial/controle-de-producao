@@ -578,7 +578,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setOrders(prev => [...prev, newOrder]);
       
       // Refresh material batches after adding an order
-      await fetchMaterialBatches().then(setMaterialBatches);
+      await fetchMaterialBatchesWithDetails().then(setMaterialBatches);
       
       toast({
         title: "Sucesso",
@@ -622,7 +622,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setOrders(prev => prev.filter(o => o.id !== id));
       
       // Refresh material batches after deleting an order
-      await fetchMaterialBatches().then(setMaterialBatches);
+      await fetchMaterialBatchesWithDetails().then(setMaterialBatches);
       
       toast({
         title: "Sucesso",
