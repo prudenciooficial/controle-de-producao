@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { History } from "lucide-react";
+import { History, Loader } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Schema for form validation
@@ -28,7 +28,7 @@ const lossFormSchema = z.object({
 type LossFormValues = z.infer<typeof lossFormSchema>;
 
 const Losses = () => {
-  const { productionBatches, addLoss } = useData();
+  const { productionBatches, addLoss, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -49,7 +49,7 @@ const Losses = () => {
     return productionBatches.find((b) => b.id === batchId);
   };
   
-  const onSubmit = (data: LossFormValues) => {
+  const onSubmit = async (data: LossFormValues) => {
     try {
       const batch = getBatchDetails(data.productionBatchId);
       
@@ -69,12 +69,7 @@ const Losses = () => {
         notes: data.notes,
       };
       
-      addLoss(loss);
-      
-      toast({
-        title: "Perda registrada",
-        description: `Perda de ${data.quantity} kg registrada com sucesso.`,
-      });
+      await addLoss(loss);
       
       // Reset form
       form.reset({
@@ -121,92 +116,145 @@ const Losses = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+              {isLoading.productionBatches ? (
+                <div className="flex justify-center items-center p-8">
+                  <Loader className="w-8 h-8 animate-spin" />
+                  <span className="ml-2">Carregando dados...</span>
+                </div>
+              ) : (
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Data</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="productionBatchId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Lote de Produção</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o lote" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {productionBatches.map((batch) => (
+                                  <SelectItem key={batch.id} value={batch.id}>
+                                    {batch.batchNumber} - {new Date(batch.productionDate).toLocaleDateString()}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="machine"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Máquina</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione a máquina" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Moinho">Moinho</SelectItem>
+                                <SelectItem value="Mexedor">Mexedor</SelectItem>
+                                <SelectItem value="Tombador">Tombador</SelectItem>
+                                <SelectItem value="Embaladora">Embaladora</SelectItem>
+                                <SelectItem value="Outro">Outro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="quantity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Quantidade (kg)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="productType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tipo de Produto</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o tipo" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Goma">Goma</SelectItem>
+                                <SelectItem value="Fécula">Fécula</SelectItem>
+                                <SelectItem value="Embalagem">Embalagem</SelectItem>
+                                <SelectItem value="Sorbato">Sorbato</SelectItem>
+                                <SelectItem value="Produto Acabado">Produto Acabado</SelectItem>
+                                <SelectItem value="Outro">Outro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     
                     <FormField
                       control={form.control}
-                      name="productionBatchId"
+                      name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Lote de Produção</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o lote" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {productionBatches.map((batch) => (
-                                <SelectItem key={batch.id} value={batch.id}>
-                                  {batch.batchNumber} - {new Date(batch.productionDate).toLocaleDateString()}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="machine"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Máquina</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione a máquina" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Moinho">Moinho</SelectItem>
-                              <SelectItem value="Mexedor">Mexedor</SelectItem>
-                              <SelectItem value="Tombador">Tombador</SelectItem>
-                              <SelectItem value="Embaladora">Embaladora</SelectItem>
-                              <SelectItem value="Outro">Outro</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="quantity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Quantidade (kg)</FormLabel>
+                          <FormLabel>Observações</FormLabel>
                           <FormControl>
-                            <Input
-                              type="number"
+                            <Textarea
+                              placeholder="Observações sobre a perda"
                               {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
                             />
                           </FormControl>
                           <FormMessage />
@@ -214,58 +262,12 @@ const Losses = () => {
                       )}
                     />
                     
-                    <FormField
-                      control={form.control}
-                      name="productType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo de Produto</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o tipo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Goma">Goma</SelectItem>
-                              <SelectItem value="Fécula">Fécula</SelectItem>
-                              <SelectItem value="Embalagem">Embalagem</SelectItem>
-                              <SelectItem value="Sorbato">Sorbato</SelectItem>
-                              <SelectItem value="Produto Acabado">Produto Acabado</SelectItem>
-                              <SelectItem value="Outro">Outro</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Observações</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Observações sobre a perda"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button type="submit" className="w-full">
-                    Registrar Perda
-                  </Button>
-                </form>
-              </Form>
+                    <Button type="submit" className="w-full">
+                      Registrar Perda
+                    </Button>
+                  </form>
+                </Form>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

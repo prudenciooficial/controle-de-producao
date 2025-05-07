@@ -12,7 +12,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
@@ -22,13 +21,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, MoreVertical, Eye, Trash } from "lucide-react";
+import { ArrowLeft, MoreVertical, Eye, Trash, Loader } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Loss } from "../types";
 import { Badge } from "@/components/ui/badge";
 
 const LossesHistory = () => {
-  const { losses, deleteLoss } = useData();
+  const { losses, deleteLoss, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -42,13 +41,22 @@ const LossesHistory = () => {
       loss.productType.toLowerCase().includes(search.toLowerCase())
   );
   
-  const handleDelete = (id: string) => {
-    deleteLoss(id);
-    setShowDeleteDialog(false);
-    toast({
-      title: "Perda excluída",
-      description: "O registro de perda foi excluído com sucesso.",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteLoss(id);
+      setShowDeleteDialog(false);
+      toast({
+        title: "Perda excluída",
+        description: "O registro de perda foi excluído com sucesso.",
+      });
+    } catch (error) {
+      console.error("Erro ao excluir perda:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao excluir o registro de perda.",
+      });
+    }
   };
   
   const getMachineColor = (machine: string) => {
@@ -113,128 +121,135 @@ const LossesHistory = () => {
           <CardTitle>Registros de Perdas</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Lote</TableHead>
-                <TableHead>Máquina</TableHead>
-                <TableHead>Tipo de Produto</TableHead>
-                <TableHead>Quantidade</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLosses.length > 0 ? (
-                filteredLosses.map((loss) => (
-                  <TableRow key={loss.id}>
-                    <TableCell>{new Date(loss.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{loss.batchNumber}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={getMachineColor(loss.machine)}>
-                        {loss.machine}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={getProductTypeColor(loss.productType)}>
-                        {loss.productType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{loss.quantity} {loss.unitOfMeasure}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  setSelectedLoss(loss);
-                                }}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                Detalhes
-                              </DropdownMenuItem>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-md">
-                              <DialogHeader>
-                                <DialogTitle>
-                                  Detalhes da Perda
-                                </DialogTitle>
-                                <DialogDescription>
-                                  Data: {new Date(loss.date).toLocaleDateString()}
-                                </DialogDescription>
-                              </DialogHeader>
-                              
-                              <div className="grid gap-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <p className="text-sm font-medium">Lote de Produção:</p>
-                                    <p className="text-sm">{loss.batchNumber}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">Máquina:</p>
-                                    <Badge variant="secondary" className={getMachineColor(loss.machine)}>
-                                      {loss.machine}
-                                    </Badge>
-                                  </div>
-                                </div>
+          {isLoading.losses ? (
+            <div className="flex justify-center items-center p-8">
+              <Loader className="w-8 h-8 animate-spin" />
+              <span className="ml-2">Carregando dados...</span>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Lote</TableHead>
+                  <TableHead>Máquina</TableHead>
+                  <TableHead>Tipo de Produto</TableHead>
+                  <TableHead>Quantidade</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredLosses.length > 0 ? (
+                  filteredLosses.map((loss) => (
+                    <TableRow key={loss.id}>
+                      <TableCell>{new Date(loss.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{loss.batchNumber}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={getMachineColor(loss.machine)}>
+                          {loss.machine}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={getProductTypeColor(loss.productType)}>
+                          {loss.productType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{loss.quantity} {loss.unitOfMeasure}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setSelectedLoss(loss);
+                                  }}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Detalhes
+                                </DropdownMenuItem>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    Detalhes da Perda
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    Data: {new Date(loss.date).toLocaleDateString()}
+                                  </DialogDescription>
+                                </DialogHeader>
                                 
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <p className="text-sm font-medium">Tipo de Produto:</p>
-                                    <Badge variant="secondary" className={getProductTypeColor(loss.productType)}>
-                                      {loss.productType}
-                                    </Badge>
+                                <div className="grid gap-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <p className="text-sm font-medium">Lote de Produção:</p>
+                                      <p className="text-sm">{loss.batchNumber}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium">Máquina:</p>
+                                      <Badge variant="secondary" className={getMachineColor(loss.machine)}>
+                                        {loss.machine}
+                                      </Badge>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <p className="text-sm font-medium">Quantidade:</p>
-                                    <p className="text-sm">
-                                      {loss.quantity} {loss.unitOfMeasure}
-                                    </p>
+                                  
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <p className="text-sm font-medium">Tipo de Produto:</p>
+                                      <Badge variant="secondary" className={getProductTypeColor(loss.productType)}>
+                                        {loss.productType}
+                                      </Badge>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium">Quantidade:</p>
+                                      <p className="text-sm">
+                                        {loss.quantity} {loss.unitOfMeasure}
+                                      </p>
+                                    </div>
                                   </div>
+                                  
+                                  {loss.notes && (
+                                    <div>
+                                      <p className="text-sm font-medium">Observações:</p>
+                                      <p className="text-sm">{loss.notes}</p>
+                                    </div>
+                                  )}
                                 </div>
-                                
-                                {loss.notes && (
-                                  <div>
-                                    <p className="text-sm font-medium">Observações:</p>
-                                    <p className="text-sm">{loss.notes}</p>
-                                  </div>
-                                )}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          
-                          <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                            className="text-destructive"
-                            onClick={() => {
-                              setSelectedLoss(loss);
-                              setShowDeleteDialog(true);
-                            }}
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                              </DialogContent>
+                            </Dialog>
+                            
+                            <DropdownMenuItem
+                              onSelect={(e) => e.preventDefault()}
+                              className="text-destructive"
+                              onClick={() => {
+                                setSelectedLoss(loss);
+                                setShowDeleteDialog(true);
+                              }}
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-4">
+                      Nenhum registro de perda encontrado.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4">
-                    Nenhum registro de perda encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
       

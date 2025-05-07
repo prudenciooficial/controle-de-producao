@@ -25,7 +25,22 @@ import {
   createSupplier,
   updateSupplier as updateSupplierApi,
   deleteSupplier as deleteSupplierApi,
-  fetchProductionBatches
+  fetchProductionBatches,
+  createProductionBatch as createProductionBatchApi,
+  updateProductionBatch as updateProductionBatchApi,
+  deleteProductionBatch as deleteProductionBatchApi,
+  fetchSales,
+  createSale as createSaleApi,
+  updateSale as updateSaleApi,
+  deleteSale as deleteSaleApi,
+  fetchOrders,
+  createOrder as createOrderApi,
+  updateOrder as updateOrderApi,
+  deleteOrder as deleteOrderApi,
+  fetchLossesWithDetails,
+  createLoss as createLossApi,
+  updateLoss as updateLossApi,
+  deleteLoss as deleteLossApi
 } from "../services";
 import { useToast } from "@/hooks/use-toast";
 
@@ -62,21 +77,21 @@ interface DataContextType {
   refetchMaterialBatches: () => Promise<void>;
   
   // CRUD operations
-  addProductionBatch: (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => void;
-  updateProductionBatch: (id: string, batch: Partial<ProductionBatch>) => void;
-  deleteProductionBatch: (id: string) => void;
+  addProductionBatch: (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateProductionBatch: (id: string, batch: Partial<ProductionBatch>) => Promise<void>;
+  deleteProductionBatch: (id: string) => Promise<void>;
   
-  addSale: (sale: Omit<Sale, "id" | "createdAt" | "updatedAt">) => void;
-  updateSale: (id: string, sale: Partial<Sale>) => void;
-  deleteSale: (id: string) => void;
+  addSale: (sale: Omit<Sale, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateSale: (id: string, sale: Partial<Sale>) => Promise<void>;
+  deleteSale: (id: string) => Promise<void>;
   
-  addOrder: (order: Omit<Order, "id" | "createdAt" | "updatedAt">) => void;
-  updateOrder: (id: string, order: Partial<Order>) => void;
-  deleteOrder: (id: string) => void;
+  addOrder: (order: Omit<Order, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateOrder: (id: string, order: Partial<Order>) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
   
-  addLoss: (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">) => void;
-  updateLoss: (id: string, loss: Partial<Loss>) => void;
-  deleteLoss: (id: string) => void;
+  addLoss: (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateLoss: (id: string, loss: Partial<Loss>) => Promise<void>;
+  deleteLoss: (id: string) => Promise<void>;
   
   addProduct: (product: Omit<Product, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
@@ -184,9 +199,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     suppliers: true,
     materialBatches: true,
     productionBatches: true,
-    sales: false,
-    orders: false,
-    losses: false,
+    sales: true,
+    orders: true,
+    losses: true,
   });
 
   const { toast } = useToast();
@@ -199,7 +214,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     averageProfitability: 0
   });
 
-  // Fetch data from Supabase
+  // Fetch all data from Supabase
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -209,8 +224,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error("Error loading products:", error);
         toast({
-          title: "Error",
-          description: "Failed to load products data",
+          title: "Erro",
+          description: "Falha ao carregar dados dos produtos",
           variant: "destructive",
         });
       } finally {
@@ -224,8 +239,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error("Error loading materials:", error);
         toast({
-          title: "Error",
-          description: "Failed to load materials data",
+          title: "Erro",
+          description: "Falha ao carregar dados dos materiais",
           variant: "destructive",
         });
       } finally {
@@ -239,8 +254,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error("Error loading suppliers:", error);
         toast({
-          title: "Error",
-          description: "Failed to load suppliers data",
+          title: "Erro",
+          description: "Falha ao carregar dados dos fornecedores",
           variant: "destructive",
         });
       } finally {
@@ -254,8 +269,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error("Error loading material batches:", error);
         toast({
-          title: "Error",
-          description: "Failed to load material batches data",
+          title: "Erro",
+          description: "Falha ao carregar dados dos lotes de materiais",
           variant: "destructive",
         });
       } finally {
@@ -269,12 +284,57 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error("Error loading production batches:", error);
         toast({
-          title: "Error",
-          description: "Failed to load production batches data",
+          title: "Erro",
+          description: "Falha ao carregar dados dos lotes de produção",
           variant: "destructive",
         });
       } finally {
         setIsLoading(prev => ({ ...prev, productionBatches: false }));
+      }
+
+      try {
+        setIsLoading(prev => ({ ...prev, sales: true }));
+        const salesData = await fetchSales();
+        setSales(salesData);
+      } catch (error) {
+        console.error("Error loading sales:", error);
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar dados das vendas",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, sales: false }));
+      }
+
+      try {
+        setIsLoading(prev => ({ ...prev, orders: true }));
+        const ordersData = await fetchOrders();
+        setOrders(ordersData);
+      } catch (error) {
+        console.error("Error loading orders:", error);
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar dados dos pedidos",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, orders: false }));
+      }
+
+      try {
+        setIsLoading(prev => ({ ...prev, losses: true }));
+        const lossesData = await fetchLossesWithDetails();
+        setLosses(lossesData);
+      } catch (error) {
+        console.error("Error loading losses:", error);
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar dados das perdas",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, losses: false }));
       }
     };
     
@@ -290,8 +350,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error("Error refetching products:", error);
       toast({
-        title: "Error",
-        description: "Failed to refresh products data",
+        title: "Erro",
+        description: "Falha ao atualizar dados dos produtos",
         variant: "destructive",
       });
     } finally {
@@ -307,8 +367,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error("Error refetching materials:", error);
       toast({
-        title: "Error",
-        description: "Failed to refresh materials data",
+        title: "Erro",
+        description: "Falha ao atualizar dados dos materiais",
         variant: "destructive",
       });
     } finally {
@@ -324,8 +384,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error("Error refetching suppliers:", error);
       toast({
-        title: "Error",
-        description: "Failed to refresh suppliers data",
+        title: "Erro",
+        description: "Falha ao atualizar dados dos fornecedores",
         variant: "destructive",
       });
     } finally {
@@ -341,8 +401,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error("Error refetching material batches:", error);
       toast({
-        title: "Error",
-        description: "Failed to refresh material batches data",
+        title: "Erro",
+        description: "Falha ao atualizar dados dos lotes de materiais",
         variant: "destructive",
       });
     } finally {
@@ -384,154 +444,259 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // CRUD operations for Production Batches
-  const addProductionBatch = (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => {
-    const newBatch: ProductionBatch = {
-      ...batch,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    // Update material batches
-    const updatedMaterialBatches = [...materialBatches];
-    batch.usedMaterials.forEach(material => {
-      const materialBatchIndex = updatedMaterialBatches.findIndex(
-        mb => mb.id === material.materialBatchId
+  const addProductionBatch = async (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const newBatch = await createProductionBatchApi(batch);
+      setProductionBatches(prev => [...prev, newBatch]);
+      toast({
+        title: "Sucesso",
+        description: "Lote de produção registrado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error adding production batch:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao registrar lote de produção",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const updateProductionBatch = async (id: string, batch: Partial<ProductionBatch>) => {
+    try {
+      await updateProductionBatchApi(id, batch);
+      setProductionBatches(prev => 
+        prev.map(pb => pb.id === id ? { ...pb, ...batch, updatedAt: new Date() } : pb)
       );
-      
-      if (materialBatchIndex >= 0) {
-        updatedMaterialBatches[materialBatchIndex] = {
-          ...updatedMaterialBatches[materialBatchIndex],
-          remainingQuantity: updatedMaterialBatches[materialBatchIndex].remainingQuantity - material.quantity
-        };
-      }
-    });
-    
-    setMaterialBatches(updatedMaterialBatches);
-    setProductionBatches([...productionBatches, newBatch]);
+      toast({
+        title: "Sucesso",
+        description: "Lote de produção atualizado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error updating production batch:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao atualizar lote de produção",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const updateProductionBatch = (id: string, batch: Partial<ProductionBatch>) => {
-    setProductionBatches(
-      productionBatches.map(pb => 
-        pb.id === id ? { ...pb, ...batch, updatedAt: new Date() } : pb
-      )
-    );
-  };
-
-  const deleteProductionBatch = (id: string) => {
-    setProductionBatches(productionBatches.filter(pb => pb.id !== id));
+  const deleteProductionBatch = async (id: string) => {
+    try {
+      await deleteProductionBatchApi(id);
+      setProductionBatches(prev => prev.filter(pb => pb.id !== id));
+      toast({
+        title: "Sucesso",
+        description: "Lote de produção excluído com sucesso",
+      });
+    } catch (error) {
+      console.error("Error deleting production batch:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao excluir lote de produção",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // CRUD operations for Sales
-  const addSale = (sale: Omit<Sale, "id" | "createdAt" | "updatedAt">) => {
-    const newSale: Sale = {
-      ...sale,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    // Update produced items quantities
-    const updatedProductionBatches = [...productionBatches];
-    sale.items.forEach(item => {
-      productionBatches.forEach((batch, batchIndex) => {
-        const producedItemIndex = batch.producedItems.findIndex(
-          pi => pi.id === item.producedItemId
-        );
-        
-        if (producedItemIndex >= 0) {
-          updatedProductionBatches[batchIndex].producedItems[producedItemIndex] = {
-            ...updatedProductionBatches[batchIndex].producedItems[producedItemIndex],
-            remainingQuantity: updatedProductionBatches[batchIndex].producedItems[producedItemIndex].remainingQuantity - item.quantity
-          };
-        }
+  const addSale = async (sale: Omit<Sale, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const newSale = await createSaleApi(sale);
+      setSales(prev => [...prev, newSale]);
+      
+      // Update production batches after sale
+      await fetchProductionBatches().then(setProductionBatches);
+      
+      toast({
+        title: "Sucesso",
+        description: "Venda registrada com sucesso",
       });
-    });
-    
-    setProductionBatches(updatedProductionBatches);
-    setSales([...sales, newSale]);
+    } catch (error) {
+      console.error("Error adding sale:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao registrar venda",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const updateSale = (id: string, sale: Partial<Sale>) => {
-    setSales(
-      sales.map(s => 
-        s.id === id ? { ...s, ...sale, updatedAt: new Date() } : s
-      )
-    );
+  const updateSale = async (id: string, sale: Partial<Sale>) => {
+    try {
+      await updateSaleApi(id, sale);
+      setSales(prev => 
+        prev.map(s => s.id === id ? { ...s, ...sale, updatedAt: new Date() } : s)
+      );
+      toast({
+        title: "Sucesso",
+        description: "Venda atualizada com sucesso",
+      });
+    } catch (error) {
+      console.error("Error updating sale:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao atualizar venda",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const deleteSale = (id: string) => {
-    setSales(sales.filter(s => s.id !== id));
+  const deleteSale = async (id: string) => {
+    try {
+      await deleteSaleApi(id);
+      setSales(prev => prev.filter(s => s.id !== id));
+      
+      // Refresh production batches after deleting a sale
+      await fetchProductionBatches().then(setProductionBatches);
+      
+      toast({
+        title: "Sucesso",
+        description: "Venda excluída com sucesso",
+      });
+    } catch (error) {
+      console.error("Error deleting sale:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao excluir venda",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // CRUD operations for Orders
-  const addOrder = (order: Omit<Order, "id" | "createdAt" | "updatedAt">) => {
-    const newOrder: Order = {
-      ...order,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    // Create material batches from order items
-    const newMaterialBatches = order.items.map(item => {
-      const materialBatch: MaterialBatch = {
-        id: generateId(),
-        materialId: item.materialId,
-        materialName: item.materialName,
-        materialType: item.materialType,
-        batchNumber: item.batchNumber,
-        quantity: item.quantity,
-        suppliedQuantity: item.quantity,
-        remainingQuantity: item.quantity,
-        unitOfMeasure: item.unitOfMeasure,
-        expiryDate: item.expiryDate,
-        hasReport: item.hasReport,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      return materialBatch;
-    });
-    
-    setMaterialBatches([...materialBatches, ...newMaterialBatches]);
-    setOrders([...orders, newOrder]);
+  const addOrder = async (order: Omit<Order, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const newOrder = await createOrderApi(order);
+      setOrders(prev => [...prev, newOrder]);
+      
+      // Refresh material batches after adding an order
+      await fetchMaterialBatches().then(setMaterialBatches);
+      
+      toast({
+        title: "Sucesso",
+        description: "Pedido registrado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error adding order:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao registrar pedido",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const updateOrder = (id: string, order: Partial<Order>) => {
-    setOrders(
-      orders.map(o => 
-        o.id === id ? { ...o, ...order, updatedAt: new Date() } : o
-      )
-    );
+  const updateOrder = async (id: string, order: Partial<Order>) => {
+    try {
+      await updateOrderApi(id, order);
+      setOrders(prev => 
+        prev.map(o => o.id === id ? { ...o, ...order, updatedAt: new Date() } : o)
+      );
+      toast({
+        title: "Sucesso",
+        description: "Pedido atualizado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error updating order:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao atualizar pedido",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const deleteOrder = (id: string) => {
-    setOrders(orders.filter(o => o.id !== id));
+  const deleteOrder = async (id: string) => {
+    try {
+      await deleteOrderApi(id);
+      setOrders(prev => prev.filter(o => o.id !== id));
+      
+      // Refresh material batches after deleting an order
+      await fetchMaterialBatches().then(setMaterialBatches);
+      
+      toast({
+        title: "Sucesso",
+        description: "Pedido excluído com sucesso",
+      });
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao excluir pedido",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // CRUD operations for Losses
-  const addLoss = (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">) => {
-    const newLoss: Loss = {
-      ...loss,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setLosses([...losses, newLoss]);
+  const addLoss = async (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const newLoss = await createLossApi(loss);
+      setLosses(prev => [...prev, newLoss]);
+      toast({
+        title: "Sucesso",
+        description: "Perda registrada com sucesso",
+      });
+    } catch (error) {
+      console.error("Error adding loss:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao registrar perda",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const updateLoss = (id: string, loss: Partial<Loss>) => {
-    setLosses(
-      losses.map(l => 
-        l.id === id ? { ...l, ...loss, updatedAt: new Date() } : l
-      )
-    );
+  const updateLoss = async (id: string, loss: Partial<Loss>) => {
+    try {
+      await updateLossApi(id, loss);
+      setLosses(prev => 
+        prev.map(l => l.id === id ? { ...l, ...loss, updatedAt: new Date() } : l)
+      );
+      toast({
+        title: "Sucesso",
+        description: "Perda atualizada com sucesso",
+      });
+    } catch (error) {
+      console.error("Error updating loss:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao atualizar perda",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const deleteLoss = (id: string) => {
-    setLosses(losses.filter(l => l.id !== id));
+  const deleteLoss = async (id: string) => {
+    try {
+      await deleteLossApi(id);
+      setLosses(prev => prev.filter(l => l.id !== id));
+      toast({
+        title: "Sucesso",
+        description: "Perda excluída com sucesso",
+      });
+    } catch (error) {
+      console.error("Error deleting loss:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao excluir perda",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // CRUD operations for Products - Using Supabase
@@ -540,14 +705,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newProduct = await createProduct(product);
       setProducts([...products, newProduct]);
       toast({
-        title: "Success",
-        description: "Product created successfully",
+        title: "Sucesso",
+        description: "Produto criado com sucesso",
       });
     } catch (error) {
       console.error("Error adding product:", error);
       toast({
-        title: "Error",
-        description: "Failed to create product",
+        title: "Erro",
+        description: "Falha ao criar produto",
         variant: "destructive",
       });
       throw error;
@@ -563,14 +728,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         )
       );
       toast({
-        title: "Success",
-        description: "Product updated successfully",
+        title: "Sucesso",
+        description: "Produto atualizado com sucesso",
       });
     } catch (error) {
       console.error("Error updating product:", error);
       toast({
-        title: "Error",
-        description: "Failed to update product",
+        title: "Erro",
+        description: "Falha ao atualizar produto",
         variant: "destructive",
       });
       throw error;
@@ -582,14 +747,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await deleteProductApi(id);
       setProducts(products.filter(p => p.id !== id));
       toast({
-        title: "Success",
-        description: "Product deleted successfully",
+        title: "Sucesso",
+        description: "Produto excluído com sucesso",
       });
     } catch (error) {
       console.error("Error deleting product:", error);
       toast({
-        title: "Error",
-        description: "Failed to delete product",
+        title: "Erro",
+        description: "Falha ao excluir produto",
         variant: "destructive",
       });
       throw error;
