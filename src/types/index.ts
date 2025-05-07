@@ -65,6 +65,8 @@ export interface ProducedItem {
   unitOfMeasure: string;
   batchNumber: string;
   remainingQuantity: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // Material used in production
@@ -76,6 +78,8 @@ export interface UsedMaterial {
   batchNumber: string;
   quantity: number;
   unitOfMeasure: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // Sale

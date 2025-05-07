@@ -41,14 +41,12 @@ export const createProduct = async (
 ): Promise<Product> => {
   const { data, error } = await supabase
     .from("products")
-    .insert([
-      {
-        name: product.name,
-        code: product.code,
-        description: product.description,
-        unit_of_measure: product.unitOfMeasure
-      }
-    ])
+    .insert({
+      name: product.name,
+      code: product.code,
+      description: product.description,
+      unit_of_measure: product.unitOfMeasure
+    })
     .select()
     .single();
   
@@ -108,7 +106,7 @@ export const fetchMaterials = async (): Promise<Material[]> => {
     id: material.id,
     name: material.name,
     code: material.code,
-    type: material.type,
+    type: material.type as "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro",
     unitOfMeasure: material.unit_of_measure,
     description: material.description,
     createdAt: new Date(material.created_at),
@@ -121,15 +119,13 @@ export const createMaterial = async (
 ): Promise<Material> => {
   const { data, error } = await supabase
     .from("materials")
-    .insert([
-      {
-        name: material.name,
-        code: material.code,
-        type: material.type,
-        unit_of_measure: material.unitOfMeasure,
-        description: material.description
-      }
-    ])
+    .insert({
+      name: material.name,
+      code: material.code,
+      type: material.type,
+      unit_of_measure: material.unitOfMeasure,
+      description: material.description
+    })
     .select()
     .single();
   
@@ -140,7 +136,7 @@ export const createMaterial = async (
     id: data.id,
     name: data.name,
     code: data.code,
-    type: data.type,
+    type: data.type as "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro",
     unitOfMeasure: data.unit_of_measure,
     description: data.description,
     createdAt: new Date(data.created_at),
@@ -203,14 +199,12 @@ export const createSupplier = async (
 ): Promise<Supplier> => {
   const { data, error } = await supabase
     .from("suppliers")
-    .insert([
-      {
-        name: supplier.name,
-        code: supplier.code,
-        contacts: supplier.contacts,
-        notes: supplier.notes
-      }
-    ])
+    .insert({
+      name: supplier.name,
+      code: supplier.code,
+      contacts: supplier.contacts,
+      notes: supplier.notes
+    })
     .select()
     .single();
   
@@ -321,18 +315,16 @@ export const createMaterialBatch = async (
 ): Promise<MaterialBatch> => {
   const { data, error } = await supabase
     .from("material_batches")
-    .insert([
-      {
-        material_id: batch.materialId,
-        batch_number: batch.batchNumber,
-        quantity: batch.quantity,
-        supplied_quantity: batch.suppliedQuantity,
-        remaining_quantity: batch.remainingQuantity,
-        unit_of_measure: batch.unitOfMeasure,
-        expiry_date: batch.expiryDate,
-        has_report: batch.hasReport
-      }
-    ])
+    .insert({
+      material_id: batch.materialId,
+      batch_number: batch.batchNumber,
+      quantity: batch.quantity,
+      supplied_quantity: batch.suppliedQuantity,
+      remaining_quantity: batch.remainingQuantity,
+      unit_of_measure: batch.unitOfMeasure,
+      expiry_date: batch.expiryDate instanceof Date ? batch.expiryDate.toISOString() : batch.expiryDate,
+      has_report: batch.hasReport
+    })
     .select()
     .single();
   
@@ -368,7 +360,11 @@ export const updateMaterialBatch = async (
   if (batch.suppliedQuantity !== undefined) updates.supplied_quantity = batch.suppliedQuantity;
   if (batch.remainingQuantity !== undefined) updates.remaining_quantity = batch.remainingQuantity;
   if (batch.unitOfMeasure) updates.unit_of_measure = batch.unitOfMeasure;
-  if (batch.expiryDate !== undefined) updates.expiry_date = batch.expiryDate;
+  if (batch.expiryDate !== undefined) {
+    updates.expiry_date = batch.expiryDate instanceof Date 
+      ? batch.expiryDate.toISOString() 
+      : batch.expiryDate;
+  }
   if (batch.hasReport !== undefined) updates.has_report = batch.hasReport;
   
   const { error } = await supabase
@@ -479,23 +475,25 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
 export const createProductionBatch = async (
   batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">
 ): Promise<ProductionBatch> => {
-  // Start a transaction
-  const { error: transactionError } = await supabase.rpc("start_transaction");
-  if (transactionError) throw transactionError;
+  // Cannot use transaction functions due to SQL syntax error
+  // We'll manually manage the transaction with BEGIN, COMMIT and ROLLBACK
   
   try {
+    // Start a transaction with BEGIN
+    await supabase.rpc('begin_transaction');
+    
     // Insert the production batch
     const { data: batchData, error: batchError } = await supabase
       .from("production_batches")
-      .insert([
-        {
-          batch_number: batch.batchNumber,
-          production_date: batch.productionDate,
-          mix_day: batch.mixDay,
-          mix_count: batch.mixCount,
-          notes: batch.notes
-        }
-      ])
+      .insert({
+        batch_number: batch.batchNumber,
+        production_date: batch.productionDate instanceof Date 
+          ? batch.productionDate.toISOString() 
+          : batch.productionDate,
+        mix_day: batch.mixDay,
+        mix_count: batch.mixCount,
+        notes: batch.notes
+      })
       .select()
       .single();
     
@@ -507,26 +505,36 @@ export const createProductionBatch = async (
     for (const material of batch.usedMaterials) {
       const { error: materialError } = await supabase
         .from("used_materials")
-        .insert([
-          {
-            production_batch_id: productionBatchId,
-            material_batch_id: material.materialBatchId,
-            quantity: material.quantity,
-            unit_of_measure: material.unitOfMeasure
-          }
-        ]);
+        .insert({
+          production_batch_id: productionBatchId,
+          material_batch_id: material.materialBatchId,
+          quantity: material.quantity,
+          unit_of_measure: material.unitOfMeasure
+        });
       
       if (materialError) throw materialError;
       
       // Update material batch remaining quantity
+      // Get current remaining quantity
+      const { data: materialBatchData, error: fetchError } = await supabase
+        .from("material_batches")
+        .select("remaining_quantity")
+        .eq("id", material.materialBatchId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Calculate new remaining quantity
+      const newRemainingQty = materialBatchData.remaining_quantity - material.quantity;
+      
+      if (newRemainingQty < 0) {
+        throw new Error(`Not enough quantity in material batch. Available: ${materialBatchData.remaining_quantity}, Requested: ${material.quantity}`);
+      }
+      
+      // Update the material batch
       const { error: updateError } = await supabase
         .from("material_batches")
-        .update({ 
-          remaining_quantity: supabase.rpc('decrement_quantity', { 
-            row_id: material.materialBatchId,
-            amount: material.quantity 
-          }) 
-        })
+        .update({ remaining_quantity: newRemainingQty })
         .eq("id", material.materialBatchId);
       
       if (updateError) throw updateError;
@@ -536,23 +544,20 @@ export const createProductionBatch = async (
     for (const item of batch.producedItems) {
       const { error: itemError } = await supabase
         .from("produced_items")
-        .insert([
-          {
-            production_batch_id: productionBatchId,
-            product_id: item.productId,
-            batch_number: item.batchNumber,
-            quantity: item.quantity,
-            remaining_quantity: item.quantity,  // Initially, remaining quantity equals quantity
-            unit_of_measure: item.unitOfMeasure
-          }
-        ]);
+        .insert({
+          production_batch_id: productionBatchId,
+          product_id: item.productId,
+          batch_number: item.batchNumber,
+          quantity: item.quantity,
+          remaining_quantity: item.quantity,  // Initially, remaining quantity equals quantity
+          unit_of_measure: item.unitOfMeasure
+        });
       
       if (itemError) throw itemError;
     }
     
     // Commit the transaction
-    const { error: commitError } = await supabase.rpc("commit_transaction");
-    if (commitError) throw commitError;
+    await supabase.rpc('end_transaction');
     
     // Return the complete production batch
     return {
@@ -563,7 +568,7 @@ export const createProductionBatch = async (
     };
   } catch (error) {
     // Rollback on error
-    await supabase.rpc("rollback_transaction");
+    await supabase.rpc('abort_transaction');
     throw error;
   }
 };
@@ -575,7 +580,11 @@ export const updateProductionBatch = async (
   const updates: any = {};
   
   if (batch.batchNumber) updates.batch_number = batch.batchNumber;
-  if (batch.productionDate) updates.production_date = batch.productionDate;
+  if (batch.productionDate) {
+    updates.production_date = batch.productionDate instanceof Date 
+      ? batch.productionDate.toISOString() 
+      : batch.productionDate;
+  }
   if (batch.mixDay) updates.mix_day = batch.mixDay;
   if (batch.mixCount !== undefined) updates.mix_count = batch.mixCount;
   if (batch.notes !== undefined) updates.notes = batch.notes;
@@ -593,11 +602,10 @@ export const updateProductionBatch = async (
 };
 
 export const deleteProductionBatch = async (id: string): Promise<void> => {
-  // Start a transaction
-  const { error: transactionError } = await supabase.rpc("start_transaction");
-  if (transactionError) throw transactionError;
-  
   try {
+    // Start a transaction
+    await supabase.rpc('begin_transaction');
+    
     // Delete produced items for this batch
     const { error: producedItemsError } = await supabase
       .from("produced_items")
@@ -623,11 +631,10 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
     if (error) throw error;
     
     // Commit the transaction
-    const { error: commitError } = await supabase.rpc("commit_transaction");
-    if (commitError) throw commitError;
+    await supabase.rpc('end_transaction');
   } catch (error) {
     // Rollback on error
-    await supabase.rpc("rollback_transaction");
+    await supabase.rpc('abort_transaction');
     throw error;
   }
 };
@@ -680,7 +687,7 @@ export const fetchSales = async (): Promise<Sale[]> => {
       date: new Date(sale.date),
       invoiceNumber: sale.invoice_number,
       customerName: sale.customer_name,
-      type: sale.type,
+      type: sale.type as "Venda" | "Doação" | "Descarte" | "Devolução" | "Outro",
       notes: sale.notes,
       items,
       createdAt: new Date(sale.created_at),
@@ -694,23 +701,20 @@ export const fetchSales = async (): Promise<Sale[]> => {
 export const createSale = async (
   sale: Omit<Sale, "id" | "createdAt" | "updatedAt">
 ): Promise<Sale> => {
-  // Start a transaction
-  const { error: transactionError } = await supabase.rpc("start_transaction");
-  if (transactionError) throw transactionError;
-  
   try {
+    // Start a transaction
+    await supabase.rpc('begin_transaction');
+    
     // Insert the sale
     const { data: saleData, error: saleError } = await supabase
       .from("sales")
-      .insert([
-        {
-          date: sale.date,
-          invoice_number: sale.invoiceNumber,
-          customer_name: sale.customerName,
-          type: sale.type,
-          notes: sale.notes
-        }
-      ])
+      .insert({
+        date: sale.date instanceof Date ? sale.date.toISOString() : sale.date,
+        invoice_number: sale.invoiceNumber,
+        customer_name: sale.customerName,
+        type: sale.type,
+        notes: sale.notes
+      })
       .select()
       .single();
     
@@ -722,35 +726,44 @@ export const createSale = async (
     for (const item of sale.items) {
       const { error: itemError } = await supabase
         .from("sale_items")
-        .insert([
-          {
-            sale_id: saleId,
-            product_id: item.productId,
-            produced_item_id: item.producedItemId,
-            quantity: item.quantity,
-            unit_of_measure: item.unitOfMeasure
-          }
-        ]);
+        .insert({
+          sale_id: saleId,
+          product_id: item.productId,
+          produced_item_id: item.producedItemId,
+          quantity: item.quantity,
+          unit_of_measure: item.unitOfMeasure
+        });
       
       if (itemError) throw itemError;
       
       // Update produced item remaining quantity
+      // Get current remaining quantity
+      const { data: producedItemData, error: fetchError } = await supabase
+        .from("produced_items")
+        .select("remaining_quantity")
+        .eq("id", item.producedItemId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Calculate new remaining quantity
+      const newRemainingQty = producedItemData.remaining_quantity - item.quantity;
+      
+      if (newRemainingQty < 0) {
+        throw new Error(`Not enough quantity in produced item. Available: ${producedItemData.remaining_quantity}, Requested: ${item.quantity}`);
+      }
+      
+      // Update the produced item
       const { error: updateError } = await supabase
         .from("produced_items")
-        .update({ 
-          remaining_quantity: supabase.rpc('decrement_quantity', { 
-            row_id: item.producedItemId,
-            amount: item.quantity 
-          }) 
-        })
+        .update({ remaining_quantity: newRemainingQty })
         .eq("id", item.producedItemId);
       
       if (updateError) throw updateError;
     }
     
     // Commit the transaction
-    const { error: commitError } = await supabase.rpc("commit_transaction");
-    if (commitError) throw commitError;
+    await supabase.rpc('end_transaction');
     
     // Return the complete sale
     return {
@@ -761,7 +774,7 @@ export const createSale = async (
     };
   } catch (error) {
     // Rollback on error
-    await supabase.rpc("rollback_transaction");
+    await supabase.rpc('abort_transaction');
     throw error;
   }
 };
@@ -772,7 +785,9 @@ export const updateSale = async (
 ): Promise<void> => {
   const updates: any = {};
   
-  if (sale.date) updates.date = sale.date;
+  if (sale.date) {
+    updates.date = sale.date instanceof Date ? sale.date.toISOString() : sale.date;
+  }
   if (sale.invoiceNumber) updates.invoice_number = sale.invoiceNumber;
   if (sale.customerName) updates.customer_name = sale.customerName;
   if (sale.type) updates.type = sale.type;
@@ -791,11 +806,10 @@ export const updateSale = async (
 };
 
 export const deleteSale = async (id: string): Promise<void> => {
-  // Start a transaction
-  const { error: transactionError } = await supabase.rpc("start_transaction");
-  if (transactionError) throw transactionError;
-  
   try {
+    // Start a transaction
+    await supabase.rpc('begin_transaction');
+    
     // Get the sale items to restore produced item quantities
     const { data: saleItemsData, error: getSaleItemsError } = await supabase
       .from("sale_items")
@@ -806,14 +820,22 @@ export const deleteSale = async (id: string): Promise<void> => {
     
     // Restore remaining quantities
     for (const item of saleItemsData) {
+      // Get current remaining quantity
+      const { data: producedItemData, error: fetchError } = await supabase
+        .from("produced_items")
+        .select("remaining_quantity")
+        .eq("id", item.produced_item_id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Calculate new remaining quantity
+      const newRemainingQty = producedItemData.remaining_quantity + item.quantity;
+      
+      // Update the produced item
       const { error: updateError } = await supabase
         .from("produced_items")
-        .update({ 
-          remaining_quantity: supabase.rpc('increment_quantity', { 
-            row_id: item.produced_item_id,
-            amount: item.quantity 
-          }) 
-        })
+        .update({ remaining_quantity: newRemainingQty })
         .eq("id", item.produced_item_id);
       
       if (updateError) throw updateError;
@@ -836,11 +858,10 @@ export const deleteSale = async (id: string): Promise<void> => {
     if (error) throw error;
     
     // Commit the transaction
-    const { error: commitError } = await supabase.rpc("commit_transaction");
-    if (commitError) throw commitError;
+    await supabase.rpc('end_transaction');
   } catch (error) {
     // Rollback on error
-    await supabase.rpc("rollback_transaction");
+    await supabase.rpc('abort_transaction');
     throw error;
   }
 };
@@ -911,22 +932,19 @@ export const fetchOrders = async (): Promise<Order[]> => {
 export const createOrder = async (
   order: Omit<Order, "id" | "createdAt" | "updatedAt">
 ): Promise<Order> => {
-  // Start a transaction
-  const { error: transactionError } = await supabase.rpc("start_transaction");
-  if (transactionError) throw transactionError;
-  
   try {
+    // Start a transaction
+    await supabase.rpc('begin_transaction');
+    
     // Insert the order
     const { data: orderData, error: orderError } = await supabase
       .from("orders")
-      .insert([
-        {
-          date: order.date,
-          invoice_number: order.invoiceNumber,
-          supplier_id: order.supplierId,
-          notes: order.notes
-        }
-      ])
+      .insert({
+        date: order.date instanceof Date ? order.date.toISOString() : order.date,
+        invoice_number: order.invoiceNumber,
+        supplier_id: order.supplierId,
+        notes: order.notes
+      })
       .select()
       .single();
     
@@ -939,17 +957,15 @@ export const createOrder = async (
       // Insert order item
       const { data: orderItemData, error: itemError } = await supabase
         .from("order_items")
-        .insert([
-          {
-            order_id: orderId,
-            material_id: item.materialId,
-            quantity: item.quantity,
-            unit_of_measure: item.unitOfMeasure,
-            batch_number: item.batchNumber,
-            expiry_date: item.expiryDate,
-            has_report: item.hasReport
-          }
-        ])
+        .insert({
+          order_id: orderId,
+          material_id: item.materialId,
+          quantity: item.quantity,
+          unit_of_measure: item.unitOfMeasure,
+          batch_number: item.batchNumber,
+          expiry_date: item.expiryDate instanceof Date ? item.expiryDate.toISOString() : item.expiryDate,
+          has_report: item.hasReport
+        })
         .select()
         .single();
       
@@ -958,25 +974,22 @@ export const createOrder = async (
       // Create material batch for this order item
       const { error: batchError } = await supabase
         .from("material_batches")
-        .insert([
-          {
-            material_id: item.materialId,
-            batch_number: item.batchNumber,
-            quantity: item.quantity,
-            supplied_quantity: item.quantity,
-            remaining_quantity: item.quantity,
-            unit_of_measure: item.unitOfMeasure,
-            expiry_date: item.expiryDate,
-            has_report: item.hasReport
-          }
-        ]);
+        .insert({
+          material_id: item.materialId,
+          batch_number: item.batchNumber,
+          quantity: item.quantity,
+          supplied_quantity: item.quantity,
+          remaining_quantity: item.quantity,
+          unit_of_measure: item.unitOfMeasure,
+          expiry_date: item.expiryDate instanceof Date ? item.expiryDate.toISOString() : item.expiryDate,
+          has_report: item.hasReport
+        });
       
       if (batchError) throw batchError;
     }
     
     // Commit the transaction
-    const { error: commitError } = await supabase.rpc("commit_transaction");
-    if (commitError) throw commitError;
+    await supabase.rpc('end_transaction');
     
     // Return the complete order
     return {
@@ -987,7 +1000,7 @@ export const createOrder = async (
     };
   } catch (error) {
     // Rollback on error
-    await supabase.rpc("rollback_transaction");
+    await supabase.rpc('abort_transaction');
     throw error;
   }
 };
@@ -998,7 +1011,9 @@ export const updateOrder = async (
 ): Promise<void> => {
   const updates: any = {};
   
-  if (order.date) updates.date = order.date;
+  if (order.date) {
+    updates.date = order.date instanceof Date ? order.date.toISOString() : order.date;
+  }
   if (order.invoiceNumber) updates.invoice_number = order.invoiceNumber;
   if (order.supplierId) updates.supplier_id = order.supplierId;
   if (order.notes !== undefined) updates.notes = order.notes;
@@ -1015,11 +1030,10 @@ export const updateOrder = async (
 };
 
 export const deleteOrder = async (id: string): Promise<void> => {
-  // Start a transaction
-  const { error: transactionError } = await supabase.rpc("start_transaction");
-  if (transactionError) throw transactionError;
-  
   try {
+    // Start a transaction
+    await supabase.rpc('begin_transaction');
+    
     // Get the order items to find related material batches
     const { data: orderItemsData, error: getOrderItemsError } = await supabase
       .from("order_items")
@@ -1057,11 +1071,10 @@ export const deleteOrder = async (id: string): Promise<void> => {
     if (error) throw error;
     
     // Commit the transaction
-    const { error: commitError } = await supabase.rpc("commit_transaction");
-    if (commitError) throw commitError;
+    await supabase.rpc('end_transaction');
   } catch (error) {
     // Rollback on error
-    await supabase.rpc("rollback_transaction");
+    await supabase.rpc('abort_transaction');
     throw error;
   }
 };
@@ -1080,10 +1093,10 @@ export const fetchLosses = async (): Promise<Loss[]> => {
     date: new Date(loss.date),
     productionBatchId: loss.production_batch_id,
     batchNumber: "", // We need to fetch batch number separately
-    machine: loss.machine,
+    machine: loss.machine as "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro",
     quantity: loss.quantity,
     unitOfMeasure: loss.unit_of_measure,
-    productType: loss.product_type,
+    productType: loss.product_type as "Goma" | "Fécula" | "Embalagem" | "Sorbato" | "Produto Acabado" | "Outro",
     notes: loss.notes,
     createdAt: new Date(loss.created_at),
     updatedAt: new Date(loss.updated_at)
@@ -1108,10 +1121,10 @@ export const fetchLossesWithDetails = async (): Promise<Loss[]> => {
     date: new Date(loss.date),
     productionBatchId: loss.production_batch_id,
     batchNumber: loss.production_batches?.batch_number || "",
-    machine: loss.machine,
+    machine: loss.machine as "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro",
     quantity: loss.quantity,
     unitOfMeasure: loss.unit_of_measure,
-    productType: loss.product_type,
+    productType: loss.product_type as "Goma" | "Fécula" | "Embalagem" | "Sorbato" | "Produto Acabado" | "Outro",
     notes: loss.notes,
     createdAt: new Date(loss.created_at),
     updatedAt: new Date(loss.updated_at)
@@ -1123,17 +1136,15 @@ export const createLoss = async (
 ): Promise<Loss> => {
   const { data, error } = await supabase
     .from("losses")
-    .insert([
-      {
-        date: loss.date,
-        production_batch_id: loss.productionBatchId,
-        machine: loss.machine,
-        quantity: loss.quantity,
-        unit_of_measure: loss.unitOfMeasure,
-        product_type: loss.productType,
-        notes: loss.notes
-      }
-    ])
+    .insert({
+      date: loss.date instanceof Date ? loss.date.toISOString() : loss.date,
+      production_batch_id: loss.productionBatchId,
+      machine: loss.machine,
+      quantity: loss.quantity,
+      unit_of_measure: loss.unitOfMeasure,
+      product_type: loss.productType,
+      notes: loss.notes
+    })
     .select()
     .single();
   
@@ -1145,10 +1156,10 @@ export const createLoss = async (
     date: new Date(data.date),
     productionBatchId: data.production_batch_id,
     batchNumber: loss.batchNumber, // Use the provided batch number
-    machine: data.machine,
+    machine: data.machine as "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro",
     quantity: data.quantity,
     unitOfMeasure: data.unit_of_measure,
-    productType: data.product_type,
+    productType: data.product_type as "Goma" | "Fécula" | "Embalagem" | "Sorbato" | "Produto Acabado" | "Outro",
     notes: data.notes,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
@@ -1161,7 +1172,9 @@ export const updateLoss = async (
 ): Promise<void> => {
   const updates: any = {};
   
-  if (loss.date) updates.date = loss.date;
+  if (loss.date) {
+    updates.date = loss.date instanceof Date ? loss.date.toISOString() : loss.date;
+  }
   if (loss.productionBatchId) updates.production_batch_id = loss.productionBatchId;
   if (loss.machine) updates.machine = loss.machine;
   if (loss.quantity !== undefined) updates.quantity = loss.quantity;
@@ -1200,4 +1213,17 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
     console.error("Supabase connection test failed:", error);
     return false;
   }
+};
+
+// Helper functions for transactions
+export const beginTransaction = async (): Promise<void> => {
+  await supabase.rpc('begin_transaction');
+};
+
+export const endTransaction = async (): Promise<void> => {
+  await supabase.rpc('end_transaction');
+};
+
+export const abortTransaction = async (): Promise<void> => {
+  await supabase.rpc('abort_transaction');
 };
