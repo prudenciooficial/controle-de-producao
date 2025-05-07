@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   ProductionBatch,
@@ -16,9 +17,16 @@ import {
   fetchMaterials, 
   fetchSuppliers,
   fetchMaterialBatches,
+  fetchProductionBatches,
   createProduct,
-  updateProduct,
-  deleteProduct
+  updateProduct as updateProductApi,
+  deleteProduct as deleteProductApi,
+  createMaterial,
+  updateMaterial as updateMaterialApi,
+  deleteMaterial as deleteMaterialApi,
+  createSupplier,
+  updateSupplier as updateSupplierApi,
+  deleteSupplier as deleteSupplierApi
 } from "../services/supabaseService";
 import { useToast } from "@/hooks/use-toast";
 
@@ -75,13 +83,13 @@ interface DataContextType {
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   
-  addMaterial: (material: Omit<Material, "id" | "createdAt" | "updatedAt">) => void;
-  updateMaterial: (id: string, material: Partial<Material>) => void;
-  deleteMaterial: (id: string) => void;
+  addMaterial: (material: Omit<Material, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateMaterial: (id: string, material: Partial<Material>) => Promise<void>;
+  deleteMaterial: (id: string) => Promise<void>;
   
-  addSupplier: (supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">) => void;
-  updateSupplier: (id: string, supplier: Partial<Supplier>) => void;
-  deleteSupplier: (id: string) => void;
+  addSupplier: (supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateSupplier: (id: string, supplier: Partial<Supplier>) => Promise<void>;
+  deleteSupplier: (id: string) => Promise<void>;
   
   // Helper methods
   getAvailableMaterials: () => MaterialBatch[];
@@ -91,194 +99,6 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 // Mock data for initial state
-const mockProducts: Product[] = [
-  { 
-    id: "p1", 
-    name: "Polvilho Doce", 
-    code: "PD001", 
-    unitOfMeasure: "kg",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  { 
-    id: "p2", 
-    name: "Polvilho Azedo", 
-    code: "PA001", 
-    unitOfMeasure: "kg",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-];
-
-const mockMaterials: Material[] = [
-  {
-    id: "m1",
-    name: "Fécula de Mandioca",
-    code: "FM001",
-    type: "Fécula",
-    unitOfMeasure: "kg",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: "m2",
-    name: "Conservante Sorbato",
-    code: "CS001",
-    type: "Conservante",
-    unitOfMeasure: "kg",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: "m3",
-    name: "Embalagem 1kg",
-    code: "EM001",
-    type: "Embalagem",
-    unitOfMeasure: "unidade",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: "m4",
-    name: "Saco Sanfonado Grande",
-    code: "SS001",
-    type: "Saco",
-    unitOfMeasure: "unidade",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: "m5",
-    name: "Caixa 20kg",
-    code: "CX001",
-    type: "Caixa",
-    unitOfMeasure: "unidade",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-];
-
-const mockSuppliers: Supplier[] = [
-  {
-    id: "s1",
-    name: "Fornecedor de Fécula LTDA",
-    code: "F001",
-    contacts: "11 9999-8888",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: "s2",
-    name: "Embalagens Rápidas S.A.",
-    code: "F002",
-    contacts: "11 7777-6666",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-];
-
-const mockMaterialBatches: MaterialBatch[] = [
-  {
-    id: "mb1",
-    materialId: "m1",
-    materialName: "Fécula de Mandioca",
-    materialType: "Fécula",
-    batchNumber: "FEC-2023-001",
-    quantity: 1000,
-    suppliedQuantity: 1000,
-    remainingQuantity: 850,
-    unitOfMeasure: "kg",
-    expiryDate: new Date("2025-12-31"),
-    hasReport: true,
-    createdAt: new Date("2023-10-01"),
-    updatedAt: new Date("2023-10-01")
-  },
-  {
-    id: "mb2",
-    materialId: "m2",
-    materialName: "Conservante Sorbato",
-    materialType: "Conservante",
-    batchNumber: "CSB-2023-001",
-    quantity: 50,
-    suppliedQuantity: 50,
-    remainingQuantity: 40,
-    unitOfMeasure: "kg",
-    expiryDate: new Date("2025-06-30"),
-    hasReport: true,
-    createdAt: new Date("2023-09-15"),
-    updatedAt: new Date("2023-09-15")
-  },
-  {
-    id: "mb3",
-    materialId: "m3",
-    materialName: "Embalagem 1kg",
-    materialType: "Embalagem",
-    batchNumber: "EMB-2023-001",
-    quantity: 10000,
-    suppliedQuantity: 10000,
-    remainingQuantity: 8500,
-    unitOfMeasure: "unidade",
-    hasReport: true,
-    createdAt: new Date("2023-10-05"),
-    updatedAt: new Date("2023-10-05")
-  },
-];
-
-// Sample production batch
-const mockProductionBatches: ProductionBatch[] = [
-  {
-    id: "pb1",
-    batchNumber: "PROD-2023-001",
-    productionDate: new Date("2023-10-10"),
-    mixDay: "Segunda",
-    mixCount: 3,
-    notes: "Produção normal sem ocorrências",
-    producedItems: [
-      {
-        id: "pi1",
-        productId: "p1",
-        productName: "Polvilho Doce",
-        quantity: 500,
-        unitOfMeasure: "kg",
-        batchNumber: "PROD-2023-001-P1",
-        remainingQuantity: 350
-      }
-    ],
-    usedMaterials: [
-      {
-        id: "um1",
-        materialBatchId: "mb1",
-        materialName: "Fécula de Mandioca",
-        materialType: "Fécula",
-        batchNumber: "FEC-2023-001",
-        quantity: 450,
-        unitOfMeasure: "kg"
-      },
-      {
-        id: "um2",
-        materialBatchId: "mb2",
-        materialName: "Conservante Sorbato",
-        materialType: "Conservante",
-        batchNumber: "CSB-2023-001",
-        quantity: 2.5,
-        unitOfMeasure: "kg"
-      },
-      {
-        id: "um3",
-        materialBatchId: "mb3",
-        materialName: "Embalagem 1kg",
-        materialType: "Embalagem",
-        batchNumber: "EMB-2023-001",
-        quantity: 500,
-        unitOfMeasure: "unidade"
-      }
-    ],
-    createdAt: new Date("2023-10-10"),
-    updatedAt: new Date("2023-10-10")
-  }
-];
-
-// Sample sales
 const mockSales: Sale[] = [
   {
     id: "s1",
@@ -349,7 +169,7 @@ const mockLosses: Loss[] = [
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // State for all data collections
-  const [productionBatches, setProductionBatches] = useState<ProductionBatch[]>(mockProductionBatches);
+  const [productionBatches, setProductionBatches] = useState<ProductionBatch[]>([]);
   const [sales, setSales] = useState<Sale[]>(mockSales);
   const [orders, setOrders] = useState<Order[]>(mockOrders);
   const [losses, setLosses] = useState<Loss[]>(mockLosses);
@@ -364,7 +184,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     materials: true,
     suppliers: true,
     materialBatches: true,
-    productionBatches: false,
+    productionBatches: true,
     sales: false,
     orders: false,
     losses: false,
@@ -441,6 +261,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       } finally {
         setIsLoading(prev => ({ ...prev, materialBatches: false }));
+      }
+      
+      try {
+        setIsLoading(prev => ({ ...prev, productionBatches: true }));
+        const productionBatchesData = await fetchProductionBatches();
+        setProductionBatches(productionBatchesData);
+      } catch (error) {
+        console.error("Error loading production batches:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load production batches data",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, productionBatches: false }));
       }
     };
     
@@ -700,7 +535,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLosses(losses.filter(l => l.id !== id));
   };
 
-  // CRUD operations for Products - Updated to use Supabase
+  // CRUD operations for Products - Using Supabase
   const addProduct = async (product: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newProduct = await createProduct(product);
@@ -720,9 +555,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateProductLocal = async (id: string, product: Partial<Product>) => {
+  const updateProduct = async (id: string, product: Partial<Product>) => {
     try {
-      await updateProduct(id, product);
+      await updateProductApi(id, product);
       setProducts(
         products.map(p => 
           p.id === id ? { ...p, ...product, updatedAt: new Date() } : p
@@ -743,9 +578,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const deleteProductLocal = async (id: string) => {
+  const deleteProduct = async (id: string) => {
     try {
-      await deleteProduct(id);
+      await deleteProductApi(id);
       setProducts(products.filter(p => p.id !== id));
       toast({
         title: "Success",
@@ -762,52 +597,128 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // CRUD operations for Materials
-  const addMaterial = (material: Omit<Material, "id" | "createdAt" | "updatedAt">) => {
-    const newMaterial: Material = {
-      ...material,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setMaterials([...materials, newMaterial]);
+  // CRUD operations for Materials - Updated to use Supabase
+  const addMaterial = async (material: Omit<Material, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const newMaterial = await createMaterial(material);
+      setMaterials([...materials, newMaterial]);
+      toast({
+        title: "Sucesso",
+        description: "Material criado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error adding material:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao criar material",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const updateMaterial = (id: string, material: Partial<Material>) => {
-    setMaterials(
-      materials.map(m => 
-        m.id === id ? { ...m, ...material, updatedAt: new Date() } : m
-      )
-    );
+  const updateMaterial = async (id: string, material: Partial<Material>) => {
+    try {
+      await updateMaterialApi(id, material);
+      setMaterials(
+        materials.map(m => 
+          m.id === id ? { ...m, ...material, updatedAt: new Date() } : m
+        )
+      );
+      toast({
+        title: "Sucesso",
+        description: "Material atualizado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error updating material:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar material",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const deleteMaterial = (id: string) => {
-    setMaterials(materials.filter(m => m.id !== id));
+  const deleteMaterial = async (id: string) => {
+    try {
+      await deleteMaterialApi(id);
+      setMaterials(materials.filter(m => m.id !== id));
+      toast({
+        title: "Sucesso",
+        description: "Material excluído com sucesso",
+      });
+    } catch (error) {
+      console.error("Error deleting material:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao excluir material",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  // CRUD operations for Suppliers
-  const addSupplier = (supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">) => {
-    const newSupplier: Supplier = {
-      ...supplier,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setSuppliers([...suppliers, newSupplier]);
+  // CRUD operations for Suppliers - Updated to use Supabase
+  const addSupplier = async (supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const newSupplier = await createSupplier(supplier);
+      setSuppliers([...suppliers, newSupplier]);
+      toast({
+        title: "Sucesso",
+        description: "Fornecedor criado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error adding supplier:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao criar fornecedor",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const updateSupplier = (id: string, supplier: Partial<Supplier>) => {
-    setSuppliers(
-      suppliers.map(s => 
-        s.id === id ? { ...s, ...supplier, updatedAt: new Date() } : s
-      )
-    );
+  const updateSupplier = async (id: string, supplier: Partial<Supplier>) => {
+    try {
+      await updateSupplierApi(id, supplier);
+      setSuppliers(
+        suppliers.map(s => 
+          s.id === id ? { ...s, ...supplier, updatedAt: new Date() } : s
+        )
+      );
+      toast({
+        title: "Sucesso",
+        description: "Fornecedor atualizado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error updating supplier:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar fornecedor",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const deleteSupplier = (id: string) => {
-    setSuppliers(suppliers.filter(s => s.id !== id));
+  const deleteSupplier = async (id: string) => {
+    try {
+      await deleteSupplierApi(id);
+      setSuppliers(suppliers.filter(s => s.id !== id));
+      toast({
+        title: "Sucesso",
+        description: "Fornecedor excluído com sucesso",
+      });
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao excluir fornecedor",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // Helper method to get available materials
@@ -858,8 +769,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateLoss,
     deleteLoss,
     addProduct,
-    updateProduct: updateProductLocal,
-    deleteProduct: deleteProductLocal,
+    updateProduct,
+    deleteProduct,
     addMaterial,
     updateMaterial,
     deleteMaterial,
