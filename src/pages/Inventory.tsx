@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { Input } from "@/components/ui/input";
@@ -6,10 +5,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Package, PackageCheck } from "lucide-react";
+import { Package, PackageCheck, Loader2 } from "lucide-react";
 
 const Inventory = () => {
-  const { getAvailableProducts, getAvailableMaterials, materialBatches } = useData();
+  const { getAvailableProducts, getAvailableMaterials, materialBatches, isLoading } = useData();
   const [productSearch, setProductSearch] = useState("");
   const [materialSearch, setMaterialSearch] = useState("");
   
@@ -114,44 +113,52 @@ const Inventory = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mb-6">
-                <Input
-                  placeholder="Buscar por produto ou lote..."
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  className="max-w-sm"
-                />
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Lote</TableHead>
-                    <TableHead>Produzido</TableHead>
-                    <TableHead>Disponível</TableHead>
-                    <TableHead>Un.</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.length > 0 ? (
-                    filteredProducts.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell>{product.productName}</TableCell>
-                        <TableCell>{product.batchNumber}</TableCell>
-                        <TableCell>{product.quantity}</TableCell>
-                        <TableCell>{product.remainingQuantity}</TableCell>
-                        <TableCell>{product.unitOfMeasure}</TableCell>
+              {isLoading.productionBatches ? (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <Input
+                      placeholder="Buscar por produto ou lote..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      className="max-w-sm"
+                    />
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead>Lote</TableHead>
+                        <TableHead>Produzido</TableHead>
+                        <TableHead>Disponível</TableHead>
+                        <TableHead>Un.</TableHead>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4">
-                        Nenhum produto disponível em estoque.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredProducts.length > 0 ? (
+                        filteredProducts.map((product) => (
+                          <TableRow key={product.id}>
+                            <TableCell>{product.productName}</TableCell>
+                            <TableCell>{product.batchNumber}</TableCell>
+                            <TableCell>{product.quantity}</TableCell>
+                            <TableCell>{product.remainingQuantity}</TableCell>
+                            <TableCell>{product.unitOfMeasure}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-4">
+                            Nenhum produto disponível em estoque.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -168,66 +175,74 @@ const Inventory = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mb-6">
-                <Input
-                  placeholder="Buscar por insumo, tipo ou lote..."
-                  value={materialSearch}
-                  onChange={(e) => setMaterialSearch(e.target.value)}
-                  className="max-w-sm"
-                />
-              </div>
-              
-              {Object.keys(groupedMaterials).length > 0 ? (
-                Object.entries(groupedMaterials).map(([type, materials]) => (
-                  <div key={type} className="mb-8">
-                    <h3 className="text-lg font-medium mb-4 flex items-center">
-                      {getMaterialTypeIcon(type)}
-                      <span className="ml-2">{type}</span>
-                    </h3>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Insumo</TableHead>
-                          <TableHead>Lote</TableHead>
-                          <TableHead>Recebido</TableHead>
-                          <TableHead>Disponível</TableHead>
-                          <TableHead>Un.</TableHead>
-                          <TableHead>Validade</TableHead>
-                          <TableHead>Laudo</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {materials.map((material) => (
-                          <TableRow key={material.id}>
-                            <TableCell>{material.materialName}</TableCell>
-                            <TableCell>{material.batchNumber}</TableCell>
-                            <TableCell>{material.suppliedQuantity}</TableCell>
-                            <TableCell>{material.remainingQuantity}</TableCell>
-                            <TableCell>{material.unitOfMeasure}</TableCell>
-                            <TableCell>
-                              {getExpiryBadge(material.expiryDate)}
-                            </TableCell>
-                            <TableCell>
-                              {material.hasReport ? (
-                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                                  Sim
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
-                                  Não
-                                </Badge>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-4">
-                  Nenhum material disponível em estoque.
+              {isLoading.materialBatches ? (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <Input
+                      placeholder="Buscar por insumo, tipo ou lote..."
+                      value={materialSearch}
+                      onChange={(e) => setMaterialSearch(e.target.value)}
+                      className="max-w-sm"
+                    />
+                  </div>
+                  
+                  {Object.keys(groupedMaterials).length > 0 ? (
+                    Object.entries(groupedMaterials).map(([type, materials]) => (
+                      <div key={type} className="mb-8">
+                        <h3 className="text-lg font-medium mb-4 flex items-center">
+                          {getMaterialTypeIcon(type)}
+                          <span className="ml-2">{type}</span>
+                        </h3>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Insumo</TableHead>
+                              <TableHead>Lote</TableHead>
+                              <TableHead>Recebido</TableHead>
+                              <TableHead>Disponível</TableHead>
+                              <TableHead>Un.</TableHead>
+                              <TableHead>Validade</TableHead>
+                              <TableHead>Laudo</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {materials.map((material) => (
+                              <TableRow key={material.id}>
+                                <TableCell>{material.materialName}</TableCell>
+                                <TableCell>{material.batchNumber}</TableCell>
+                                <TableCell>{material.suppliedQuantity}</TableCell>
+                                <TableCell>{material.remainingQuantity}</TableCell>
+                                <TableCell>{material.unitOfMeasure}</TableCell>
+                                <TableCell>
+                                  {getExpiryBadge(material.expiryDate)}
+                                </TableCell>
+                                <TableCell>
+                                  {material.hasReport ? (
+                                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                                      Sim
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                                      Não
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      Nenhum material disponível em estoque.
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

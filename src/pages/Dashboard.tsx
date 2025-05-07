@@ -2,13 +2,14 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useData } from "@/context/DataContext";
-import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2 } from "lucide-react";
 
 const Dashboard = () => {
   const { 
     dashboardStats,
     productionBatches,
-    sales 
+    sales,
+    isLoading
   } = useData();
   
   // Prepare data for Production vs Sales chart
@@ -80,6 +81,17 @@ const Dashboard = () => {
   };
   
   const inventoryData = getInventoryData();
+  
+  if (isLoading.products || isLoading.materialBatches) {
+    return (
+      <div className="container mx-auto py-6 px-4 flex justify-center items-center h-[80vh]">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <h2 className="text-xl font-medium">Carregando dados do dashboard...</h2>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">

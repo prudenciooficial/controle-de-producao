@@ -9,7 +9,505 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      losses: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          machine: string
+          notes: string | null
+          product_type: string
+          production_batch_id: string
+          quantity: number
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          machine: string
+          notes?: string | null
+          product_type: string
+          production_batch_id: string
+          quantity: number
+          unit_of_measure: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          machine?: string
+          notes?: string | null
+          product_type?: string
+          production_batch_id?: string
+          quantity?: number
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "losses_production_batch_id_fkey"
+            columns: ["production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "production_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_batches: {
+        Row: {
+          batch_number: string
+          created_at: string
+          expiry_date: string | null
+          has_report: boolean | null
+          id: string
+          material_id: string
+          quantity: number
+          remaining_quantity: number
+          supplied_quantity: number
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string
+          expiry_date?: string | null
+          has_report?: boolean | null
+          id?: string
+          material_id: string
+          quantity: number
+          remaining_quantity: number
+          supplied_quantity: number
+          unit_of_measure: string
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string
+          expiry_date?: string | null
+          has_report?: boolean | null
+          id?: string
+          material_id?: string
+          quantity?: number
+          remaining_quantity?: number
+          supplied_quantity?: number
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_batches_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      materials: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          type: string
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          type: string
+          unit_of_measure: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          type?: string
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          batch_number: string
+          created_at: string
+          expiry_date: string | null
+          has_report: boolean | null
+          id: string
+          material_id: string
+          order_id: string
+          quantity: number
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string
+          expiry_date?: string | null
+          has_report?: boolean | null
+          id?: string
+          material_id: string
+          order_id: string
+          quantity: number
+          unit_of_measure: string
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string
+          expiry_date?: string | null
+          has_report?: boolean | null
+          id?: string
+          material_id?: string
+          order_id?: string
+          quantity?: number
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          invoice_number: string
+          notes: string | null
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          invoice_number: string
+          notes?: string | null
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_number?: string
+          notes?: string | null
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produced_items: {
+        Row: {
+          batch_number: string
+          created_at: string
+          id: string
+          product_id: string
+          production_batch_id: string
+          quantity: number
+          remaining_quantity: number
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string
+          id?: string
+          product_id: string
+          production_batch_id: string
+          quantity: number
+          remaining_quantity: number
+          unit_of_measure: string
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          production_batch_id?: string
+          quantity?: number
+          remaining_quantity?: number
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produced_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produced_items_production_batch_id_fkey"
+            columns: ["production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "production_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_batches: {
+        Row: {
+          batch_number: string
+          created_at: string
+          id: string
+          mix_count: number
+          mix_day: string
+          notes: string | null
+          production_date: string
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string
+          id?: string
+          mix_count: number
+          mix_day: string
+          notes?: string | null
+          production_date: string
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string
+          id?: string
+          mix_count?: number
+          mix_day?: string
+          notes?: string | null
+          production_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          unit_of_measure: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sale_items: {
+        Row: {
+          created_at: string
+          id: string
+          produced_item_id: string
+          product_id: string
+          quantity: number
+          sale_id: string
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          produced_item_id: string
+          product_id: string
+          quantity: number
+          sale_id: string
+          unit_of_measure: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          produced_item_id?: string
+          product_id?: string
+          quantity?: number
+          sale_id?: string
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_produced_item_id_fkey"
+            columns: ["produced_item_id"]
+            isOneToOne: false
+            referencedRelation: "produced_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          created_at: string
+          customer_name: string
+          date: string
+          id: string
+          invoice_number: string
+          notes: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          date: string
+          id?: string
+          invoice_number: string
+          notes?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          date?: string
+          id?: string
+          invoice_number?: string
+          notes?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          code: string
+          contacts: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          contacts?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          contacts?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      used_materials: {
+        Row: {
+          created_at: string
+          id: string
+          material_batch_id: string
+          production_batch_id: string
+          quantity: number
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          material_batch_id: string
+          production_batch_id: string
+          quantity: number
+          unit_of_measure: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          material_batch_id?: string
+          production_batch_id?: string
+          quantity?: number
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "used_materials_material_batch_id_fkey"
+            columns: ["material_batch_id"]
+            isOneToOne: false
+            referencedRelation: "material_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "used_materials_production_batch_id_fkey"
+            columns: ["production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "production_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

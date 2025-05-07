@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   ProductionBatch,
@@ -12,6 +11,16 @@ import {
   ProducedItem,
   DashboardStats
 } from "../types";
+import { 
+  fetchProducts, 
+  fetchMaterials, 
+  fetchSuppliers,
+  fetchMaterialBatches,
+  createProduct,
+  updateProduct,
+  deleteProduct
+} from "../services/supabaseService";
+import { useToast } from "@/hooks/use-toast";
 
 interface DataContextType {
   // Data collections
@@ -24,8 +33,26 @@ interface DataContextType {
   suppliers: Supplier[];
   materialBatches: MaterialBatch[];
   
+  // Loading states
+  isLoading: {
+    products: boolean;
+    materials: boolean;
+    suppliers: boolean;
+    materialBatches: boolean;
+    productionBatches: boolean;
+    sales: boolean;
+    orders: boolean;
+    losses: boolean;
+  };
+  
   // Stats
   dashboardStats: DashboardStats;
+  
+  // Refetch functions
+  refetchProducts: () => Promise<void>;
+  refetchMaterials: () => Promise<void>;
+  refetchSuppliers: () => Promise<void>;
+  refetchMaterialBatches: () => Promise<void>;
   
   // CRUD operations
   addProductionBatch: (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => void;
@@ -44,9 +71,9 @@ interface DataContextType {
   updateLoss: (id: string, loss: Partial<Loss>) => void;
   deleteLoss: (id: string) => void;
   
-  addProduct: (product: Omit<Product, "id" | "createdAt" | "updatedAt">) => void;
-  updateProduct: (id: string, product: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
+  addProduct: (product: Omit<Product, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
   
   addMaterial: (material: Omit<Material, "id" | "createdAt" | "updatedAt">) => void;
   updateMaterial: (id: string, material: Partial<Material>) => void;
@@ -326,10 +353,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [sales, setSales] = useState<Sale[]>(mockSales);
   const [orders, setOrders] = useState<Order[]>(mockOrders);
   const [losses, setLosses] = useState<Loss[]>(mockLosses);
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-  const [materials, setMaterials] = useState<Material[]>(mockMaterials);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers);
-  const [materialBatches, setMaterialBatches] = useState<MaterialBatch[]>(mockMaterialBatches);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [materialBatches, setMaterialBatches] = useState<MaterialBatch[]>([]);
+
+  // Loading states
+  const [isLoading, setIsLoading] = useState({
+    products: true,
+    materials: true,
+    suppliers: true,
+    materialBatches: true,
+    productionBatches: false,
+    sales: false,
+    orders: false,
+    losses: false,
+  });
+
+  const { toast } = useToast();
 
   // State for dashboard stats
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
@@ -338,6 +379,142 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentInventory: 0,
     averageProfitability: 0
   });
+
+  // Fetch data from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(prev => ({ ...prev, products: true }));
+        const productsData = await fetchProducts();
+        setProducts(productsData);
+      } catch (error) {
+        console.error("Error loading products:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load products data",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, products: false }));
+      }
+      
+      try {
+        setIsLoading(prev => ({ ...prev, materials: true }));
+        const materialsData = await fetchMaterials();
+        setMaterials(materialsData);
+      } catch (error) {
+        console.error("Error loading materials:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load materials data",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, materials: false }));
+      }
+      
+      try {
+        setIsLoading(prev => ({ ...prev, suppliers: true }));
+        const suppliersData = await fetchSuppliers();
+        setSuppliers(suppliersData);
+      } catch (error) {
+        console.error("Error loading suppliers:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load suppliers data",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, suppliers: false }));
+      }
+      
+      try {
+        setIsLoading(prev => ({ ...prev, materialBatches: true }));
+        const materialBatchesData = await fetchMaterialBatches();
+        setMaterialBatches(materialBatchesData);
+      } catch (error) {
+        console.error("Error loading material batches:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load material batches data",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, materialBatches: false }));
+      }
+    };
+    
+    loadData();
+  }, [toast]);
+
+  // Refetch functions
+  const refetchProducts = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, products: true }));
+      const productsData = await fetchProducts();
+      setProducts(productsData);
+    } catch (error) {
+      console.error("Error refetching products:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh products data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, products: false }));
+    }
+  };
+
+  const refetchMaterials = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, materials: true }));
+      const materialsData = await fetchMaterials();
+      setMaterials(materialsData);
+    } catch (error) {
+      console.error("Error refetching materials:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh materials data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, materials: false }));
+    }
+  };
+
+  const refetchSuppliers = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, suppliers: true }));
+      const suppliersData = await fetchSuppliers();
+      setSuppliers(suppliersData);
+    } catch (error) {
+      console.error("Error refetching suppliers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh suppliers data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, suppliers: false }));
+    }
+  };
+
+  const refetchMaterialBatches = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, materialBatches: true }));
+      const materialBatchesData = await fetchMaterialBatches();
+      setMaterialBatches(materialBatchesData);
+    } catch (error) {
+      console.error("Error refetching material batches:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh material batches data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, materialBatches: false }));
+    }
+  };
 
   // Calculate dashboard stats
   useEffect(() => {
@@ -523,28 +700,66 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLosses(losses.filter(l => l.id !== id));
   };
 
-  // CRUD operations for Products
-  const addProduct = (product: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
-    const newProduct: Product = {
-      ...product,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setProducts([...products, newProduct]);
+  // CRUD operations for Products - Updated to use Supabase
+  const addProduct = async (product: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const newProduct = await createProduct(product);
+      setProducts([...products, newProduct]);
+      toast({
+        title: "Success",
+        description: "Product created successfully",
+      });
+    } catch (error) {
+      console.error("Error adding product:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create product",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const updateProduct = (id: string, product: Partial<Product>) => {
-    setProducts(
-      products.map(p => 
-        p.id === id ? { ...p, ...product, updatedAt: new Date() } : p
-      )
-    );
+  const updateProductLocal = async (id: string, product: Partial<Product>) => {
+    try {
+      await updateProduct(id, product);
+      setProducts(
+        products.map(p => 
+          p.id === id ? { ...p, ...product, updatedAt: new Date() } : p
+        )
+      );
+      toast({
+        title: "Success",
+        description: "Product updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating product:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update product",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const deleteProduct = (id: string) => {
-    setProducts(products.filter(p => p.id !== id));
+  const deleteProductLocal = async (id: string) => {
+    try {
+      await deleteProduct(id);
+      setProducts(products.filter(p => p.id !== id));
+      toast({
+        title: "Success",
+        description: "Product deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete product",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // CRUD operations for Materials
@@ -624,7 +839,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     materials,
     suppliers,
     materialBatches,
+    isLoading,
     dashboardStats,
+    refetchProducts,
+    refetchMaterials,
+    refetchSuppliers,
+    refetchMaterialBatches,
     addProductionBatch,
     updateProductionBatch,
     deleteProductionBatch,
@@ -638,8 +858,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateLoss,
     deleteLoss,
     addProduct,
-    updateProduct,
-    deleteProduct,
+    updateProduct: updateProductLocal,
+    deleteProduct: deleteProductLocal,
     addMaterial,
     updateMaterial,
     deleteMaterial,
