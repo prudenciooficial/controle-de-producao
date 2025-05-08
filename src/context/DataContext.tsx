@@ -682,8 +682,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteLoss = async (id: string) => {
     try {
+      setIsLoading(prev => ({ ...prev, losses: true }));
+      
       await deleteLossApi(id);
+      
+      // Update the state only after successful deletion
       setLosses(prev => prev.filter(l => l.id !== id));
+      
+      // Clear any toasts that might be showing
       toast({
         title: "Sucesso",
         description: "Perda excluída com sucesso",
@@ -696,6 +702,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
       throw error;
+    } finally {
+      setIsLoading(prev => ({ ...prev, losses: false }));
     }
   };
 

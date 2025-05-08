@@ -17,22 +17,34 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, MoreVertical, Eye, Pen, Trash } from "lucide-react";
+import { ArrowLeft, MoreVertical, Eye, Trash, Loader } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProductionBatch } from "../types";
 
 const ProductionHistory = () => {
-  const { productionBatches, deleteProductionBatch } = useData();
+  const { productionBatches, deleteProductionBatch, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [selectedBatch, setSelectedBatch] = useState<ProductionBatch | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   
   const filteredBatches = productionBatches.filter(
     (batch) =>
@@ -42,13 +54,45 @@ const ProductionHistory = () => {
       )
   );
   
-  const handleDelete = (id: string) => {
-    deleteProductionBatch(id);
-    setShowDeleteDialog(false);
-    toast({
-      title: "Produção excluída",
-      description: "O registro de produção foi excluído com sucesso.",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      setIsDeleting(true);
+      await deleteProductionBatch(id);
+      
+      toast({
+        title: "Produção excluída",
+        description: "O registro de produção foi excluído com sucesso.",
+      });
+    } catch (error) {
+      console.error("Erro ao excluir produção:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao excluir o registro de produção.",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+      setSelectedBatch(null);
+    }
+  };
+  
+  const openDeleteDialog = (batch: ProductionBatch) => {
+    setSelectedBatch(batch);
+    setShowDeleteDialog(true);
+  };
+  
+  const openDetailsDialog = (batch: ProductionBatch) => {
+    setSelectedBatch(batch);
+    setShowDetailsDialog(true);
+  };
+  
+  const closeDetailsDialog = () => {
+    setShowDetailsDialog(false);
+    // Add a small delay before clearing the selected batch for smoother transition
+    setTimeout(() => {
+      setSelectedBatch(null);
+    }, 300);
   };
   
   return (
@@ -81,207 +125,219 @@ const ProductionHistory = () => {
           <CardTitle>Registros de Produção</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Lote</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Produtos</TableHead>
-                <TableHead>Quantidade Total</TableHead>
-                <TableHead>Dia da Mexida</TableHead>
-                <TableHead>Qtd. Mexidas</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredBatches.length > 0 ? (
-                filteredBatches.map((batch) => (
-                  <TableRow key={batch.id}>
-                    <TableCell>{batch.batchNumber}</TableCell>
-                    <TableCell>
-                      {new Date(batch.productionDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {batch.producedItems
-                        .map((item) => item.productName)
-                        .join(", ")}
-                    </TableCell>
-                    <TableCell>
-                      {batch.producedItems.reduce(
-                        (total, item) => total + item.quantity,
-                        0
-                      )}{" "}
-                      kg
-                    </TableCell>
-                    <TableCell>{batch.mixDay}</TableCell>
-                    <TableCell>{batch.mixCount}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  setSelectedBatch(batch);
-                                }}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                Detalhes
-                              </DropdownMenuItem>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-3xl">
-                              <DialogHeader>
-                                <DialogTitle>
-                                  Detalhes da Produção - Lote {batch.batchNumber}
-                                </DialogTitle>
-                                <DialogDescription>
-                                  Data: {new Date(batch.productionDate).toLocaleDateString()}
-                                </DialogDescription>
-                              </DialogHeader>
-                              
-                              <div className="grid gap-6">
-                                <div>
-                                  <h3 className="text-lg font-medium mb-2">
-                                    Informações Gerais
-                                  </h3>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Dia da Mexida:</p>
-                                      <p className="text-sm">{batch.mixDay}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Qtd. de Mexidas:</p>
-                                      <p className="text-sm">{batch.mixCount}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div>
-                                  <h3 className="text-lg font-medium mb-2">
-                                    Produtos Produzidos
-                                  </h3>
-                                  <Table>
-                                    <TableHeader>
-                                      <TableRow>
-                                        <TableHead>Produto</TableHead>
-                                        <TableHead>Lote</TableHead>
-                                        <TableHead>Quantidade</TableHead>
-                                        <TableHead>Un.</TableHead>
-                                        <TableHead>Estoque Atual</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {batch.producedItems.map((item) => (
-                                        <TableRow key={item.id}>
-                                          <TableCell>{item.productName}</TableCell>
-                                          <TableCell>{item.batchNumber}</TableCell>
-                                          <TableCell>{item.quantity}</TableCell>
-                                          <TableCell>{item.unitOfMeasure}</TableCell>
-                                          <TableCell>{item.remainingQuantity}</TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                </div>
-                                
-                                <div>
-                                  <h3 className="text-lg font-medium mb-2">
-                                    Insumos Utilizados
-                                  </h3>
-                                  <Table>
-                                    <TableHeader>
-                                      <TableRow>
-                                        <TableHead>Insumo</TableHead>
-                                        <TableHead>Tipo</TableHead>
-                                        <TableHead>Lote</TableHead>
-                                        <TableHead>Quantidade</TableHead>
-                                        <TableHead>Un.</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {batch.usedMaterials.map((material) => (
-                                        <TableRow key={material.id}>
-                                          <TableCell>{material.materialName}</TableCell>
-                                          <TableCell>{material.materialType}</TableCell>
-                                          <TableCell>{material.batchNumber}</TableCell>
-                                          <TableCell>{material.quantity}</TableCell>
-                                          <TableCell>{material.unitOfMeasure}</TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                </div>
-                                
-                                {batch.notes && (
-                                  <div>
-                                    <h3 className="text-lg font-medium mb-2">
-                                      Observações
-                                    </h3>
-                                    <p className="text-sm">{batch.notes}</p>
-                                  </div>
-                                )}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          
-                          <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                            className="text-destructive"
-                            onClick={() => {
-                              setSelectedBatch(batch);
-                              setShowDeleteDialog(true);
-                            }}
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+          {isLoading.productionBatches ? (
+            <div className="flex justify-center items-center p-8">
+              <Loader className="w-8 h-8 animate-spin" />
+              <span className="ml-2">Carregando dados...</span>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Lote</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Produtos</TableHead>
+                  <TableHead>Quantidade Total</TableHead>
+                  <TableHead>Dia da Mexida</TableHead>
+                  <TableHead>Qtd. Mexidas</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredBatches.length > 0 ? (
+                  filteredBatches.map((batch) => (
+                    <TableRow key={batch.id}>
+                      <TableCell>{batch.batchNumber}</TableCell>
+                      <TableCell>
+                        {new Date(batch.productionDate).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {batch.producedItems
+                          .map((item) => item.productName)
+                          .join(", ")}
+                      </TableCell>
+                      <TableCell>
+                        {batch.producedItems.reduce(
+                          (total, item) => total + item.quantity,
+                          0
+                        )}{" "}
+                        kg
+                      </TableCell>
+                      <TableCell>{batch.mixDay}</TableCell>
+                      <TableCell>{batch.mixCount}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                openDetailsDialog(batch);
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Detalhes
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem
+                              onSelect={(e) => e.preventDefault()}
+                              className="text-destructive"
+                              onClick={() => openDeleteDialog(batch)}
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-4">
+                      Nenhum registro de produção encontrado.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
-                    Nenhum registro de produção encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
       
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar exclusão</DialogTitle>
-            <DialogDescription>
+      {/* Details Dialog - Using regular Dialog for details view */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        {selectedBatch && (
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                Detalhes da Produção - Lote {selectedBatch.batchNumber}
+              </DialogTitle>
+              <DialogDescription>
+                Data: {new Date(selectedBatch.productionDate).toLocaleDateString()}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-6">
+              <div>
+                <h3 className="text-lg font-medium mb-2">
+                  Informações Gerais
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Dia da Mexida:</p>
+                    <p className="text-sm">{selectedBatch.mixDay}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Qtd. de Mexidas:</p>
+                    <p className="text-sm">{selectedBatch.mixCount}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium mb-2">
+                  Produtos Produzidos
+                </h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Lote</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Un.</TableHead>
+                      <TableHead>Estoque Atual</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedBatch.producedItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.productName}</TableCell>
+                        <TableCell>{item.batchNumber}</TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>{item.unitOfMeasure}</TableCell>
+                        <TableCell>{item.remainingQuantity}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium mb-2">
+                  Insumos Utilizados
+                </h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Insumo</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Lote</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Un.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedBatch.usedMaterials.map((material) => (
+                      <TableRow key={material.id}>
+                        <TableCell>{material.materialName}</TableCell>
+                        <TableCell>{material.materialType}</TableCell>
+                        <TableCell>{material.batchNumber}</TableCell>
+                        <TableCell>{material.quantity}</TableCell>
+                        <TableCell>{material.unitOfMeasure}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {selectedBatch.notes && (
+                <div>
+                  <h3 className="text-lg font-medium mb-2">
+                    Observações
+                  </h3>
+                  <p className="text-sm">{selectedBatch.notes}</p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog - Using AlertDialog for confirmations */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
               Tem certeza que deseja excluir esta produção?
               <br />
               Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
               onClick={() => selectedBatch && handleDelete(selectedBatch.id)}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {isDeleting ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

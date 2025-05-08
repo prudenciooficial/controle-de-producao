@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Loss } from "../types";
+import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
 
 export const fetchLossesWithDetails = async (): Promise<Loss[]> => {
   const { data: lossesData, error: lossesError } = await supabase
@@ -80,6 +81,10 @@ export const deleteLoss = async (id: string): Promise<void> => {
   console.log("Beginning deletion process for loss:", id);
   
   try {
+    // Start a transaction
+    await beginTransaction();
+    console.log("Transaction started for loss deletion");
+    
     // Delete the loss
     const { error } = await supabase
       .from("losses")
@@ -88,12 +93,25 @@ export const deleteLoss = async (id: string): Promise<void> => {
     
     if (error) {
       console.error("Error deleting loss:", error);
+      await abortTransaction();
+      console.log("Transaction aborted due to error");
       throw error;
     }
     
     console.log("Loss deleted successfully");
+    
+    // Commit the transaction
+    await endTransaction();
+    console.log("Transaction committed successfully");
   } catch (error) {
     console.error("Error in delete loss operation:", error);
+    try {
+      // Only abort if we didn't already
+      await abortTransaction();
+      console.log("Transaction aborted in catch block");
+    } catch (rollbackError) {
+      console.error("Error during rollback:", rollbackError);
+    }
     throw error;
   }
 };

@@ -12,10 +12,17 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogClose,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +40,9 @@ const LossesHistory = () => {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [selectedLoss, setSelectedLoss] = useState<Loss | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   
   const filteredLosses = losses.filter(
     (loss) =>
@@ -44,8 +53,9 @@ const LossesHistory = () => {
   
   const handleDelete = async (id: string) => {
     try {
+      setIsDeleting(true);
       await deleteLoss(id);
-      setShowDeleteDialog(false);
+      
       toast({
         title: "Perda excluída",
         description: "O registro de perda foi excluído com sucesso.",
@@ -57,7 +67,21 @@ const LossesHistory = () => {
         title: "Erro",
         description: error instanceof Error ? error.message : "Falha ao excluir o registro de perda.",
       });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+      setSelectedLoss(null);
     }
+  };
+  
+  const openDeleteDialog = (loss: Loss) => {
+    setSelectedLoss(loss);
+    setShowDeleteDialog(true);
+  };
+  
+  const openDetailsDialog = (loss: Loss) => {
+    setSelectedLoss(loss);
+    setShowDetailsDialog(true);
   };
   
   const getMachineColor = (machine: string) => {
@@ -164,74 +188,20 @@ const LossesHistory = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    setSelectedLoss(loss);
-                                  }}
-                                >
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  Detalhes
-                                </DropdownMenuItem>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-md">
-                                <DialogHeader>
-                                  <DialogTitle>
-                                    Detalhes da Perda
-                                  </DialogTitle>
-                                  <DialogDescription>
-                                    Data: {new Date(loss.date).toLocaleDateString()}
-                                  </DialogDescription>
-                                </DialogHeader>
-                                
-                                <div className="grid gap-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Lote de Produção:</p>
-                                      <p className="text-sm">{loss.batchNumber}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Máquina:</p>
-                                      <Badge variant="secondary" className={getMachineColor(loss.machine)}>
-                                        {loss.machine}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm font-medium">Tipo de Produto:</p>
-                                      <Badge variant="secondary" className={getProductTypeColor(loss.productType)}>
-                                        {loss.productType}
-                                      </Badge>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium">Quantidade:</p>
-                                      <p className="text-sm">
-                                        {loss.quantity} {loss.unitOfMeasure}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  
-                                  {loss.notes && (
-                                    <div>
-                                      <p className="text-sm font-medium">Observações:</p>
-                                      <p className="text-sm">{loss.notes}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </DialogContent>
-                            </Dialog>
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                openDetailsDialog(loss);
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Detalhes
+                            </DropdownMenuItem>
                             
                             <DropdownMenuItem
                               onSelect={(e) => e.preventDefault()}
                               className="text-destructive"
-                              onClick={() => {
-                                setSelectedLoss(loss);
-                                setShowDeleteDialog(true);
-                              }}
+                              onClick={() => openDeleteDialog(loss)}
                             >
                               <Trash className="mr-2 h-4 w-4" />
                               Excluir
@@ -254,30 +224,89 @@ const LossesHistory = () => {
         </CardContent>
       </Card>
       
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar exclusão</DialogTitle>
-            <DialogDescription>
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        {selectedLoss && (
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                Detalhes da Perda
+              </DialogTitle>
+              <DialogDescription>
+                Data: {new Date(selectedLoss.date).toLocaleDateString()}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium">Lote de Produção:</p>
+                  <p className="text-sm">{selectedLoss.batchNumber}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Máquina:</p>
+                  <Badge variant="secondary" className={getMachineColor(selectedLoss.machine)}>
+                    {selectedLoss.machine}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium">Tipo de Produto:</p>
+                  <Badge variant="secondary" className={getProductTypeColor(selectedLoss.productType)}>
+                    {selectedLoss.productType}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Quantidade:</p>
+                  <p className="text-sm">
+                    {selectedLoss.quantity} {selectedLoss.unitOfMeasure}
+                  </p>
+                </div>
+              </div>
+              
+              {selectedLoss.notes && (
+                <div>
+                  <p className="text-sm font-medium">Observações:</p>
+                  <p className="text-sm">{selectedLoss.notes}</p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog - Using AlertDialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
               Tem certeza que deseja excluir este registro de perda?
               <br />
               Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
               onClick={() => selectedLoss && handleDelete(selectedLoss.id)}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {isDeleting ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
