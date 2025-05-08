@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, UsedMaterial, ProducedItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -224,8 +223,7 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
     await beginTransaction();
     console.log("Transaction started");
     
-    // First restore material quantities
-    // Get the used materials for this batch
+    // First, fetch all the used materials for this batch
     const { data: usedMaterialsData, error: usedMaterialsError } = await supabase
       .from("used_materials")
       .select("*")
@@ -240,10 +238,10 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
     console.log(`Found ${usedMaterialsData?.length || 0} used materials to process`);
     
     // For each used material, restore the quantity to the material batch
-    for (const material of usedMaterialsData || []) {
-      console.log(`Processing material: ${material.id} for material batch: ${material.material_batch_id}`);
-      
-      try {
+    if (usedMaterialsData && usedMaterialsData.length > 0) {
+      for (const material of usedMaterialsData) {
+        console.log(`Processing material: ${material.id} for material batch: ${material.material_batch_id}`);
+        
         // Get current remaining quantity
         const { data: materialBatchData, error: fetchError } = await supabase
           .from("material_batches")
@@ -283,10 +281,6 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
         }
         
         console.log(`Successfully updated remaining quantity for material batch: ${material.material_batch_id}`);
-      } catch (materialError) {
-        console.error(`Error processing used material ${material.id}:`, materialError);
-        await abortTransaction();
-        throw materialError;
       }
     }
     

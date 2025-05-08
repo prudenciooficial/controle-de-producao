@@ -12,9 +12,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -73,7 +70,6 @@ const ProductionHistory = () => {
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
-      setSelectedBatch(null);
     }
   };
   
@@ -87,9 +83,17 @@ const ProductionHistory = () => {
     setShowDetailsDialog(true);
   };
   
-  const closeDetailsDialog = () => {
+  const handleDeleteDialogClose = () => {
+    if (!isDeleting) {
+      setShowDeleteDialog(false);
+      setTimeout(() => {
+        setSelectedBatch(null);
+      }, 300);
+    }
+  };
+  
+  const handleDetailsDialogClose = () => {
     setShowDetailsDialog(false);
-    // Add a small delay before clearing the selected batch for smoother transition
     setTimeout(() => {
       setSelectedBatch(null);
     }, 300);
@@ -209,8 +213,8 @@ const ProductionHistory = () => {
         </CardContent>
       </Card>
       
-      {/* Details Dialog - Using regular Dialog for details view */}
-      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={handleDetailsDialogClose}>
         {selectedBatch && (
           <DialogContent className="max-w-3xl">
             <DialogHeader>
@@ -308,8 +312,8 @@ const ProductionHistory = () => {
         )}
       </Dialog>
       
-      {/* Delete Confirmation Dialog - Using AlertDialog for confirmations */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={handleDeleteDialogClose}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
@@ -317,6 +321,8 @@ const ProductionHistory = () => {
               Tem certeza que deseja excluir esta produção?
               <br />
               Esta ação não pode ser desfeita.
+              <br />
+              <strong>Os insumos utilizados serão retornados ao estoque.</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

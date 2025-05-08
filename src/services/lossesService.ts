@@ -78,9 +78,9 @@ export const updateLoss = async (id: string, loss: Partial<Loss>): Promise<void>
 };
 
 export const deleteLoss = async (id: string): Promise<void> => {
-  console.log("Beginning deletion process for loss:", id);
-  
   try {
+    console.log("Beginning deletion process for loss:", id);
+    
     // Start a transaction
     await beginTransaction();
     console.log("Transaction started for loss deletion");
@@ -103,6 +103,7 @@ export const deleteLoss = async (id: string): Promise<void> => {
     // Commit the transaction
     await endTransaction();
     console.log("Transaction committed successfully");
+    return;
   } catch (error) {
     console.error("Error in delete loss operation:", error);
     try {
