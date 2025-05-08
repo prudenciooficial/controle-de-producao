@@ -1,4 +1,3 @@
-
 // Base types
 export interface BaseEntity {
   id: string;
@@ -12,6 +11,7 @@ export interface Product extends BaseEntity {
   code: string;
   description?: string;
   unitOfMeasure: string; // kg, L, etc.
+  weightFactor?: number; // Added for predictability
 }
 
 // Supplier types

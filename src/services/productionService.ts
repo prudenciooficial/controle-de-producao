@@ -158,16 +158,17 @@ export const createProductionBatch = async (
       if (updateError) throw updateError;
     }
     
-    // Insert produced items
+    // Insert produced items - Fix the bug here by ensuring we set remaining_quantity = quantity
     for (const item of batch.producedItems) {
+      const quantity = Number(item.quantity); // Ensure it's a number
       const { error: itemError } = await supabase
         .from("produced_items")
         .insert({
           production_batch_id: productionBatchId,
           product_id: item.productId,
           batch_number: item.batchNumber,
-          quantity: item.quantity,
-          remaining_quantity: item.quantity,  // Initially, remaining quantity equals quantity
+          quantity: quantity,
+          remaining_quantity: quantity,  // Ensure this is correctly set to the same as quantity
           unit_of_measure: item.unitOfMeasure
         });
       

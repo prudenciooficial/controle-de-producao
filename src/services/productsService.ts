@@ -17,6 +17,7 @@ export const fetchProducts = async (): Promise<Product[]> => {
     code: product.code,
     description: product.description,
     unitOfMeasure: product.unit_of_measure,
+    weightFactor: product.weight_factor || 1, // Default to 1 if not set
     createdAt: new Date(product.created_at),
     updatedAt: new Date(product.updated_at)
   }));
@@ -31,7 +32,8 @@ export const createProduct = async (
       name: product.name,
       code: product.code,
       description: product.description,
-      unit_of_measure: product.unitOfMeasure
+      unit_of_measure: product.unitOfMeasure,
+      weight_factor: product.weightFactor || 1 // Default to 1 if not set
     })
     .select()
     .single();
@@ -45,6 +47,7 @@ export const createProduct = async (
     code: data.code,
     description: data.description,
     unitOfMeasure: data.unit_of_measure,
+    weightFactor: data.weight_factor || 1,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
@@ -60,6 +63,7 @@ export const updateProduct = async (
   if (product.code) updates.code = product.code;
   if (product.description !== undefined) updates.description = product.description;
   if (product.unitOfMeasure) updates.unit_of_measure = product.unitOfMeasure;
+  if (product.weightFactor !== undefined) updates.weight_factor = product.weightFactor;
   
   const { error } = await supabase
     .from("products")

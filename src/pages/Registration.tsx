@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ProductsTable from "@/components/registration/ProductsTable";
 import MaterialsTable from "@/components/registration/MaterialsTable";
 import SuppliersTable from "@/components/registration/SuppliersTable";
+import ProductPredictabilityTable from "@/components/registration/ProductPredictabilityTable";
 import { useData } from "@/context/DataContext";
 import { Loader2 } from "lucide-react";
 
@@ -22,6 +23,7 @@ const Registration = () => {
           <TabsTrigger value="products">Produtos</TabsTrigger>
           <TabsTrigger value="materials">Matérias-Primas</TabsTrigger>
           <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
+          <TabsTrigger value="predictability">Previsibilidade</TabsTrigger>
         </TabsList>
         
         <TabsContent value="products">
@@ -70,6 +72,23 @@ const Registration = () => {
                 </div>
               ) : (
                 <SuppliersTable />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="predictability">
+          <Card>
+            <CardHeader>
+              <CardTitle>Previsibilidade</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading.products ? (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <ProductPredictabilityTable />
               )}
             </CardContent>
           </Card>
