@@ -11,7 +11,6 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { Product } from "@/types";
@@ -23,7 +22,7 @@ interface ExtendedProduct extends Product {
 }
 
 const ProductPredictabilityTable = () => {
-  const { products, refreshProducts } = useData();
+  const { products, refetchProducts } = useData();
   const [search, setSearch] = useState("");
   const [editableProducts, setEditableProducts] = useState<ExtendedProduct[]>([]);
   

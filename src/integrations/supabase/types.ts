@@ -324,6 +324,7 @@ export type Database = {
           name: string
           unit_of_measure: string
           updated_at: string
+          weight_factor: number | null
         }
         Insert: {
           code: string
@@ -333,6 +334,7 @@ export type Database = {
           name: string
           unit_of_measure: string
           updated_at?: string
+          weight_factor?: number | null
         }
         Update: {
           code?: string
@@ -342,6 +344,7 @@ export type Database = {
           name?: string
           unit_of_measure?: string
           updated_at?: string
+          weight_factor?: number | null
         }
         Relationships: []
       }
