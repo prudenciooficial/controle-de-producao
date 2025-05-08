@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Pencil, Save, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { Product } from "@/types";
 import { updateProduct } from "@/services";
 
@@ -94,16 +94,19 @@ const ProductPredictabilityTable = () => {
         )
       );
       
-      toast.success("Fator de peso atualizado", {
+      toast({
+        title: "Fator de peso atualizado",
         description: `O fator de peso para ${product.name} foi atualizado com sucesso.`
       });
       
       // Refresh products to get updated data
-      refreshProducts();
+      refetchProducts();
     } catch (error) {
       console.error("Erro ao atualizar fator de peso:", error);
-      toast.error("Erro ao salvar", {
-        description: "Ocorreu um erro ao atualizar o fator de peso."
+      toast({
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao atualizar o fator de peso.",
+        variant: "destructive"
       });
     }
   };
