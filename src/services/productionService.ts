@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, UsedMaterial, ProducedItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -217,8 +218,79 @@ export const updateProductionBatch = async (
 
 export const deleteProductionBatch = async (id: string): Promise<void> => {
   try {
+    console.log("Beginning deletion process for production batch:", id);
+    
     // Start a transaction
     await beginTransaction();
+    console.log("Transaction started");
+    
+    // First restore material quantities
+    // Get the used materials for this batch
+    const { data: usedMaterialsData, error: usedMaterialsError } = await supabase
+      .from("used_materials")
+      .select("*")
+      .eq("production_batch_id", id);
+    
+    if (usedMaterialsError) {
+      console.error("Error fetching used materials:", usedMaterialsError);
+      await abortTransaction();
+      throw usedMaterialsError;
+    }
+    
+    console.log(`Found ${usedMaterialsData?.length || 0} used materials to process`);
+    
+    // For each used material, restore the quantity to the material batch
+    for (const material of usedMaterialsData || []) {
+      console.log(`Processing material: ${material.id} for material batch: ${material.material_batch_id}`);
+      
+      try {
+        // Get current remaining quantity
+        const { data: materialBatchData, error: fetchError } = await supabase
+          .from("material_batches")
+          .select("remaining_quantity")
+          .eq("id", material.material_batch_id)
+          .single();
+        
+        if (fetchError) {
+          console.error("Error fetching material batch data:", fetchError);
+          await abortTransaction();
+          throw fetchError;
+        }
+        
+        if (!materialBatchData) {
+          console.error("No material batch data found for:", material.material_batch_id);
+          await abortTransaction();
+          throw new Error(`No data found for material batch: ${material.material_batch_id}`);
+        }
+        
+        console.log(`Current remaining quantity: ${materialBatchData.remaining_quantity}, Adding back: ${material.quantity}`);
+        
+        // Calculate new remaining quantity
+        const newRemainingQty = materialBatchData.remaining_quantity + material.quantity;
+        
+        console.log(`New remaining quantity will be: ${newRemainingQty}`);
+        
+        // Update the material batch
+        const { error: updateError } = await supabase
+          .from("material_batches")
+          .update({ remaining_quantity: newRemainingQty })
+          .eq("id", material.material_batch_id);
+        
+        if (updateError) {
+          console.error("Error updating material batch quantity:", updateError);
+          await abortTransaction();
+          throw updateError;
+        }
+        
+        console.log(`Successfully updated remaining quantity for material batch: ${material.material_batch_id}`);
+      } catch (materialError) {
+        console.error(`Error processing used material ${material.id}:`, materialError);
+        await abortTransaction();
+        throw materialError;
+      }
+    }
+    
+    console.log("All material quantities restored, now deleting produced items");
     
     // Delete produced items for this batch
     const { error: producedItemsError } = await supabase
@@ -226,29 +298,56 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
       .delete()
       .eq("production_batch_id", id);
     
-    if (producedItemsError) throw producedItemsError;
+    if (producedItemsError) {
+      console.error("Error deleting produced items:", producedItemsError);
+      await abortTransaction();
+      throw producedItemsError;
+    }
+    
+    console.log("Produced items deleted, now deleting used materials");
     
     // Delete used materials for this batch
-    const { error: usedMaterialsError } = await supabase
+    const { error: usedMaterialsDeleteError } = await supabase
       .from("used_materials")
       .delete()
       .eq("production_batch_id", id);
     
-    if (usedMaterialsError) throw usedMaterialsError;
+    if (usedMaterialsDeleteError) {
+      console.error("Error deleting used materials:", usedMaterialsDeleteError);
+      await abortTransaction();
+      throw usedMaterialsDeleteError;
+    }
+    
+    console.log("Used materials deleted, now deleting the production batch");
     
     // Delete the production batch
-    const { error } = await supabase
+    const { error: batchError } = await supabase
       .from("production_batches")
       .delete()
       .eq("id", id);
     
-    if (error) throw error;
+    if (batchError) {
+      console.error("Error deleting production batch:", batchError);
+      await abortTransaction();
+      throw batchError;
+    }
+    
+    console.log("Production batch deleted successfully, committing transaction");
     
     // Commit the transaction
     await endTransaction();
+    console.log("Transaction committed successfully");
+    
+    return;
   } catch (error) {
     // Rollback on error
-    await abortTransaction();
+    console.error("Error in delete production batch operation, rolling back:", error);
+    try {
+      await abortTransaction();
+      console.log("Transaction aborted successfully");
+    } catch (rollbackError) {
+      console.error("Error during rollback:", rollbackError);
+    }
     throw error;
   }
 };

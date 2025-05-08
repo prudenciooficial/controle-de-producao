@@ -164,8 +164,11 @@ export const updateOrder = async (
 
 export const deleteOrder = async (id: string): Promise<void> => {
   try {
+    console.log("Beginning deletion process for order:", id);
+    
     // Start a transaction
     await beginTransaction();
+    console.log("Transaction started");
     
     // Get the order items to find related material batches
     const { data: orderItemsData, error: getOrderItemsError } = await supabase
@@ -173,19 +176,41 @@ export const deleteOrder = async (id: string): Promise<void> => {
       .select("*")
       .eq("order_id", id);
     
-    if (getOrderItemsError) throw getOrderItemsError;
+    if (getOrderItemsError) {
+      console.error("Error getting order items:", getOrderItemsError);
+      await abortTransaction();
+      throw getOrderItemsError;
+    }
+    
+    console.log(`Found ${orderItemsData?.length || 0} order items to process`);
     
     // Delete material batches related to this order
-    for (const item of orderItemsData) {
-      // Find and delete material batches with matching material_id and batch_number
-      const { error: materialBatchError } = await supabase
-        .from("material_batches")
-        .delete()
-        .eq("material_id", item.material_id)
-        .eq("batch_number", item.batch_number);
+    for (const item of orderItemsData || []) {
+      console.log(`Processing order item: ${item.id} for material: ${item.material_id}, batch: ${item.batch_number}`);
       
-      if (materialBatchError) throw materialBatchError;
+      try {
+        // Find and delete material batches with matching material_id and batch_number
+        const { error: materialBatchError } = await supabase
+          .from("material_batches")
+          .delete()
+          .eq("material_id", item.material_id)
+          .eq("batch_number", item.batch_number);
+        
+        if (materialBatchError) {
+          console.error("Error deleting material batch:", materialBatchError);
+          await abortTransaction();
+          throw materialBatchError;
+        }
+        
+        console.log(`Successfully deleted material batch for material: ${item.material_id}, batch: ${item.batch_number}`);
+      } catch (itemError) {
+        console.error(`Error processing order item ${item.id}:`, itemError);
+        await abortTransaction();
+        throw itemError;
+      }
     }
+    
+    console.log("Material batches deleted, now deleting order items");
     
     // Delete order items
     const { error: orderItemsError } = await supabase
@@ -193,7 +218,13 @@ export const deleteOrder = async (id: string): Promise<void> => {
       .delete()
       .eq("order_id", id);
     
-    if (orderItemsError) throw orderItemsError;
+    if (orderItemsError) {
+      console.error("Error deleting order items:", orderItemsError);
+      await abortTransaction();
+      throw orderItemsError;
+    }
+    
+    console.log("Order items deleted, now deleting the order");
     
     // Delete the order
     const { error } = await supabase
@@ -201,13 +232,28 @@ export const deleteOrder = async (id: string): Promise<void> => {
       .delete()
       .eq("id", id);
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error deleting order:", error);
+      await abortTransaction();
+      throw error;
+    }
+    
+    console.log("Order deleted successfully, committing transaction");
     
     // Commit the transaction
     await endTransaction();
+    console.log("Transaction committed successfully");
+    
+    return;
   } catch (error) {
     // Rollback on error
-    await abortTransaction();
+    console.error("Error in delete order operation, rolling back:", error);
+    try {
+      await abortTransaction();
+      console.log("Transaction aborted successfully");
+    } catch (rollbackError) {
+      console.error("Error during rollback:", rollbackError);
+    }
     throw error;
   }
 };

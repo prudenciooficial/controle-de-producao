@@ -77,10 +77,23 @@ export const updateLoss = async (id: string, loss: Partial<Loss>): Promise<void>
 };
 
 export const deleteLoss = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from("losses")
-    .delete()
-    .eq("id", id);
+  console.log("Beginning deletion process for loss:", id);
   
-  if (error) throw error;
+  try {
+    // Delete the loss
+    const { error } = await supabase
+      .from("losses")
+      .delete()
+      .eq("id", id);
+    
+    if (error) {
+      console.error("Error deleting loss:", error);
+      throw error;
+    }
+    
+    console.log("Loss deleted successfully");
+  } catch (error) {
+    console.error("Error in delete loss operation:", error);
+    throw error;
+  }
 };
