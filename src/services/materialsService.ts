@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Material, MaterialBatch } from "../types";
 
@@ -116,18 +115,59 @@ export const fetchMaterialBatchesWithDetails = async (): Promise<MaterialBatch[]
   try {
     console.log("Cleaning up duplicate material batches");
     
-    // Execute the SQL function that we created for cleaning up duplicates
-    // We need to use a direct SQL query instead of rpc since the function isn't in the allowed list
-    const { error: cleanupError } = await supabase
-      .from('_exec_sql')  // Using a raw SQL execution approach
-      .select('*')
-      .eq('command', 'SELECT cleanup_duplicate_material_batches()');
+    // Instead of calling the SQL function directly, we'll manually perform the cleanup in JS
+    // Step 1: Get all material batches
+    const { data: allBatches, error: fetchError } = await supabase
+      .from("material_batches")
+      .select("*");
     
-    if (cleanupError) {
-      console.error("Error cleaning up duplicate batches:", cleanupError);
-      // Continue with the fetch despite the cleanup error
+    if (fetchError) {
+      console.error("Error fetching material batches:", fetchError);
     } else {
-      console.log("Duplicate material batches cleaned up successfully");
+      // Step 2: Identify duplicate batches (same material_id and batch_number)
+      // Group by material_id + batch_number
+      const batchGroups = new Map();
+      
+      allBatches.forEach(batch => {
+        const key = `${batch.material_id}-${batch.batch_number}`;
+        if (!batchGroups.has(key)) {
+          batchGroups.set(key, []);
+        }
+        batchGroups.get(key).push(batch);
+      });
+      
+      // Step 3: For each group that has duplicates, keep only the most recent one
+      const batchesToDelete = [];
+      
+      batchGroups.forEach(batches => {
+        if (batches.length > 1) {
+          // Sort by id in descending order (assuming higher id = more recent)
+          batches.sort((a, b) => b.id.localeCompare(a.id));
+          
+          // Keep the first one (most recent), mark rest for deletion
+          for (let i = 1; i < batches.length; i++) {
+            batchesToDelete.push(batches[i].id);
+          }
+        }
+      });
+      
+      // Step 4: Delete the duplicate batches
+      if (batchesToDelete.length > 0) {
+        console.log(`Found ${batchesToDelete.length} duplicate batches to delete`);
+        
+        const { error: deleteError } = await supabase
+          .from("material_batches")
+          .delete()
+          .in("id", batchesToDelete);
+        
+        if (deleteError) {
+          console.error("Error deleting duplicate batches:", deleteError);
+        } else {
+          console.log(`Successfully deleted ${batchesToDelete.length} duplicate batches`);
+        }
+      } else {
+        console.log("No duplicate material batches found");
+      }
     }
   } catch (cleanupErr) {
     console.error("Exception during duplicate cleanup:", cleanupErr);
