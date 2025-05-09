@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Order, OrderItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -88,10 +87,11 @@ export const createOrder = async (
     
     const orderId = orderData.id;
     
-    // Insert order items and create material batches
+    // Insert order items only - removed manual material_batches insertion 
+    // since this is handled by the database trigger
     for (const item of order.items) {
       // Insert order item
-      const { data: orderItemData, error: itemError } = await supabase
+      const { error: itemError } = await supabase
         .from("order_items")
         .insert({
           order_id: orderId,
@@ -106,22 +106,6 @@ export const createOrder = async (
         .single();
       
       if (itemError) throw itemError;
-      
-      // Create material batch for this order item
-      const { error: batchError } = await supabase
-        .from("material_batches")
-        .insert({
-          material_id: item.materialId,
-          batch_number: item.batchNumber,
-          quantity: item.quantity,
-          supplied_quantity: item.quantity,
-          remaining_quantity: item.quantity,
-          unit_of_measure: item.unitOfMeasure,
-          expiry_date: item.expiryDate instanceof Date ? item.expiryDate.toISOString() : item.expiryDate,
-          has_report: item.hasReport
-        });
-      
-      if (batchError) throw batchError;
     }
     
     // Commit the transaction

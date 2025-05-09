@@ -1,11 +1,18 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
 
 const fetchProducedItems = async (productionBatchId: string): Promise<ProducedItem[]> => {
+  // Updated query to include the product name from products table
   const { data, error } = await supabase
     .from("produced_items")
-    .select("*")
+    .select(`
+      *,
+      products:product_id (
+        name
+      )
+    `)
     .eq("production_batch_id", productionBatchId);
 
   if (error) {
@@ -16,10 +23,10 @@ const fetchProducedItems = async (productionBatchId: string): Promise<ProducedIt
   return data.map(item => ({
     id: item.id,
     productId: item.product_id,
-    productName: "", // This should be populated from the product data, but is not available in this query
+    productName: item.products.name, // Now getting the product name from the joined data
     quantity: item.quantity,
     unitOfMeasure: item.unit_of_measure,
-	  batchNumber: item.batch_number,
+    batchNumber: item.batch_number,
     remainingQuantity: item.remaining_quantity,
     createdAt: new Date(item.created_at),
     updatedAt: new Date(item.updated_at)
@@ -27,9 +34,19 @@ const fetchProducedItems = async (productionBatchId: string): Promise<ProducedIt
 };
 
 const fetchUsedMaterials = async (productionBatchId: string): Promise<UsedMaterial[]> => {
+  // Updated query to include material name and type from material_batches and materials tables
   const { data, error } = await supabase
     .from("used_materials")
-    .select("*")
+    .select(`
+      *,
+      material_batches:material_batch_id (
+        batch_number,
+        materials:material_id (
+          name,
+          type
+        )
+      )
+    `)
     .eq("production_batch_id", productionBatchId);
 
   if (error) {
@@ -40,9 +57,9 @@ const fetchUsedMaterials = async (productionBatchId: string): Promise<UsedMateri
   return data.map(material => ({
     id: material.id,
     materialBatchId: material.material_batch_id,
-    materialName: "", // This should be populated from the material data, but is not available in this query
-    materialType: "", // This should be populated from the material data, but is not available in this query
-    batchNumber: "", // This should be populated from the material batch data
+    materialName: material.material_batches.materials.name, // Now getting material name from joined data
+    materialType: material.material_batches.materials.type, // Now getting material type from joined data
+    batchNumber: material.material_batches.batch_number, // Now getting batch number from joined data
     quantity: material.quantity,
     unitOfMeasure: material.unit_of_measure,
     createdAt: new Date(material.created_at),
