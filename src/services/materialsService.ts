@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Material, MaterialBatch } from "../types";
 
@@ -112,6 +111,26 @@ export const fetchMaterialBatches = async (): Promise<MaterialBatch[]> => {
 
 // Get Material Batches with Material names and types
 export const fetchMaterialBatchesWithDetails = async (): Promise<MaterialBatch[]> => {
+  // First, identify and remove duplicate material batches
+  try {
+    console.log("Cleaning up duplicate material batches");
+    
+    // This complex query identifies duplicate material_batches by material_id and batch_number,
+    // keeping only the most recently created one (highest id) and deleting the rest
+    const { error: cleanupError } = await supabase.rpc('cleanup_duplicate_material_batches');
+    
+    if (cleanupError) {
+      console.error("Error cleaning up duplicate batches:", cleanupError);
+      // Continue with the fetch despite the cleanup error
+    } else {
+      console.log("Duplicate material batches cleaned up successfully");
+    }
+  } catch (cleanupErr) {
+    console.error("Exception during duplicate cleanup:", cleanupErr);
+    // Continue with the fetch despite the error
+  }
+  
+  // Now fetch the clean data
   const { data, error } = await supabase
     .from("material_batches")
     .select(`

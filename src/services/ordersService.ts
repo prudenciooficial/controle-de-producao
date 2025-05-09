@@ -168,35 +168,7 @@ export const deleteOrder = async (id: string): Promise<void> => {
     
     console.log(`Found ${orderItemsData?.length || 0} order items to process`);
     
-    // Delete material batches related to this order
-    for (const item of orderItemsData || []) {
-      console.log(`Processing order item: ${item.id} for material: ${item.material_id}, batch: ${item.batch_number}`);
-      
-      try {
-        // Find and delete material batches with matching material_id and batch_number
-        const { error: materialBatchError } = await supabase
-          .from("material_batches")
-          .delete()
-          .eq("material_id", item.material_id)
-          .eq("batch_number", item.batch_number);
-        
-        if (materialBatchError) {
-          console.error("Error deleting material batch:", materialBatchError);
-          await abortTransaction();
-          throw materialBatchError;
-        }
-        
-        console.log(`Successfully deleted material batch for material: ${item.material_id}, batch: ${item.batch_number}`);
-      } catch (itemError) {
-        console.error(`Error processing order item ${item.id}:`, itemError);
-        await abortTransaction();
-        throw itemError;
-      }
-    }
-    
-    console.log("Material batches deleted, now deleting order items");
-    
-    // Delete order items
+    // Delete order items first
     const { error: orderItemsError } = await supabase
       .from("order_items")
       .delete()
@@ -220,6 +192,42 @@ export const deleteOrder = async (id: string): Promise<void> => {
       console.error("Error deleting order:", error);
       await abortTransaction();
       throw error;
+    }
+    
+    // Instead of deleting material_batches, we'll handle them separately
+    // For each material batch related to this order, let's check if it's being used
+    for (const item of orderItemsData || []) {
+      console.log(`Processing order item: ${item.id} for material: ${item.material_id}, batch: ${item.batch_number}`);
+      
+      // Check if material batches from this order are being used in any production
+      const { data: usedMaterialsData } = await supabase
+        .from("used_materials")
+        .select("material_batch_id")
+        .join("material_batches", "material_batches.id", "used_materials.material_batch_id")
+        .eq("material_batches.material_id", item.material_id)
+        .eq("material_batches.batch_number", item.batch_number)
+        .limit(1);
+      
+      // If the material batch is not being used anywhere, we can safely delete it
+      if (!usedMaterialsData?.length) {
+        console.log(`Material batch for material: ${item.material_id}, batch: ${item.batch_number} is not in use, deleting it`);
+        
+        // Find and delete material batches with matching material_id and batch_number
+        const { error: materialBatchError } = await supabase
+          .from("material_batches")
+          .delete()
+          .eq("material_id", item.material_id)
+          .eq("batch_number", item.batch_number);
+        
+        if (materialBatchError) {
+          console.log("Error deleting material batch, but continuing:", materialBatchError);
+          // We continue instead of aborting, as this is not critical
+        } else {
+          console.log(`Successfully deleted material batch for material: ${item.material_id}, batch: ${item.batch_number}`);
+        }
+      } else {
+        console.log(`Material batch for material: ${item.material_id}, batch: ${item.batch_number} is in use, not deleting`);
+      }
     }
     
     console.log("Order deleted successfully, committing transaction");

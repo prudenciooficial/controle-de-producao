@@ -422,9 +422,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return acc + sale.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0);
     }, 0);
 
-    // Calculate current inventory
+    // Calculate current inventory by directly checking remaining quantity
+    // Fixed by ensuring we're using the accurate remaining quantity from each produced item
     const currentInventory = productionBatches.reduce((acc, batch) => {
-      return acc + batch.producedItems.reduce((itemAcc, item) => itemAcc + item.remainingQuantity, 0);
+      return acc + batch.producedItems.reduce((itemAcc, item) => {
+        // Ensure we're using a valid number
+        const remaining = typeof item.remainingQuantity === 'number' ? item.remainingQuantity : 0;
+        return itemAcc + remaining;
+      }, 0);
     }, 0);
 
     // Calculate average profitability (simplified)
@@ -435,6 +440,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       totalSales,
       currentInventory,
       averageProfitability: parseFloat(averageProfitability.toFixed(2))
+    });
+
+    // Log the calculated values for debugging
+    console.log("Dashboard stats calculation:", {
+      totalProduction,
+      totalSales,
+      currentInventory,
+      averageProfitability: parseFloat(averageProfitability.toFixed(2))
+    });
+
+    // Log each production batch and its remaining quantities for debugging
+    productionBatches.forEach(batch => {
+      console.log(`Batch ${batch.batchNumber} produced items:`, 
+        batch.producedItems.map(item => ({
+          product: item.productName,
+          quantity: item.quantity,
+          remaining: item.remainingQuantity
+        }))
+      );
     });
   }, [productionBatches, sales]);
 
