@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Order, OrderItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -200,12 +201,20 @@ export const deleteOrder = async (id: string): Promise<void> => {
       console.log(`Processing order item: ${item.id} for material: ${item.material_id}, batch: ${item.batch_number}`);
       
       // Check if material batches from this order are being used in any production
+      // We need to fix this query - can't use join directly with from().select()
+      // Instead, use a proper nested select with proper relationships
       const { data: usedMaterialsData } = await supabase
         .from("used_materials")
-        .select("material_batch_id")
-        .join("material_batches", "material_batches.id", "used_materials.material_batch_id")
-        .eq("material_batches.material_id", item.material_id)
-        .eq("material_batches.batch_number", item.batch_number)
+        .select(`
+          id,
+          material_batch:material_batch_id(
+            id,
+            material_id,
+            batch_number
+          )
+        `)
+        .eq("material_batch.material_id", item.material_id)
+        .eq("material_batch.batch_number", item.batch_number)
         .limit(1);
       
       // If the material batch is not being used anywhere, we can safely delete it
