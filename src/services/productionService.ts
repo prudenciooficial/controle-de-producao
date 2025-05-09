@@ -175,7 +175,7 @@ export const createProductionBatch = async (
       }
     }
     
-    // Insert used materials
+    // Insert used materials and update material batch quantities
     for (const material of batch.usedMaterials) {
       const { error: materialError } = await supabase
         .from("used_materials")
@@ -189,6 +189,25 @@ export const createProductionBatch = async (
       if (materialError) {
         await abortTransaction();
         throw materialError;
+      }
+      
+      // ADDED: Manually update the remaining_quantity in material_batches
+      const { error: updateError } = await supabase
+        .from("material_batches")
+        .update({ 
+          remaining_quantity: supabase.rpc('decrement', { 
+            x: material.quantity 
+          }, {
+            head: false,
+            count: 'exact'
+          })
+        })
+        .eq("id", material.materialBatchId);
+      
+      if (updateError) {
+        console.error("Error updating material batch quantity:", updateError);
+        await abortTransaction();
+        throw updateError;
       }
     }
     

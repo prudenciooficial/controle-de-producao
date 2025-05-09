@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Sale, SaleItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -101,31 +100,6 @@ export const createSale = async (
         .insert(itemToInsert);
       
       if (itemError) throw itemError;
-      
-      // Update produced item remaining quantity
-      // Get current remaining quantity
-      const { data: producedItemData, error: fetchError } = await supabase
-        .from("produced_items")
-        .select("remaining_quantity")
-        .eq("id", item.producedItemId)
-        .single();
-      
-      if (fetchError) throw fetchError;
-      
-      // Calculate new remaining quantity
-      const newRemainingQty = producedItemData.remaining_quantity - item.quantity;
-      
-      if (newRemainingQty < 0) {
-        throw new Error(`Not enough quantity in produced item. Available: ${producedItemData.remaining_quantity}, Requested: ${item.quantity}`);
-      }
-      
-      // Update the produced item
-      const { error: updateError } = await supabase
-        .from("produced_items")
-        .update({ remaining_quantity: newRemainingQty })
-        .eq("id", item.producedItemId);
-      
-      if (updateError) throw updateError;
     }
     
     // Commit the transaction
