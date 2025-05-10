@@ -191,17 +191,27 @@ export const createProductionBatch = async (
         throw materialError;
       }
       
-      // ADDED: Manually update the remaining_quantity in material_batches
+      // FIXED: Manually update the remaining_quantity in material_batches
+      // Get current remaining quantity first
+      const { data: materialBatchData, error: fetchError } = await supabase
+        .from("material_batches")
+        .select("remaining_quantity")
+        .eq("id", material.materialBatchId)
+        .single();
+      
+      if (fetchError) {
+        console.error("Error fetching material batch data:", fetchError);
+        await abortTransaction();
+        throw fetchError;
+      }
+      
+      // Calculate new remaining quantity 
+      const newRemainingQty = materialBatchData.remaining_quantity - material.quantity;
+      
+      // Update the material batch with the new remaining quantity
       const { error: updateError } = await supabase
         .from("material_batches")
-        .update({ 
-          remaining_quantity: supabase.rpc('decrement', { 
-            x: material.quantity 
-          }, {
-            head: false,
-            count: 'exact'
-          })
-        })
+        .update({ remaining_quantity: newRemainingQty })
         .eq("id", material.materialBatchId);
       
       if (updateError) {
