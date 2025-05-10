@@ -1,3 +1,4 @@
+
 // Base types
 export interface BaseEntity {
   id: string;
@@ -29,6 +30,7 @@ export interface Material extends BaseEntity {
   type: "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro";
   unitOfMeasure: string;
   description?: string;
+  batches?: MaterialBatch[]; // Added the batches property that was missing
 }
 
 // Material Batch
