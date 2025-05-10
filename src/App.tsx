@@ -8,6 +8,7 @@ import { DataProvider } from "./context/DataContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
+import MobileNavbar from "./components/layout/MobileNavbar";
 import { useIsMobile } from "./hooks/use-mobile";
 import Dashboard from "./pages/Dashboard";
 import Production from "./pages/Production";
@@ -30,9 +31,9 @@ const AppContent = () => {
   return (
     <div className="flex min-h-screen w-full">
       {!isMobile && <Sidebar />}
-      <div className={`flex flex-col flex-1 ${!isMobile ? 'ml-64' : ''}`}>
+      <div className={`flex flex-col flex-1 ${!isMobile ? 'ml-64' : ''} ${isMobile ? 'pb-16' : ''}`}>
         <Header />
-        <main className="flex-1">
+        <main className="flex-1 p-4">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/producao" element={<Production />} />
@@ -48,6 +49,7 @@ const AppContent = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
+        {isMobile && <MobileNavbar />}
       </div>
     </div>
   );

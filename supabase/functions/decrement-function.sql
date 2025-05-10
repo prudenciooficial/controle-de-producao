@@ -1,7 +1,8 @@
 
-CREATE OR REPLACE FUNCTION public.decrement(x numeric)
+-- Update the decrement function to handle the error by using proper parameters
+CREATE OR REPLACE FUNCTION public.decrement(remaining numeric, amount numeric)
 RETURNS numeric
 LANGUAGE sql
 AS $$
-  SELECT remaining_quantity - x
+  SELECT remaining - amount
 $$;

@@ -190,7 +190,6 @@ export const createProductionBatch = async (
         throw materialError;
       }
       
-      // FIXED: Manually update the remaining_quantity in material_batches
       // Get current remaining quantity first
       const { data: materialBatchData, error: fetchError } = await supabase
         .from("material_batches")
@@ -204,7 +203,7 @@ export const createProductionBatch = async (
         throw fetchError;
       }
       
-      // Calculate new remaining quantity 
+      // Calculate new remaining quantity directly
       const newRemainingQty = materialBatchData.remaining_quantity - material.quantity;
       
       // Update the material batch with the new remaining quantity
@@ -313,9 +312,11 @@ export const updateProductionBatch = async (
   }
 };
 
+// Updated to return materials to inventory when deleting a production batch
 export const deleteProductionBatch = async (id: string): Promise<void> => {
   try {
     await beginTransaction();
+    console.log("Starting transaction to delete production batch:", id);
 
     // First, get the used materials to return them to inventory later
     const { data: usedMaterials, error: fetchError } = await supabase
@@ -329,6 +330,8 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
       throw fetchError;
     }
 
+    console.log(`Found ${usedMaterials?.length || 0} materials to return to inventory`);
+
     // Delete produced items
     const { error: producedItemsError } = await supabase
       .from("produced_items")
@@ -336,6 +339,7 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
       .eq("production_batch_id", id);
 
     if (producedItemsError) {
+      console.error("Error deleting produced items:", producedItemsError);
       await abortTransaction();
       throw producedItemsError;
     }
@@ -347,6 +351,7 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
       .eq("production_batch_id", id);
 
     if (usedMaterialsError) {
+      console.error("Error deleting used materials:", usedMaterialsError);
       await abortTransaction();
       throw usedMaterialsError;
     }
@@ -358,6 +363,7 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
       .eq("id", id);
 
     if (batchError) {
+      console.error("Error deleting production batch:", batchError);
       await abortTransaction();
       throw batchError;
     }
@@ -365,6 +371,8 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
     // Return the materials to inventory
     if (usedMaterials && usedMaterials.length > 0) {
       for (const material of usedMaterials) {
+        console.log(`Returning ${material.quantity} units to material batch ${material.material_batch_id}`);
+        
         // Get current remaining quantity
         const { data: materialBatchData, error: fetchBatchError } = await supabase
           .from("material_batches")
@@ -380,6 +388,7 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
         
         // Calculate new remaining quantity (return the used materials)
         const newRemainingQty = materialBatchData.remaining_quantity + material.quantity;
+        console.log(`Updating remaining quantity from ${materialBatchData.remaining_quantity} to ${newRemainingQty}`);
         
         // Update the material batch with the new remaining quantity
         const { error: updateError } = await supabase
@@ -395,6 +404,7 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
       }
     }
 
+    console.log("Successfully deleted production batch and returned materials to inventory");
     await endTransaction();
   } catch (error) {
     console.error("Error deleting production batch:", error);
