@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,13 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { useMaterials, useProducts, useCreateProductionBatch } from '@/hooks/useDataHooks';
+import { useData } from '@/context/DataContext';
 
 export default function Production() {
   const navigate = useNavigate();
-  const { data: materials, isLoading: materialsLoading } = useMaterials();
-  const { data: products, isLoading: productsLoading } = useProducts();
-  const { mutate: createProductionBatch, isLoading: isCreating } = useCreateProductionBatch();
+  const { materials, products, addProductionBatch, isLoading } = useData();
 
   const [batchNumber, setBatchNumber] = useState("");
   const [productionDate, setProductionDate] = useState<Date | null>(new Date());
@@ -171,7 +170,7 @@ export default function Production() {
       }
     }
 
-    createProductionBatch({
+    addProductionBatch({
       batchNumber,
       productionDate: productionDate as Date,
       mixDay: format(mixDay as Date, 'yyyy-MM-dd'), // Format as ISO string for dates
@@ -191,7 +190,7 @@ export default function Production() {
     });
   };
 
-  if (materialsLoading || productsLoading) {
+  if (isLoading.materials || isLoading.products) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -432,9 +431,9 @@ export default function Production() {
         </Button>
         <Button
           onClick={handleSave}
-          disabled={isCreating}
+          disabled={isLoading.productionBatches}
         >
-          {isCreating ? "Salvando..." : "Salvar"}
+          {isLoading.productionBatches ? "Salvando..." : "Salvar"}
         </Button>
       </div>
     </div>
