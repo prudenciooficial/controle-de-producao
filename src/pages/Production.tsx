@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { useMaterials, useProducts, useCreateProductionBatch } from '@/context/DataContext';
+import { useMaterials, useProducts, useCreateProductionBatch } from '@/hooks/useDataHooks';
 
 export default function Production() {
   const navigate = useNavigate();

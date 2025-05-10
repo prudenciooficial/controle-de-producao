@@ -14,13 +14,13 @@ import {
 } from "@/components/ui/popover"
 
 interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
-  date: DateRange | undefined
-  onDateChange: (date: DateRange | undefined) => void
+  value: DateRange | undefined
+  onChange: (date: DateRange | undefined) => void
 }
 
 export function DateRangePicker({
-  date,
-  onDateChange,
+  value,
+  onChange,
   className,
 }: DateRangePickerProps) {
   return (
@@ -32,18 +32,18 @@ export function DateRangePicker({
             variant={"outline"}
             className={cn(
               "w-[300px] justify-start text-left font-normal",
-              !date && "text-muted-foreground"
+              !value && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {date?.from ? (
-              date.to ? (
+            {value?.from ? (
+              value.to ? (
                 <>
-                  {format(date.from, "dd/MM/yyyy")} -{" "}
-                  {format(date.to, "dd/MM/yyyy")}
+                  {format(value.from, "dd/MM/yyyy")} -{" "}
+                  {format(value.to, "dd/MM/yyyy")}
                 </>
               ) : (
-                format(date.from, "dd/MM/yyyy")
+                format(value.from, "dd/MM/yyyy")
               )
             ) : (
               <span>Selecione um intervalo</span>
@@ -54,10 +54,11 @@ export function DateRangePicker({
           <Calendar
             initialFocus
             mode="range"
-            defaultMonth={date?.from}
-            selected={date}
-            onSelect={onDateChange}
+            defaultMonth={value?.from}
+            selected={value}
+            onSelect={onChange}
             numberOfMonths={2}
+            className="pointer-events-auto"
           />
         </PopoverContent>
       </Popover>
