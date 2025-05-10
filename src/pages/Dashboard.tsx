@@ -1,8 +1,13 @@
-import React from "react";
+
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useData } from "@/context/DataContext";
 import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2 } from "lucide-react";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { addMonths, isSameMonth, isWithinInterval, subMonths, differenceInDays, format, startOfMonth, endOfMonth, isAfter, isBefore, isSameDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const Dashboard = () => {
   const { 
@@ -12,62 +17,152 @@ const Dashboard = () => {
     isLoading
   } = useData();
   
-  // Prepare data for Production vs Sales chart
-  const getChartData = () => {
-    const data: { month: string; production: number; sales: number }[] = [];
-    
-    // Get last 6 months
-    const today = new Date();
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      months.push({
-        monthName: month.toLocaleString("default", { month: "short" }),
-        month: month.getMonth(),
-        year: month.getFullYear()
-      });
+  // Date range state
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: subMonths(new Date(), 1),
+    to: new Date(),
+  });
+
+  // Calculate filtered stats
+  const filteredStats = useMemo(() => {
+    if (!date?.from) {
+      return dashboardStats;
     }
-    
-    // Calculate production and sales per month
-    months.forEach(monthData => {
-      const { month, year, monthName } = monthData;
-      
-      // Calculate production for this month
-      const production = productionBatches
-        .filter(batch => {
-          const date = new Date(batch.productionDate);
-          return date.getMonth() === month && date.getFullYear() === year;
-        })
-        .reduce((total, batch) => {
-          return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
-        }, 0);
-      
-      // Calculate sales for this month
-      const salesAmount = sales
-        .filter(sale => {
-          const date = new Date(sale.date);
-          return date.getMonth() === month && date.getFullYear() === year;
-        })
-        .reduce((total, sale) => {
-          return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
-        }, 0);
-      
-      data.push({
-        month: monthName,
-        production,
-        sales: salesAmount
-      });
+
+    const to = date.to || new Date();
+
+    // Filter production batches in date range
+    const filteredBatches = productionBatches.filter(batch => {
+      const batchDate = new Date(batch.productionDate);
+      return (isAfter(batchDate, date.from) || isSameDay(batchDate, date.from)) && 
+             (isBefore(batchDate, to) || isSameDay(batchDate, to));
     });
+
+    // Filter sales in date range
+    const filteredSales = sales.filter(sale => {
+      const saleDate = new Date(sale.date);
+      return (isAfter(saleDate, date.from) || isSameDay(saleDate, date.from)) && 
+             (isBefore(saleDate, to) || isSameDay(saleDate, to));
+    });
+
+    // Calculate total production
+    const totalProduction = filteredBatches.reduce((sum, batch) => {
+      return sum + batch.producedItems.reduce((total, item) => total + item.quantity, 0);
+    }, 0);
     
-    return data;
-  };
+    // Calculate total sales
+    const totalSales = filteredSales.reduce((sum, sale) => {
+      return sum + sale.items.reduce((total, item) => total + item.quantity, 0);
+    }, 0);
+    
+    // Calculate average profitability (simplified - just using the ratio)
+    const averageProfitability = totalProduction > 0 ? 
+      Math.round((totalSales / totalProduction) * 100) : 0;
+
+    return {
+      totalProduction,
+      totalSales,
+      currentInventory: dashboardStats.currentInventory, // Current inventory stays the same
+      averageProfitability
+    };
+  }, [dashboardStats, productionBatches, sales, date]);
   
-  const chartData = getChartData();
+  // Prepare data for Production vs Sales chart based on date range
+  const getChartData = useMemo(() => {
+    if (!date?.from) return [];
+    
+    const to = date.to || new Date();
+    const daysDifference = differenceInDays(to, date.from);
+    const isMonthly = daysDifference > 31; // Show monthly if more than a month
+    
+    if (isMonthly) {
+      // Monthly data
+      const monthlyData: { month: string; production: number; sales: number }[] = [];
+      let currentMonth = startOfMonth(date.from);
+      
+      while (isBefore(currentMonth, to) || isSameMonth(currentMonth, to)) {
+        const monthEnd = endOfMonth(currentMonth);
+        const monthName = format(currentMonth, "MMM yyyy", { locale: ptBR });
+        
+        // Calculate production for this month
+        const production = productionBatches
+          .filter(batch => {
+            const batchDate = new Date(batch.productionDate);
+            return (isAfter(batchDate, currentMonth) || isSameDay(batchDate, currentMonth)) && 
+                  (isBefore(batchDate, monthEnd) || isSameDay(batchDate, monthEnd));
+          })
+          .reduce((total, batch) => {
+            return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
+          }, 0);
+        
+        // Calculate sales for this month
+        const salesAmount = sales
+          .filter(sale => {
+            const saleDate = new Date(sale.date);
+            return (isAfter(saleDate, currentMonth) || isSameDay(saleDate, currentMonth)) && 
+                  (isBefore(saleDate, monthEnd) || isSameDay(saleDate, monthEnd));
+          })
+          .reduce((total, sale) => {
+            return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
+          }, 0);
+        
+        monthlyData.push({
+          month: monthName,
+          production,
+          sales: salesAmount
+        });
+        
+        // Move to next month
+        currentMonth = addMonths(currentMonth, 1);
+      }
+      
+      return monthlyData;
+    } else {
+      // Daily data for <= 31 days
+      const dailyData: { month: string; production: number; sales: number }[] = [];
+      
+      for (let i = 0; i <= daysDifference; i++) {
+        const currentDay = new Date(date.from);
+        currentDay.setDate(date.from.getDate() + i);
+        
+        // Format day
+        const dayName = format(currentDay, "dd/MM");
+        
+        // Calculate production for this day
+        const production = productionBatches
+          .filter(batch => {
+            const batchDate = new Date(batch.productionDate);
+            return isSameDay(batchDate, currentDay);
+          })
+          .reduce((total, batch) => {
+            return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
+          }, 0);
+        
+        // Calculate sales for this day
+        const salesAmount = sales
+          .filter(sale => {
+            const saleDate = new Date(sale.date);
+            return isSameDay(saleDate, currentDay);
+          })
+          .reduce((total, sale) => {
+            return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
+          }, 0);
+        
+        dailyData.push({
+          month: dayName,
+          production,
+          sales: salesAmount
+        });
+      }
+      
+      return dailyData;
+    }
+  }, [date, productionBatches, sales]);
   
   // Prepare data for inventory
   const getInventoryData = () => {
     // Get finished products inventory
-    const finishedProducts = dashboardStats.currentInventory;
+    const finishedProducts = filteredStats.currentInventory;
     
     // Get raw materials inventory (sum of remaining quantities)
     const rawMaterials = useData().materialBatches.reduce((total, batch) => {
@@ -81,6 +176,7 @@ const Dashboard = () => {
   };
   
   const inventoryData = getInventoryData();
+  const chartData = getChartData;
   
   if (isLoading.products || isLoading.materialBatches) {
     return (
@@ -95,6 +191,11 @@ const Dashboard = () => {
   
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">
+      {/* Date Range Picker */}
+      <div className="mb-6">
+        <DateRangePicker date={date} onDateChange={setDate} />
+      </div>
+      
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card className="animate-scale-in">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -102,8 +203,8 @@ const Dashboard = () => {
             <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.totalProduction} kg</div>
-            <p className="text-xs text-muted-foreground">Todos os produtos produzidos</p>
+            <div className="text-2xl font-bold">{filteredStats.totalProduction} kg</div>
+            <p className="text-xs text-muted-foreground">No período selecionado</p>
           </CardContent>
         </Card>
         
@@ -113,8 +214,8 @@ const Dashboard = () => {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.totalSales} kg</div>
-            <p className="text-xs text-muted-foreground">Total de produtos vendidos</p>
+            <div className="text-2xl font-bold">{filteredStats.totalSales} kg</div>
+            <p className="text-xs text-muted-foreground">No período selecionado</p>
           </CardContent>
         </Card>
         
@@ -124,7 +225,7 @@ const Dashboard = () => {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.currentInventory} kg</div>
+            <div className="text-2xl font-bold">{filteredStats.currentInventory} kg</div>
             <p className="text-xs text-muted-foreground">Produtos disponíveis em estoque</p>
           </CardContent>
         </Card>
@@ -135,8 +236,8 @@ const Dashboard = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.averageProfitability}%</div>
-            <p className="text-xs text-muted-foreground">Eficiência de produção</p>
+            <div className="text-2xl font-bold">{filteredStats.averageProfitability}%</div>
+            <p className="text-xs text-muted-foreground">No período selecionado</p>
           </CardContent>
         </Card>
       </div>

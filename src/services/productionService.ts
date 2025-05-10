@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -318,6 +317,18 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
   try {
     await beginTransaction();
 
+    // First, get the used materials to return them to inventory later
+    const { data: usedMaterials, error: fetchError } = await supabase
+      .from("used_materials")
+      .select("material_batch_id, quantity")
+      .eq("production_batch_id", id);
+
+    if (fetchError) {
+      console.error("Error fetching used materials:", fetchError);
+      await abortTransaction();
+      throw fetchError;
+    }
+
     // Delete produced items
     const { error: producedItemsError } = await supabase
       .from("produced_items")
@@ -349,6 +360,39 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
     if (batchError) {
       await abortTransaction();
       throw batchError;
+    }
+
+    // Return the materials to inventory
+    if (usedMaterials && usedMaterials.length > 0) {
+      for (const material of usedMaterials) {
+        // Get current remaining quantity
+        const { data: materialBatchData, error: fetchBatchError } = await supabase
+          .from("material_batches")
+          .select("remaining_quantity")
+          .eq("id", material.material_batch_id)
+          .single();
+        
+        if (fetchBatchError) {
+          console.error("Error fetching material batch:", fetchBatchError);
+          await abortTransaction();
+          throw fetchBatchError;
+        }
+        
+        // Calculate new remaining quantity (return the used materials)
+        const newRemainingQty = materialBatchData.remaining_quantity + material.quantity;
+        
+        // Update the material batch with the new remaining quantity
+        const { error: updateError } = await supabase
+          .from("material_batches")
+          .update({ remaining_quantity: newRemainingQty })
+          .eq("id", material.material_batch_id);
+        
+        if (updateError) {
+          console.error("Error updating material batch:", updateError);
+          await abortTransaction();
+          throw updateError;
+        }
+      }
     }
 
     await endTransaction();

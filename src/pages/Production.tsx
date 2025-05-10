@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -55,7 +54,7 @@ const Production = () => {
     defaultValues: {
       productionDate: new Date().toISOString().split("T")[0],
       batchNumber: `PROD-${new Date().toISOString().split("T")[0]}`,
-      mixDay: "Segunda",
+      mixDay: new Date().toISOString().split("T")[0],
       mixCount: 1,
       notes: "",
       producedItems: [{ productId: "", quantity: 0 }],
@@ -157,7 +156,7 @@ const Production = () => {
       form.reset({
         productionDate: new Date().toISOString().split("T")[0],
         batchNumber: `PROD-${new Date().toISOString().split("T")[0]}`,
-        mixDay: "Segunda",
+        mixDay: new Date().toISOString().split("T")[0],
         mixCount: 1,
         notes: "",
         producedItems: [{ productId: "", quantity: 0 }],
@@ -237,22 +236,9 @@ const Production = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Dia da Mexida</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o dia" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Segunda">Segunda</SelectItem>
-                              <SelectItem value="Terça">Terça</SelectItem>
-                              <SelectItem value="Quarta">Quarta</SelectItem>
-                              <SelectItem value="Quinta">Quinta</SelectItem>
-                              <SelectItem value="Sexta">Sexta</SelectItem>
-                              <SelectItem value="Sábado">Sábado</SelectItem>
-                              <SelectItem value="Domingo">Domingo</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
