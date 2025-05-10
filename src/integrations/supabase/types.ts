@@ -108,7 +108,7 @@ export type Database = {
       }
       materials: {
         Row: {
-          code: string | null
+          code: string
           created_at: string
           description: string | null
           id: string
@@ -118,7 +118,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          code?: string | null
+          code: string
           created_at?: string
           description?: string | null
           id?: string
@@ -128,7 +128,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          code?: string | null
+          code?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -317,7 +317,7 @@ export type Database = {
       }
       products: {
         Row: {
-          code: string | null
+          code: string
           created_at: string
           description: string | null
           id: string
@@ -327,7 +327,7 @@ export type Database = {
           weight_factor: number | null
         }
         Insert: {
-          code?: string | null
+          code: string
           created_at?: string
           description?: string | null
           id?: string
@@ -337,7 +337,7 @@ export type Database = {
           weight_factor?: number | null
         }
         Update: {
-          code?: string | null
+          code?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -438,7 +438,7 @@ export type Database = {
       }
       suppliers: {
         Row: {
-          code: string | null
+          code: string
           contacts: string | null
           created_at: string
           id: string
@@ -447,7 +447,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          code?: string | null
+          code: string
           contacts?: string | null
           created_at?: string
           id?: string
@@ -456,7 +456,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          code?: string | null
+          code?: string
           contacts?: string | null
           created_at?: string
           id?: string

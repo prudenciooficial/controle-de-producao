@@ -7,7 +7,7 @@ export const fetchLossesWithDetails = async (): Promise<Loss[]> => {
   const { data: lossesData, error: lossesError } = await supabase
     .from("losses")
     .select("*, production_batches(batch_number)")
-    .order("date", { ascending: false }); // Changed to show newest first
+    .order("date", { ascending: false });
   
   if (lossesError) throw lossesError;
   
@@ -30,44 +30,29 @@ export const fetchLossesWithDetails = async (): Promise<Loss[]> => {
 };
 
 export const createLoss = async (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">): Promise<Loss> => {
-  try {
-    // Begin transaction
-    await beginTransaction();
-    
-    // Create the loss record
-    const { data, error } = await supabase
-      .from("losses")
-      .insert({
-        date: loss.date instanceof Date ? loss.date.toISOString() : loss.date,
-        production_batch_id: loss.productionBatchId,
-        machine: loss.machine,
-        quantity: loss.quantity,
-        unit_of_measure: loss.unitOfMeasure,
-        product_type: loss.productType,
-        notes: loss.notes
-      })
-      .select()
-      .single();
-    
-    if (error) {
-      console.error("Error creating loss:", error);
-      await abortTransaction();
-      throw error;
-    }
-    
-    await endTransaction();
-    
-    return {
-      ...loss,
-      id: data.id,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at)
-    };
-  } catch (error) {
-    console.error("Error in create loss transaction:", error);
-    await abortTransaction();
-    throw error;
-  }
+  const { data, error } = await supabase
+    .from("losses")
+    .insert({
+      date: loss.date instanceof Date ? loss.date.toISOString() : loss.date,
+      production_batch_id: loss.productionBatchId,
+      batch_number: loss.batchNumber,
+      machine: loss.machine,
+      quantity: loss.quantity,
+      unit_of_measure: loss.unitOfMeasure,
+      product_type: loss.productType,
+      notes: loss.notes
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  
+  return {
+    ...loss,
+    id: data.id,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at)
+  };
 };
 
 export const updateLoss = async (id: string, loss: Partial<Loss>): Promise<void> => {
@@ -77,6 +62,7 @@ export const updateLoss = async (id: string, loss: Partial<Loss>): Promise<void>
     updates.date = loss.date instanceof Date ? loss.date.toISOString() : loss.date;
   }
   if (loss.productionBatchId) updates.production_batch_id = loss.productionBatchId;
+  if (loss.batchNumber) updates.batch_number = loss.batchNumber;
   if (loss.machine) updates.machine = loss.machine;
   if (loss.quantity !== undefined) updates.quantity = loss.quantity;
   if (loss.unitOfMeasure) updates.unit_of_measure = loss.unitOfMeasure;

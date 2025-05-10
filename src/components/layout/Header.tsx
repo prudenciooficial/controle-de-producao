@@ -1,9 +1,6 @@
 
 import React from "react";
 import { useLocation } from "react-router-dom";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { MobileNav } from "./MobileNav";
 
 interface HeaderProps {
   title?: string;
@@ -11,7 +8,6 @@ interface HeaderProps {
 
 export function Header({ title }: HeaderProps) {
   const location = useLocation();
-  const isMobile = useIsMobile();
   
   const getPageTitle = () => {
     if (title) return title;
@@ -45,12 +41,8 @@ export function Header({ title }: HeaderProps) {
   };
   
   return (
-    <header className="flex h-16 items-center border-b bg-background px-6 justify-between">
-      <div className="flex items-center">
-        {isMobile && <MobileNav />}
-        <h1 className="text-2xl font-bold">{getPageTitle()}</h1>
-      </div>
-      <ThemeToggle />
+    <header className="flex h-16 items-center border-b bg-background px-6">
+      <h1 className="text-2xl font-bold">{getPageTitle()}</h1>
     </header>
   );
 }

@@ -1,325 +1,242 @@
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useData } from "@/context/DataContext";
+import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2 } from "lucide-react";
 
-import React, { useEffect, useState } from 'react';
-import { fetchProductionBatches } from '@/services/productionService';
-import { fetchSales } from '@/services/salesService';
-import { DateFilterChart } from '@/components/dashboard/DateFilterChart';
-import { useData } from '@/context/DataContext';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, PackageCheck, Loader2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-
-export default function Dashboard() {
-  const [loading, setLoading] = useState(true);
-  const [productionData, setProductionData] = useState<{ date: Date, quantity: number }[]>([]);
-  const [salesData, setSalesData] = useState<{ date: Date, quantity: number }[]>([]);
-  const [error, setError] = useState<string | null>(null);
+const Dashboard = () => {
+  const { 
+    dashboardStats,
+    productionBatches,
+    sales,
+    isLoading
+  } = useData();
   
-  // For inventory filtering
-  const [productSearch, setProductSearch] = useState("");
-  const [materialSearch, setMaterialSearch] = useState("");
-
-  const { getAvailableProducts, getAvailableMaterials, isLoading } = useData();
-  const availableProducts = getAvailableProducts();
-  const availableMaterials = getAvailableMaterials();
-
-  // Filter products
-  const filteredProducts = availableProducts.filter(
-    (product) =>
-      product.productName?.toLowerCase().includes(productSearch.toLowerCase()) ||
-      product.batchNumber?.toLowerCase().includes(productSearch.toLowerCase())
-  );
-  
-  // Filter materials
-  const filteredMaterials = availableMaterials.filter(
-    (material) =>
-      material.materialName?.toLowerCase().includes(materialSearch.toLowerCase()) ||
-      material.batchNumber?.toLowerCase().includes(materialSearch.toLowerCase()) ||
-      material.materialType?.toLowerCase().includes(materialSearch.toLowerCase())
-  );
-
-  // Group materials by type
-  const groupedMaterials = filteredMaterials.reduce((acc, material) => {
-    const type = material.materialType || "Desconhecido";
-    if (!acc[type]) {
-      acc[type] = [];
-    }
-    acc[type].push(material);
-    return acc;
-  }, {} as Record<string, typeof filteredMaterials>);
-  
-  // Get material type icon
-  const getMaterialTypeIcon = (type: string) => {
-    switch (type) {
-      case "Fécula":
-        return <Package className="h-4 w-4 text-blue-500" />;
-      case "Conservante":
-        return <Package className="h-4 w-4 text-green-500" />;
-      case "Embalagem":
-        return <Package className="h-4 w-4 text-yellow-500" />;
-      case "Saco":
-        return <Package className="h-4 w-4 text-purple-500" />;
-      case "Caixa":
-        return <Package className="h-4 w-4 text-orange-500" />;
-      default:
-        return <Package className="h-4 w-4 text-gray-500" />;
-    }
-  };
-  
-  // Calculate days until expiry
-  const getDaysUntilExpiry = (expiryDate: Date | undefined) => {
-    if (!expiryDate) return null;
+  // Prepare data for Production vs Sales chart
+  const getChartData = () => {
+    const data: { month: string; production: number; sales: number }[] = [];
     
+    // Get last 6 months
     const today = new Date();
-    const expiry = new Date(expiryDate);
-    const diffTime = expiry.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      months.push({
+        monthName: month.toLocaleString("default", { month: "short" }),
+        month: month.getMonth(),
+        year: month.getFullYear()
+      });
+    }
     
-    return diffDays;
+    // Calculate production and sales per month
+    months.forEach(monthData => {
+      const { month, year, monthName } = monthData;
+      
+      // Calculate production for this month
+      const production = productionBatches
+        .filter(batch => {
+          const date = new Date(batch.productionDate);
+          return date.getMonth() === month && date.getFullYear() === year;
+        })
+        .reduce((total, batch) => {
+          return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
+        }, 0);
+      
+      // Calculate sales for this month
+      const salesAmount = sales
+        .filter(sale => {
+          const date = new Date(sale.date);
+          return date.getMonth() === month && date.getFullYear() === year;
+        })
+        .reduce((total, sale) => {
+          return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
+        }, 0);
+      
+      data.push({
+        month: monthName,
+        production,
+        sales: salesAmount
+      });
+    });
+    
+    return data;
   };
   
-  // Get expiry badge
-  const getExpiryBadge = (expiryDate: Date | undefined) => {
-    if (!expiryDate) return null;
+  const chartData = getChartData();
+  
+  // Prepare data for inventory
+  const getInventoryData = () => {
+    // Get finished products inventory
+    const finishedProducts = dashboardStats.currentInventory;
     
-    const daysUntilExpiry = getDaysUntilExpiry(expiryDate);
+    // Get raw materials inventory (sum of remaining quantities)
+    const rawMaterials = useData().materialBatches.reduce((total, batch) => {
+      return total + batch.remainingQuantity;
+    }, 0);
     
-    if (daysUntilExpiry === null) return null;
-    
-    if (daysUntilExpiry < 0) {
-      return <Badge variant="destructive">Vencido</Badge>;
-    } else if (daysUntilExpiry <= 30) {
-      return <Badge variant="destructive">Vence em {daysUntilExpiry} dias</Badge>;
-    } else if (daysUntilExpiry <= 90) {
-      return <Badge className="bg-yellow-500">Vence em {daysUntilExpiry} dias</Badge>;
-    } else {
-      return <Badge variant="outline">{new Date(expiryDate).toLocaleDateString()}</Badge>;
-    }
+    return [
+      { name: "Produtos Acabados", value: finishedProducts },
+      { name: "Matérias-Primas", value: rawMaterials }
+    ];
   };
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        
-        // Fetch production batches
-        const productionBatches = await fetchProductionBatches();
-        
-        // Transform production data
-        const productionStats = productionBatches.map(batch => {
-          // Sum up all produced items in this batch
-          const totalProduced = batch.producedItems.reduce(
-            (sum, item) => sum + item.quantity, 
-            0
-          );
-          
-          return {
-            date: batch.productionDate,
-            quantity: totalProduced
-          };
-        });
-        
-        // Fetch sales
-        const allSales = await fetchSales();
-        
-        // Transform sales data
-        const salesStats = allSales.map(sale => {
-          // Sum up all items in this sale
-          const totalSold = sale.items.reduce(
-            (sum, item) => sum + item.quantity, 
-            0
-          );
-          
-          return {
-            date: sale.date,
-            quantity: totalSold
-          };
-        });
-        
-        // Update state
-        setProductionData(productionStats);
-        setSalesData(salesStats);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-        setError("Erro ao carregar dados do dashboard");
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
-
-  if (loading) {
+  
+  const inventoryData = getInventoryData();
+  
+  if (isLoading.products || isLoading.materialBatches) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="container mx-auto py-6 px-4 flex justify-center items-center h-[80vh]">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-red-500">{error}</h2>
-          <p>Por favor, tente novamente mais tarde.</p>
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <h2 className="text-xl font-medium">Carregando dados do dashboard...</h2>
         </div>
       </div>
     );
   }
-
+  
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+    <div className="container mx-auto py-6 px-4 animate-fade-in">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card className="animate-scale-in">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Produção Total</CardTitle>
+            <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.totalProduction} kg</div>
+            <p className="text-xs text-muted-foreground">Todos os produtos produzidos</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="animate-scale-in" style={{ animationDelay: "0.1s" }}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Vendas Totais</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.totalSales} kg</div>
+            <p className="text-xs text-muted-foreground">Total de produtos vendidos</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="animate-scale-in" style={{ animationDelay: "0.2s" }}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Estoque Atual</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.currentInventory} kg</div>
+            <p className="text-xs text-muted-foreground">Produtos disponíveis em estoque</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="animate-scale-in" style={{ animationDelay: "0.3s" }}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Rentabilidade Média</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats.averageProfitability}%</div>
+            <p className="text-xs text-muted-foreground">Eficiência de produção</p>
+          </CardContent>
+        </Card>
+      </div>
       
-      <div className="space-y-6">
-        <DateFilterChart
-          productionData={productionData}
-          salesData={salesData}
-        />
-
-        <div className="grid grid-cols-1 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Estoque</CardTitle>
-              <CardDescription>
-                Situação atual do estoque de produtos e matérias-primas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="produtos">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="produtos">Produtos Acabados</TabsTrigger>
-                  <TabsTrigger value="materiais">Matérias-Primas</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="produtos">
-                  <div className="mb-4">
-                    <Input
-                      placeholder="Buscar por produto ou lote..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
-                      className="max-w-sm"
-                    />
+      <div className="grid gap-6 md:grid-cols-2 mb-6">
+        <Card className="col-span-2 animate-scale-in" style={{ animationDelay: "0.4s" }}>
+          <CardHeader>
+            <CardTitle>Produção x Vendas (kg)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="production" 
+                  stroke="#3b82f6" 
+                  name="Produção" 
+                  strokeWidth={2} 
+                  activeDot={{ r: 8 }} 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="sales" 
+                  stroke="#10b981" 
+                  name="Vendas" 
+                  strokeWidth={2} 
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="animate-scale-in" style={{ animationDelay: "0.5s" }}>
+          <CardHeader>
+            <CardTitle>Estoque Atual por Tipo</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={inventoryData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="value" fill="#3b82f6" name="Quantidade (kg)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        
+        <Card className="animate-scale-in" style={{ animationDelay: "0.6s" }}>
+          <CardHeader>
+            <CardTitle>Últimas Atividades</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {productionBatches.slice(0, 3).map(batch => (
+                <div key={batch.id} className="flex items-center">
+                  <div className="mr-4 rounded-full bg-primary/10 p-2">
+                    <Factory className="h-4 w-4 text-primary" />
                   </div>
-                  
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Produto</TableHead>
-                          <TableHead>Lote</TableHead>
-                          <TableHead>Produzido</TableHead>
-                          <TableHead>Disponível</TableHead>
-                          <TableHead>Un.</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {isLoading.productionBatches ? (
-                          <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
-                              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                            </TableCell>
-                          </TableRow>
-                        ) : filteredProducts.length > 0 ? (
-                          filteredProducts.map((product) => (
-                            <TableRow key={product.id}>
-                              <TableCell className="font-medium">{product.productName}</TableCell>
-                              <TableCell>{product.batchNumber}</TableCell>
-                              <TableCell>{product.quantity}</TableCell>
-                              <TableCell>{product.remainingQuantity}</TableCell>
-                              <TableCell>{product.unitOfMeasure}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
-                              Nenhum produto disponível em estoque.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">
+                      Produção {batch.batchNumber}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {batch.productionDate.toLocaleDateString()} - {batch.producedItems.reduce((sum, item) => sum + item.quantity, 0)} kg
+                    </p>
                   </div>
-                </TabsContent>
-                
-                <TabsContent value="materiais">
-                  <div className="mb-4">
-                    <Input
-                      placeholder="Buscar por insumo, tipo ou lote..."
-                      value={materialSearch}
-                      onChange={(e) => setMaterialSearch(e.target.value)}
-                      className="max-w-sm"
-                    />
+                </div>
+              ))}
+              
+              {sales.slice(0, 3).map(sale => (
+                <div key={sale.id} className="flex items-center">
+                  <div className="mr-4 rounded-full bg-green-500/10 p-2">
+                    <ShoppingCart className="h-4 w-4 text-green-500" />
                   </div>
-                  
-                  {isLoading.materialBatches ? (
-                    <div className="flex justify-center items-center h-40">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : Object.keys(groupedMaterials).length > 0 ? (
-                    Object.entries(groupedMaterials).map(([type, materials]) => (
-                      <div key={type} className="mb-8">
-                        <h3 className="text-lg font-medium mb-4 flex items-center">
-                          {getMaterialTypeIcon(type)}
-                          <span className="ml-2">{type}</span>
-                        </h3>
-                        <div className="rounded-md border">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Insumo</TableHead>
-                                <TableHead>Lote</TableHead>
-                                <TableHead>Recebido</TableHead>
-                                <TableHead>Disponível</TableHead>
-                                <TableHead>Un.</TableHead>
-                                <TableHead>Validade</TableHead>
-                                <TableHead>Laudo</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {materials.map((material) => (
-                                <TableRow key={material.id}>
-                                  <TableCell className="font-medium">{material.materialName || "Nome não disponível"}</TableCell>
-                                  <TableCell>{material.batchNumber}</TableCell>
-                                  <TableCell>{material.suppliedQuantity}</TableCell>
-                                  <TableCell>{material.remainingQuantity}</TableCell>
-                                  <TableCell>{material.unitOfMeasure}</TableCell>
-                                  <TableCell>
-                                    {getExpiryBadge(material.expiryDate)}
-                                  </TableCell>
-                                  <TableCell>
-                                    {material.hasReport ? (
-                                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                                        Sim
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
-                                        Não
-                                      </Badge>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4">
-                      Nenhum material disponível em estoque.
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">
+                      Venda {sale.invoiceNumber}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {sale.date.toLocaleDateString()} - {sale.customerName}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
-}
+};
+
+export default Dashboard;
