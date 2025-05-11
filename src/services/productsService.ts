@@ -60,7 +60,7 @@ export const updateProduct = async (
   const updates: any = {};
   
   if (product.name) updates.name = product.name;
-  if (product.code) updates.code = product.code;
+  if (product.code !== undefined) updates.code = product.code;
   if (product.description !== undefined) updates.description = product.description;
   if (product.unitOfMeasure) updates.unit_of_measure = product.unitOfMeasure;
   if (product.weightFactor !== undefined) updates.weight_factor = product.weightFactor;

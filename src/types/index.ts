@@ -1,13 +1,17 @@
+
 import { DateRange } from "react-day-picker";
 
 export interface ProductionBatch {
   id: string;
   batchNumber: string;
   productionDate: Date;
-  productId: string;
-  productName: string;
-  items: string;
+  productId?: string;
+  productName?: string;
+  items?: string;
   producedItems: ProducedItem[];
+  usedMaterials: UsedMaterial[];
+  mixDay: string;
+  mixCount: number;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -21,6 +25,18 @@ export interface ProducedItem {
   quantity: number;
   unitOfMeasure: string;
   remainingQuantity: number;
+}
+
+export interface UsedMaterial {
+  id: string;
+  materialBatchId: string;
+  materialName: string;
+  materialType: string;
+  batchNumber: string;
+  quantity: number;
+  unitOfMeasure: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Sale {
@@ -86,9 +102,11 @@ export interface Loss {
 export interface Product {
   id: string;
   name: string;
+  code: string;
   description?: string;
   unitOfMeasure: string;
-  type: string;
+  weightFactor?: number;
+  type?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -97,6 +115,7 @@ export interface Product {
 export interface Material {
   id: string;
   name: string;
+  code: string;
   description?: string;
   unitOfMeasure: string;
   type: string;
@@ -108,10 +127,12 @@ export interface Material {
 export interface Supplier {
   id: string;
   name: string;
-  contactName: string;
-  contactEmail: string;
-  contactPhone: string;
-  address: string;
+  code: string;
+  contacts?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -121,13 +142,16 @@ export interface MaterialBatch {
   id: string;
   materialId: string;
   materialName: string;
-  supplierId: string;
-  supplierName: string;
+  materialType: string;
+  supplierId?: string;
+  supplierName?: string;
   batchNumber: string;
   quantity: number;
+  suppliedQuantity: number;
   unitOfMeasure: string;
-  expiryDate: Date;
+  expiryDate?: Date;
   reportUrl?: string;
+  hasReport?: boolean;
   remainingQuantity: number;
   createdAt: Date;
   updatedAt: Date;

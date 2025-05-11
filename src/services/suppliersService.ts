@@ -57,7 +57,7 @@ export const updateSupplier = async (
   const updates: any = {};
   
   if (supplier.name) updates.name = supplier.name;
-  if (supplier.code) updates.code = supplier.code;
+  if (supplier.code !== undefined) updates.code = supplier.code;
   if (supplier.contacts !== undefined) updates.contacts = supplier.contacts;
   if (supplier.notes !== undefined) updates.notes = supplier.notes;
   

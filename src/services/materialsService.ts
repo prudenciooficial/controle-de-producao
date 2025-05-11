@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Material, MaterialBatch } from "../types";
 
@@ -60,7 +61,7 @@ export const updateMaterial = async (
   const updates: any = {};
   
   if (material.name) updates.name = material.name;
-  if (material.code) updates.code = material.code;
+  if (material.code !== undefined) updates.code = material.code;
   if (material.type) updates.type = material.type;
   if (material.unitOfMeasure) updates.unit_of_measure = material.unitOfMeasure;
   if (material.description !== undefined) updates.description = material.description;
@@ -194,6 +195,8 @@ export const fetchMaterialBatchesWithDetails = async (): Promise<MaterialBatch[]
     materialId: batch.material_id,
     materialName: batch.materials?.name || "",
     materialType: batch.materials?.type || "",
+    supplierId: "",  // Add empty supplier fields to match type
+    supplierName: "",
     batchNumber: batch.batch_number,
     quantity: batch.quantity,
     suppliedQuantity: batch.supplied_quantity,
@@ -232,6 +235,8 @@ export const createMaterialBatch = async (
     materialId: data.material_id,
     materialName: batch.materialName,
     materialType: batch.materialType,
+    supplierId: batch.supplierId || "",
+    supplierName: batch.supplierName || "",
     batchNumber: data.batch_number,
     quantity: data.quantity,
     suppliedQuantity: data.supplied_quantity,
