@@ -1,31 +1,66 @@
+
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useData } from "@/context/DataContext";
 import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2 } from "lucide-react";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { format, startOfMonth, subMonths } from "date-fns";
 
 const Dashboard = () => {
   const { 
     dashboardStats,
     productionBatches,
     sales,
-    isLoading
+    isLoading,
+    dateRange,
+    setDateRange
   } = useData();
+  
+  React.useEffect(() => {
+    // Set default date range to last 6 months if not set
+    if (!dateRange) {
+      const today = new Date();
+      setDateRange({
+        from: startOfMonth(subMonths(today, 5)),
+        to: today
+      });
+    }
+  }, [dateRange, setDateRange]);
   
   // Prepare data for Production vs Sales chart
   const getChartData = () => {
     const data: { month: string; production: number; sales: number }[] = [];
     
-    // Get last 6 months
+    // Get last 6 months or filtered by date range
     const today = new Date();
     const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      months.push({
-        monthName: month.toLocaleString("default", { month: "short" }),
-        month: month.getMonth(),
-        year: month.getFullYear()
-      });
+    
+    // If date range is set, use it to determine months
+    if (dateRange?.from) {
+      let currentDate = new Date(dateRange.from);
+      const endDate = dateRange.to || today;
+      
+      while (currentDate <= endDate) {
+        months.push({
+          monthName: format(currentDate, "MMM/yy"),
+          month: currentDate.getMonth(),
+          year: currentDate.getFullYear()
+        });
+        
+        // Move to next month
+        currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+      }
+    } else {
+      // Default to last 6 months
+      for (let i = 5; i >= 0; i--) {
+        const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        months.push({
+          monthName: format(month, "MMM/yy"),
+          month: month.getMonth(),
+          year: month.getFullYear()
+        });
+      }
     }
     
     // Calculate production and sales per month
@@ -95,6 +130,15 @@ const Dashboard = () => {
   
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-4">Filtro por período</h2>
+        <DateRangePicker 
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          className="max-w-sm"
+        />
+      </div>
+      
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card className="animate-scale-in">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -103,7 +147,9 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dashboardStats.totalProduction} kg</div>
-            <p className="text-xs text-muted-foreground">Todos os produtos produzidos</p>
+            <p className="text-xs text-muted-foreground">
+              {dateRange?.from ? `No período selecionado` : 'Todos os produtos produzidos'}
+            </p>
           </CardContent>
         </Card>
         
@@ -114,7 +160,9 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dashboardStats.totalSales} kg</div>
-            <p className="text-xs text-muted-foreground">Total de produtos vendidos</p>
+            <p className="text-xs text-muted-foreground">
+              {dateRange?.from ? `No período selecionado` : 'Total de produtos vendidos'}
+            </p>
           </CardContent>
         </Card>
         
@@ -136,7 +184,9 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dashboardStats.averageProfitability}%</div>
-            <p className="text-xs text-muted-foreground">Eficiência de produção</p>
+            <p className="text-xs text-muted-foreground">
+              {dateRange?.from ? `No período selecionado` : 'Eficiência de produção'}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -145,6 +195,12 @@ const Dashboard = () => {
         <Card className="col-span-2 animate-scale-in" style={{ animationDelay: "0.4s" }}>
           <CardHeader>
             <CardTitle>Produção x Vendas (kg)</CardTitle>
+            {dateRange?.from && (
+              <p className="text-sm text-muted-foreground">
+                Período: {format(dateRange.from, "dd/MM/yyyy")} 
+                {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy")}` : ''}
+              </p>
+            )}
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">

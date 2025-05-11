@@ -43,6 +43,7 @@ import {
   deleteLoss as deleteLossApi
 } from "../services";
 import { useToast } from "@/hooks/use-toast";
+import { DateRange } from "react-day-picker";
 
 interface DataContextType {
   // Data collections
@@ -69,6 +70,8 @@ interface DataContextType {
   
   // Stats
   dashboardStats: DashboardStats;
+  dateRange: DateRange | undefined;
+  setDateRange: (range: DateRange | undefined) => void;
   
   // Refetch functions
   refetchProducts: () => Promise<void>;
@@ -191,6 +194,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [materials, setMaterials] = useState<Material[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materialBatches, setMaterialBatches] = useState<MaterialBatch[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Loading states
   const [isLoading, setIsLoading] = useState({
@@ -410,20 +414,44 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Calculate dashboard stats
+  // Calculate dashboard stats based on date range
   useEffect(() => {
+    // Filter data based on date range
+    const filterByDateRange = <T extends { date?: Date; productionDate?: Date }>(
+      items: T[],
+      dateField: 'date' | 'productionDate'
+    ): T[] => {
+      if (!dateRange?.from) return items;
+      
+      return items.filter(item => {
+        const itemDate = item[dateField];
+        if (!itemDate) return true;
+        
+        const date = new Date(itemDate);
+        
+        if (dateRange.from && dateRange.to) {
+          return date >= dateRange.from && date <= dateRange.to;
+        }
+        
+        return date >= dateRange.from;
+      });
+    };
+    
+    // Filter production batches and sales
+    const filteredProductionBatches = filterByDateRange(productionBatches, 'productionDate');
+    const filteredSales = filterByDateRange(sales, 'date');
+    
     // Calculate total production
-    const totalProduction = productionBatches.reduce((acc, batch) => {
+    const totalProduction = filteredProductionBatches.reduce((acc, batch) => {
       return acc + batch.producedItems.reduce((itemAcc, item) => itemAcc + item.quantity, 0);
     }, 0);
 
     // Calculate total sales
-    const totalSales = sales.reduce((acc, sale) => {
+    const totalSales = filteredSales.reduce((acc, sale) => {
       return acc + sale.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0);
     }, 0);
 
-    // Calculate current inventory by directly checking remaining quantity
-    // Fixed by ensuring we're using the accurate remaining quantity from each produced item
+    // Calculate current inventory (not filtered by date range)
     const currentInventory = productionBatches.reduce((acc, batch) => {
       return acc + batch.producedItems.reduce((itemAcc, item) => {
         // Ensure we're using a valid number
@@ -443,24 +471,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Log the calculated values for debugging
-    console.log("Dashboard stats calculation:", {
+    console.log("Dashboard stats calculation with date range:", {
+      dateRange,
       totalProduction,
       totalSales,
       currentInventory,
       averageProfitability: parseFloat(averageProfitability.toFixed(2))
     });
 
-    // Log each production batch and its remaining quantities for debugging
-    productionBatches.forEach(batch => {
-      console.log(`Batch ${batch.batchNumber} produced items:`, 
-        batch.producedItems.map(item => ({
-          product: item.productName,
-          quantity: item.quantity,
-          remaining: item.remainingQuantity
-        }))
-      );
-    });
-  }, [productionBatches, sales]);
+  }, [productionBatches, sales, dateRange]);
 
   // Helper functions
   const generateId = () => {
@@ -948,6 +967,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     materialBatches,
     isLoading,
     dashboardStats,
+    dateRange,
+    setDateRange,
     refetchProducts,
     refetchMaterials,
     refetchSuppliers,

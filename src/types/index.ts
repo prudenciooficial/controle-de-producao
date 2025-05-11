@@ -1,98 +1,40 @@
-// Base types
-export interface BaseEntity {
+import { DateRange } from "react-day-picker";
+
+export interface ProductionBatch {
   id: string;
+  batchNumber: string;
+  productionDate: Date;
+  productId: string;
+  productName: string;
+  items: string;
+  producedItems: ProducedItem[];
+  notes?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Product types
-export interface Product extends BaseEntity {
-  name: string;
-  code: string;
-  description?: string;
-  unitOfMeasure: string; // kg, L, etc.
-  weightFactor?: number; // Added for predictability
-}
-
-// Supplier types
-export interface Supplier extends BaseEntity {
-  name: string;
-  code: string;
-  contacts?: string;
-  notes?: string;
-}
-
-// Material types
-export interface Material extends BaseEntity {
-  name: string;
-  code: string;
-  type: "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro";
-  unitOfMeasure: string;
-  description?: string;
-}
-
-// Material Batch
-export interface MaterialBatch extends BaseEntity {
-  materialId: string;
-  materialName: string;
-  materialType: string;
-  batchNumber: string;
-  quantity: number;
-  suppliedQuantity: number;
-  remainingQuantity: number;
-  unitOfMeasure: string;
-  expiryDate?: Date;
-  hasReport: boolean;
-}
-
-// Production Batch
-export interface ProductionBatch extends BaseEntity {
-  batchNumber: string;
-  productionDate: Date;
-  mixDay: string;
-  mixCount: number;
-  notes?: string;
-  producedItems: ProducedItem[];
-  usedMaterials: UsedMaterial[];
-}
-
-// Produced item in a production batch
 export interface ProducedItem {
   id: string;
   productId: string;
   productName: string;
+  batchNumber: string;
   quantity: number;
   unitOfMeasure: string;
-  batchNumber: string;
   remainingQuantity: number;
-  createdAt?: Date;
-  updatedAt?: Date;
 }
 
-// Material used in production
-export interface UsedMaterial {
+export interface Sale {
   id: string;
-  materialBatchId: string;
-  materialName: string;
-  materialType: string;
-  batchNumber: string;
-  quantity: number;
-  unitOfMeasure: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-// Sale
-export interface Sale extends BaseEntity {
   date: Date;
   invoiceNumber: string;
   customerName: string;
-  type: "Venda" | "Doação" | "Descarte" | "Devolução" | "Outro";
+  type: string;
   notes?: string;
   items: SaleItem[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// Sale item
 export interface SaleItem {
   id: string;
   productId: string;
@@ -103,17 +45,18 @@ export interface SaleItem {
   unitOfMeasure: string;
 }
 
-// Order (Material Purchase)
-export interface Order extends BaseEntity {
+export interface Order {
+  id: string;
   date: Date;
   invoiceNumber: string;
   supplierId: string;
   supplierName: string;
   notes?: string;
   items: OrderItem[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// Order item
 export interface OrderItem {
   id: string;
   materialId: string;
@@ -122,23 +65,74 @@ export interface OrderItem {
   quantity: number;
   unitOfMeasure: string;
   batchNumber: string;
-  expiryDate?: Date;
+  expiryDate: Date;
   hasReport: boolean;
 }
 
-// Loss
-export interface Loss extends BaseEntity {
+export interface Loss {
+  id: string;
   date: Date;
   productionBatchId: string;
   batchNumber: string;
-  machine: "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro";
+  machine: string;
   quantity: number;
   unitOfMeasure: string;
-  productType: "Goma" | "Fécula" | "Embalagem" | "Sorbato" | "Produto Acabado" | "Outro";
+  productType: string;
   notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// Dashboard stats
+export interface Product {
+  id: string;
+  name: string;
+  description?: string;
+  unitOfMeasure: string;
+  type: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Material {
+  id: string;
+  name: string;
+  description?: string;
+  unitOfMeasure: string;
+  type: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MaterialBatch {
+  id: string;
+  materialId: string;
+  materialName: string;
+  supplierId: string;
+  supplierName: string;
+  batchNumber: string;
+  quantity: number;
+  unitOfMeasure: string;
+  expiryDate: Date;
+  reportUrl?: string;
+  remainingQuantity: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface DashboardStats {
   totalProduction: number;
   totalSales: number;

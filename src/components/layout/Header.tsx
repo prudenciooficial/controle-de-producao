@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Clock } from "./Clock";
 
 interface HeaderProps {
   title?: string;
@@ -61,7 +62,8 @@ export function Header({ title, toggleSidebar }: HeaderProps) {
         )}
         <h1 className="text-xl font-bold">{getPageTitle()}</h1>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
+        <Clock />
         <ThemeToggle />
       </div>
     </header>
