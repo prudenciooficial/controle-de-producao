@@ -14,12 +14,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { History, Plus, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Schema for form validation
 const productionFormSchema = z.object({
   productionDate: z.string().nonempty({ message: "Data de produção é obrigatória" }),
   batchNumber: z.string().nonempty({ message: "Lote de produção é obrigatório" }),
-  mixDay: z.string().nonempty({ message: "Dia da mexida é obrigatório" }),
+  mixDate: z.string().nonempty({ message: "Data da mexida é obrigatória" }),
   mixCount: z
     .number()
     .int()
@@ -49,13 +51,16 @@ const Production = () => {
   const { products, materialBatches, addProductionBatch } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  
+  const today = new Date().toISOString().split('T')[0];
   
   const form = useForm<ProductionFormValues>({
     resolver: zodResolver(productionFormSchema),
     defaultValues: {
-      productionDate: new Date().toISOString().split("T")[0],
-      batchNumber: `PROD-${new Date().toISOString().split("T")[0]}`,
-      mixDay: "Segunda",
+      productionDate: today,
+      batchNumber: `PROD-${today}`,
+      mixDate: today,
       mixCount: 1,
       notes: "",
       producedItems: [{ productId: "", quantity: 0 }],
@@ -139,7 +144,7 @@ const Production = () => {
       const productionBatch = {
         batchNumber: data.batchNumber,
         productionDate: new Date(data.productionDate),
-        mixDay: data.mixDay,
+        mixDay: data.mixDate, // Changed from mixDay to mixDate
         mixCount: data.mixCount,
         notes: data.notes,
         producedItems,
@@ -155,9 +160,9 @@ const Production = () => {
       
       // Reset form
       form.reset({
-        productionDate: new Date().toISOString().split("T")[0],
-        batchNumber: `PROD-${new Date().toISOString().split("T")[0]}`,
-        mixDay: "Segunda",
+        productionDate: today,
+        batchNumber: `PROD-${today}`,
+        mixDate: today,
         mixCount: 1,
         notes: "",
         producedItems: [{ productId: "", quantity: 0 }],
@@ -202,7 +207,7 @@ const Production = () => {
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   {/* Production details */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className={cn("grid gap-6", isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4")}>
                     <FormField
                       control={form.control}
                       name="productionDate"
@@ -233,26 +238,13 @@ const Production = () => {
                     
                     <FormField
                       control={form.control}
-                      name="mixDay"
+                      name="mixDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Dia da Mexida</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o dia" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Segunda">Segunda</SelectItem>
-                              <SelectItem value="Terça">Terça</SelectItem>
-                              <SelectItem value="Quarta">Quarta</SelectItem>
-                              <SelectItem value="Quinta">Quinta</SelectItem>
-                              <SelectItem value="Sexta">Sexta</SelectItem>
-                              <SelectItem value="Sábado">Sábado</SelectItem>
-                              <SelectItem value="Domingo">Domingo</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Data da Mexida</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -295,7 +287,8 @@ const Production = () => {
                     {producedItemFields.map((field, index) => (
                       <div
                         key={field.id}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-md"
+                        className={cn("grid gap-4 p-4 border rounded-md", 
+                          isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}
                       >
                         <FormField
                           control={form.control}
@@ -385,7 +378,8 @@ const Production = () => {
                     {usedMaterialFields.map((field, index) => (
                       <div
                         key={field.id}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-md"
+                        className={cn("grid gap-4 p-4 border rounded-md", 
+                          isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}
                       >
                         <FormField
                           control={form.control}

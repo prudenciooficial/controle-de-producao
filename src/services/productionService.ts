@@ -318,6 +318,45 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
   try {
     await beginTransaction();
 
+    // Get all used materials for this production batch
+    const { data: usedMaterials, error: usedMaterialsError } = await supabase
+      .from("used_materials")
+      .select("*")
+      .eq("production_batch_id", id);
+
+    if (usedMaterialsError) {
+      await abortTransaction();
+      throw usedMaterialsError;
+    }
+
+    // Return materials to inventory
+    for (const material of usedMaterials) {
+      // Get current remaining quantity
+      const { data: materialBatch, error: fetchError } = await supabase
+        .from("material_batches")
+        .select("remaining_quantity")
+        .eq("id", material.material_batch_id)
+        .single();
+      
+      if (fetchError) {
+        await abortTransaction();
+        throw fetchError;
+      }
+      
+      // Update the material batch to return the quantity
+      const newRemainingQuantity = materialBatch.remaining_quantity + material.quantity;
+      
+      const { error: updateError } = await supabase
+        .from("material_batches")
+        .update({ remaining_quantity: newRemainingQuantity })
+        .eq("id", material.material_batch_id);
+      
+      if (updateError) {
+        await abortTransaction();
+        throw updateError;
+      }
+    }
+
     // Delete produced items
     const { error: producedItemsError } = await supabase
       .from("produced_items")
@@ -330,14 +369,14 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
     }
 
     // Delete used materials
-    const { error: usedMaterialsError } = await supabase
+    const { error: usedMaterialsDeleteError } = await supabase
       .from("used_materials")
       .delete()
       .eq("production_batch_id", id);
 
-    if (usedMaterialsError) {
+    if (usedMaterialsDeleteError) {
       await abortTransaction();
-      throw usedMaterialsError;
+      throw usedMaterialsDeleteError;
     }
 
     // Delete the production batch

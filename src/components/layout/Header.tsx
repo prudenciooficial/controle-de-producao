@@ -1,13 +1,20 @@
 
 import React from "react";
 import { useLocation } from "react-router-dom";
+import { Menu } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface HeaderProps {
   title?: string;
+  toggleSidebar?: () => void;
 }
 
-export function Header({ title }: HeaderProps) {
+export function Header({ title, toggleSidebar }: HeaderProps) {
   const location = useLocation();
+  const isMobile = useIsMobile();
   
   const getPageTitle = () => {
     if (title) return title;
@@ -41,8 +48,22 @@ export function Header({ title }: HeaderProps) {
   };
   
   return (
-    <header className="flex h-16 items-center border-b bg-background px-6">
-      <h1 className="text-2xl font-bold">{getPageTitle()}</h1>
+    <header className={cn(
+      "sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background px-4 md:px-6",
+      isMobile ? "pr-4" : ""
+    )}>
+      <div className="flex items-center gap-2">
+        {isMobile && (
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle Menu</span>
+          </Button>
+        )}
+        <h1 className="text-xl font-bold">{getPageTitle()}</h1>
+      </div>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+      </div>
     </header>
   );
 }

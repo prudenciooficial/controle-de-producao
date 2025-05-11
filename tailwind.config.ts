@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -84,11 +85,33 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'mobile-menu-in': {
+					from: {
+						opacity: 0,
+						transform: 'translateX(-100%)'
+					},
+					to: {
+						opacity: 1,
+						transform: 'translateX(0)'
+					}
+				},
+				'mobile-menu-out': {
+					from: {
+						opacity: 1,
+						transform: 'translateX(0)'
+					},
+					to: {
+						opacity: 0,
+						transform: 'translateX(-100%)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'mobile-menu-in': 'mobile-menu-in 0.3s ease-out',
+				'mobile-menu-out': 'mobile-menu-out 0.3s ease-in'
 			}
 		}
 	},
