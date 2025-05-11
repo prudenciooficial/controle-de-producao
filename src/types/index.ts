@@ -1,4 +1,3 @@
-
 import { DateRange } from "react-day-picker";
 
 export interface ProductionBatch {
@@ -35,8 +34,8 @@ export interface UsedMaterial {
   batchNumber: string;
   quantity: number;
   unitOfMeasure: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;  // Made optional with ?
+  updatedAt?: Date;  // Made optional with ?
 }
 
 export interface Sale {

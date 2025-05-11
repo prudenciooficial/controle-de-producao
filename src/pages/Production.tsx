@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -144,7 +143,7 @@ const Production = () => {
       const productionBatch = {
         batchNumber: data.batchNumber,
         productionDate: new Date(data.productionDate),
-        mixDay: data.mixDate, // Changed from mixDay to mixDate
+        mixDay: data.mixDate,
         mixCount: data.mixCount,
         notes: data.notes,
         producedItems,
