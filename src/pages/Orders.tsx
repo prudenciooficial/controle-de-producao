@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -15,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { History, Plus, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
 
 // Schema for form validation
 const ordersFormSchema = z.object({
@@ -45,7 +45,7 @@ const Orders = () => {
   const form = useForm<OrdersFormValues>({
     resolver: zodResolver(ordersFormSchema),
     defaultValues: {
-      date: new Date().toISOString().split("T")[0],
+      date: getTodayDateString(),
       invoiceNumber: "",
       supplierId: "",
       notes: "",
@@ -107,7 +107,7 @@ const Orders = () => {
       
       // Create and add order
       const order = {
-        date: new Date(data.date),
+        date: parseDateString(data.date),
         invoiceNumber: data.invoiceNumber,
         supplierId: data.supplierId,
         supplierName: supplier.name,
@@ -124,7 +124,7 @@ const Orders = () => {
       
       // Reset form
       form.reset({
-        date: new Date().toISOString().split("T")[0],
+        date: getTodayDateString(),
         invoiceNumber: "",
         supplierId: "",
         notes: "",

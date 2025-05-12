@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -14,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { History, Loader } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
 
 // Schema for form validation
 const lossFormSchema = z.object({
@@ -35,7 +35,7 @@ const Losses = () => {
   const form = useForm<LossFormValues>({
     resolver: zodResolver(lossFormSchema),
     defaultValues: {
-      date: new Date().toISOString().split("T")[0],
+      date: getTodayDateString(),
       productionBatchId: "",
       machine: "",
       quantity: 0,
@@ -59,7 +59,7 @@ const Losses = () => {
       
       // Create and add loss
       const loss = {
-        date: new Date(data.date),
+        date: parseDateString(data.date),
         productionBatchId: data.productionBatchId,
         batchNumber: batch.batchNumber,
         machine: data.machine as "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro",
@@ -73,7 +73,7 @@ const Losses = () => {
       
       // Reset form
       form.reset({
-        date: new Date().toISOString().split("T")[0],
+        date: getTodayDateString(),
         productionBatchId: "",
         machine: "",
         quantity: 0,

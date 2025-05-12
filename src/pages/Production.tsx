@@ -15,6 +15,7 @@ import { History, Plus, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
 
 // Schema for form validation
 const productionFormSchema = z.object({
@@ -52,7 +53,7 @@ const Production = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateString();
   
   const form = useForm<ProductionFormValues>({
     resolver: zodResolver(productionFormSchema),
@@ -142,7 +143,7 @@ const Production = () => {
       // Create and add production batch
       const productionBatch = {
         batchNumber: data.batchNumber,
-        productionDate: new Date(data.productionDate),
+        productionDate: parseDateString(data.productionDate),
         mixDay: data.mixDate,
         mixCount: data.mixCount,
         notes: data.notes,

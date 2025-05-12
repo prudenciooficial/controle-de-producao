@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -14,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { History, Plus, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
 
 // Schema for form validation
 const salesFormSchema = z.object({
@@ -44,7 +44,7 @@ const Sales = () => {
   const form = useForm<SalesFormValues>({
     resolver: zodResolver(salesFormSchema),
     defaultValues: {
-      date: new Date().toISOString().split("T")[0],
+      date: getTodayDateString(),
       invoiceNumber: "",
       customerName: "",
       type: "Venda",
@@ -89,7 +89,7 @@ const Sales = () => {
       
       // Create and add sale
       const sale = {
-        date: new Date(data.date),
+        date: parseDateString(data.date),
         invoiceNumber: data.invoiceNumber,
         customerName: data.customerName,
         type: data.type as "Venda" | "Doação" | "Descarte" | "Devolução" | "Outro",
@@ -106,7 +106,7 @@ const Sales = () => {
       
       // Reset form
       form.reset({
-        date: new Date().toISOString().split("T")[0],
+        date: getTodayDateString(),
         invoiceNumber: "",
         customerName: "",
         type: "Venda",
