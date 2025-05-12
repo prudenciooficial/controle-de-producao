@@ -55,6 +55,7 @@ const AppContent = () => {
           </Routes>
         </main>
       </div>
+      <Toaster />
     </div>
   );
 };
@@ -64,7 +65,6 @@ const App = () => (
     <ThemeProvider>
       <DataProvider>
         <TooltipProvider>
-          <Toaster />
           <BrowserRouter>
             <AppContent />
           </BrowserRouter>
