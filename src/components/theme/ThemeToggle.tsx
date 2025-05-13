@@ -23,7 +23,7 @@ export function ThemeToggle() {
         aria-label="Alternar tema"
         pressed={theme === "dark"}
         onPressedChange={toggleTheme}
-        variant="ghost"
+        variant="default"
         size="sm"
         className="h-9 w-9"
       >
