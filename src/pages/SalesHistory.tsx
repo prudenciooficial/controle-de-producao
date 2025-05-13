@@ -22,18 +22,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, MoreVertical, Eye, Trash } from "lucide-react";
+import { ArrowLeft, MoreVertical, Eye, Trash, Edit, Loader } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sale } from "../types";
 import { Badge } from "@/components/ui/badge";
 
 const SalesHistory = () => {
-  const { sales, deleteSale } = useData();
+  const { sales, deleteSale, updateSale } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Sale>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const filteredSales = sales.filter(
     (sale) =>
@@ -51,6 +54,29 @@ const SalesHistory = () => {
       title: "Venda excluída",
       description: "O registro de venda foi excluído com sucesso.",
     });
+  };
+  
+  const handleEdit = async () => {
+    if (!selectedSale || !editForm) return;
+    
+    try {
+      setIsSubmitting(true);
+      await updateSale(selectedSale.id, editForm);
+      setShowEditDialog(false);
+      toast({
+        title: "Venda atualizada",
+        description: "O registro de venda foi atualizado com sucesso.",
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar venda:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao atualizar a venda.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const getSaleTypeColor = (type: string) => {
@@ -219,6 +245,24 @@ const SalesHistory = () => {
                           </Dialog>
                           
                           <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              setSelectedSale(sale);
+                              setEditForm({
+                                invoiceNumber: sale.invoiceNumber,
+                                date: sale.date,
+                                customerName: sale.customerName,
+                                type: sale.type,
+                                notes: sale.notes
+                              });
+                              setShowEditDialog(true);
+                            }}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                          
+                          <DropdownMenuItem
                             onSelect={(e) => e.preventDefault()}
                             className="text-destructive"
                             onClick={() => {
@@ -245,6 +289,115 @@ const SalesHistory = () => {
           </Table>
         </CardContent>
       </Card>
+      
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        if (!isSubmitting) setShowEditDialog(open);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Venda</DialogTitle>
+            <DialogDescription>
+              Edite as informações da venda conforme necessário.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="invoiceNumber" className="text-sm font-medium">
+                  Nota Fiscal
+                </label>
+                <Input
+                  id="invoiceNumber"
+                  value={editForm.invoiceNumber || ''}
+                  onChange={(e) => setEditForm({...editForm, invoiceNumber: e.target.value})}
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="date" className="text-sm font-medium">
+                  Data
+                </label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={editForm.date ? new Date(editForm.date).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setEditForm({
+                    ...editForm, 
+                    date: e.target.value ? new Date(e.target.value) : undefined
+                  })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="customerName" className="text-sm font-medium">
+                  Cliente
+                </label>
+                <Input
+                  id="customerName"
+                  value={editForm.customerName || ''}
+                  onChange={(e) => setEditForm({...editForm, customerName: e.target.value})}
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="type" className="text-sm font-medium">
+                  Tipo
+                </label>
+                <select
+                  id="type"
+                  value={editForm.type || ''}
+                  onChange={(e) => setEditForm({...editForm, type: e.target.value})}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 mt-1"
+                >
+                  <option value="Venda">Venda</option>
+                  <option value="Doação">Doação</option>
+                  <option value="Descarte">Descarte</option>
+                  <option value="Devolução">Devolução</option>
+                </select>
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="notes" className="text-sm font-medium">
+                Observações
+              </label>
+              <textarea
+                id="notes"
+                rows={3}
+                value={editForm.notes || ''}
+                onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 mt-1"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isSubmitting}>Cancelar</Button>
+            </DialogClose>
+            <Button 
+              onClick={handleEdit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar Alterações"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

@@ -12,6 +12,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -29,19 +31,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, MoreVertical, Eye, Trash, Loader } from "lucide-react";
+import { ArrowLeft, MoreVertical, Eye, Trash, Loader, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProductionBatch } from "../types";
 
 const ProductionHistory = () => {
-  const { productionBatches, deleteProductionBatch, isLoading } = useData();
+  const { productionBatches, deleteProductionBatch, updateProductionBatch, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [selectedBatch, setSelectedBatch] = useState<ProductionBatch | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<ProductionBatch>>({});
   
   const filteredBatches = productionBatches.filter(
     (batch) =>
@@ -72,6 +77,30 @@ const ProductionHistory = () => {
       setShowDeleteDialog(false);
     }
   };
+
+  const handleEditSubmit = async () => {
+    if (!selectedBatch || !editForm) return;
+
+    try {
+      setIsSaving(true);
+      await updateProductionBatch(selectedBatch.id, editForm);
+      
+      toast({
+        title: "Produção atualizada",
+        description: "O registro de produção foi atualizado com sucesso.",
+      });
+      setShowEditDialog(false);
+    } catch (error) {
+      console.error("Erro ao atualizar produção:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao atualizar o registro de produção.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   const openDeleteDialog = (batch: ProductionBatch) => {
     setSelectedBatch(batch);
@@ -81,6 +110,18 @@ const ProductionHistory = () => {
   const openDetailsDialog = (batch: ProductionBatch) => {
     setSelectedBatch(batch);
     setShowDetailsDialog(true);
+  };
+
+  const openEditDialog = (batch: ProductionBatch) => {
+    setSelectedBatch(batch);
+    setEditForm({
+      batchNumber: batch.batchNumber,
+      productionDate: batch.productionDate,
+      mixDay: batch.mixDay,
+      mixCount: batch.mixCount,
+      notes: batch.notes,
+    });
+    setShowEditDialog(true);
   };
   
   const handleDeleteDialogClose = () => {
@@ -97,6 +138,16 @@ const ProductionHistory = () => {
     setTimeout(() => {
       setSelectedBatch(null);
     }, 300);
+  };
+
+  const handleEditDialogClose = () => {
+    if (!isSaving) {
+      setShowEditDialog(false);
+      setTimeout(() => {
+        setSelectedBatch(null);
+        setEditForm({});
+      }, 300);
+    }
   };
   
   return (
@@ -185,6 +236,16 @@ const ProductionHistory = () => {
                             >
                               <Eye className="mr-2 h-4 w-4" />
                               Detalhes
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                openEditDialog(batch);
+                              }}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
                             </DropdownMenuItem>
                             
                             <DropdownMenuItem
@@ -307,6 +368,89 @@ const ProductionHistory = () => {
                   <p className="text-sm">{selectedBatch.notes}</p>
                 </div>
               )}
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+      
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={handleEditDialogClose}>
+        {selectedBatch && (
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                Editar Produção - Lote {selectedBatch.batchNumber}
+              </DialogTitle>
+              <DialogDescription>
+                Modifique as informações necessárias e salve as alterações
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Número do Lote</label>
+                  <Input 
+                    value={editForm.batchNumber || ''}
+                    onChange={(e) => setEditForm({...editForm, batchNumber: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Data de Produção</label>
+                  <Input 
+                    type="date"
+                    value={editForm.productionDate ? new Date(editForm.productionDate).toISOString().split('T')[0] : ''}
+                    onChange={(e) => setEditForm({
+                      ...editForm, 
+                      productionDate: e.target.value ? new Date(e.target.value) : undefined
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Dia da Mexida</label>
+                  <Input 
+                    value={editForm.mixDay || ''}
+                    onChange={(e) => setEditForm({...editForm, mixDay: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Quantidade de Mexidas</label>
+                  <Input 
+                    type="number"
+                    value={editForm.mixCount || 0}
+                    onChange={(e) => setEditForm({...editForm, mixCount: parseInt(e.target.value)})}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Observações</label>
+                <textarea 
+                  className="w-full rounded-md border border-input bg-background px-3 py-2"
+                  rows={3}
+                  value={editForm.notes || ''}
+                  onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
+                />
+              </div>
+              
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline" disabled={isSaving}>Cancelar</Button>
+                </DialogClose>
+                <Button 
+                  onClick={handleEditSubmit} 
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar Alterações"
+                  )}
+                </Button>
+              </DialogFooter>
             </div>
           </DialogContent>
         )}
