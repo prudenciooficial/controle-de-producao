@@ -34,9 +34,6 @@ import {
 import { ArrowLeft, MoreVertical, Eye, Trash, Loader, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProductionBatch } from "../types";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { DateRange } from "react-day-picker";
-import { subMonths } from "date-fns";
 
 const ProductionHistory = () => {
   const { productionBatches, deleteProductionBatch, updateProductionBatch, isLoading } = useData();
@@ -50,32 +47,14 @@ const ProductionHistory = () => {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProductionBatch>>({});
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: subMonths(new Date(), 1),
-    to: new Date(),
-  });
   
-  const filterByDateRange = (batch: ProductionBatch) => {
-    if (!dateRange?.from) return true;
-    
-    const batchDate = new Date(batch.productionDate);
-    
-    if (dateRange.to) {
-      return batchDate >= dateRange.from && batchDate <= dateRange.to;
-    }
-    
-    return batchDate >= dateRange.from;
-  };
-  
-  const filteredBatches = productionBatches
-    .filter(filterByDateRange)
-    .filter(
-      (batch) =>
-        batch.batchNumber.toLowerCase().includes(search.toLowerCase()) ||
-        batch.producedItems.some((item) =>
-          item.productName.toLowerCase().includes(search.toLowerCase())
-        )
-    );
+  const filteredBatches = productionBatches.filter(
+    (batch) =>
+      batch.batchNumber.toLowerCase().includes(search.toLowerCase()) ||
+      batch.producedItems.some((item) =>
+        item.productName.toLowerCase().includes(search.toLowerCase())
+      )
+  );
   
   const handleDelete = async (id: string) => {
     try {
@@ -185,17 +164,12 @@ const ProductionHistory = () => {
       
       <Card className="mb-6">
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center space-x-2">
             <Input
               placeholder="Buscar por lote ou produto..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
-            />
-            <DateRangePicker 
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              className="w-full sm:w-auto"
             />
           </div>
         </CardContent>
