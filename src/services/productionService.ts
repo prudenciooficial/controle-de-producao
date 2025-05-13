@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -95,11 +96,22 @@ const fetchProductionBatchById = async (id: string): Promise<ProductionBatch> =>
   };
 };
 
-export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
-  const { data, error } = await supabase
+export const fetchProductionBatches = async (dateRange?: { from: Date, to: Date }): Promise<ProductionBatch[]> => {
+  let query = supabase
     .from("production_batches")
     .select("*")
-    .order("production_date", { ascending: false });
+    
+  // Apply date range filter if provided
+  if (dateRange?.from && dateRange?.to) {
+    query = query
+      .gte('production_date', dateRange.from.toISOString())
+      .lte('production_date', dateRange.to.toISOString());
+  }
+  
+  // Order by production date descending
+  query = query.order("production_date", { ascending: false });
+  
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching production batches:", error);
