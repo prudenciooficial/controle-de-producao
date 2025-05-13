@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       losses: {
         Row: {
+          batch_number: string | null
           created_at: string
           date: string
           id: string
@@ -23,6 +24,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          batch_number?: string | null
           created_at?: string
           date: string
           id?: string
@@ -35,6 +37,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          batch_number?: string | null
           created_at?: string
           date?: string
           id?: string

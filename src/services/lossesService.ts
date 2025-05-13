@@ -16,7 +16,7 @@ export const fetchLossesWithDetails = async (): Promise<Loss[]> => {
     id: loss.id,
     date: new Date(loss.date),
     productionBatchId: loss.production_batch_id,
-    batchNumber: loss.production_batches?.batch_number || "",
+    batchNumber: loss.batch_number || loss.production_batches?.batch_number || "",
     machine: loss.machine as "Moinho" | "Mexedor" | "Tombador" | "Embaladora" | "Outro",
     quantity: loss.quantity,
     unitOfMeasure: loss.unit_of_measure,
