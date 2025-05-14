@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -261,17 +262,41 @@ export const updateProductionBatch = async (
       throw batchError;
     }
 
-    // Update produced items (assuming you want to update them)
-    if (batch.producedItems) {
+    // Update produced items - enhanced to handle quantity updates
+    if (batch.producedItems && batch.producedItems.length > 0) {
       for (const item of batch.producedItems) {
+        // If quantity changed, update the remaining quantity accordingly
+        let remainingQuantity = item.remainingQuantity;
+        
+        // If quantity changed, calculate new remaining quantity
+        if (item.quantity !== undefined) {
+          // First get the original item to compare quantities
+          const { data: originalItem, error: getItemError } = await supabase
+            .from("produced_items")
+            .select("quantity, remaining_quantity")
+            .eq("id", item.id)
+            .single();
+            
+          if (getItemError) {
+            await abortTransaction();
+            throw getItemError;
+          }
+          
+          // Calculate the difference between new and old quantity
+          const quantityDiff = item.quantity - originalItem.quantity;
+          
+          // Adjust remaining quantity by the same amount as the quantity change
+          remainingQuantity = originalItem.remaining_quantity + quantityDiff;
+        }
+        
         const { error: itemError } = await supabase
           .from("produced_items")
           .update({
             product_id: item.productId,
             quantity: item.quantity,
             unit_of_measure: item.unitOfMeasure,
-			batch_number: item.batchNumber,
-            remaining_quantity: item.remainingQuantity
+            batch_number: item.batchNumber,
+            remaining_quantity: remainingQuantity
           })
           .eq("id", item.id);
 
@@ -282,9 +307,55 @@ export const updateProductionBatch = async (
       }
     }
 
-    // Update used materials (assuming you want to update them)
-    if (batch.usedMaterials) {
+    // Update used materials
+    if (batch.usedMaterials && batch.usedMaterials.length > 0) {
       for (const material of batch.usedMaterials) {
+        // First check if the quantity is going to change
+        if (material.quantity !== undefined) {
+          // Get the original material usage record
+          const { data: originalUsage, error: getUsageError } = await supabase
+            .from("used_materials")
+            .select("quantity, material_batch_id")
+            .eq("id", material.id)
+            .single();
+            
+          if (getUsageError) {
+            await abortTransaction();
+            throw getUsageError;
+          }
+          
+          // Calculate the difference in quantity
+          const quantityDiff = material.quantity - originalUsage.quantity;
+          
+          // Get current material batch data
+          const { data: materialBatch, error: batchError } = await supabase
+            .from("material_batches")
+            .select("remaining_quantity")
+            .eq("id", originalUsage.material_batch_id)
+            .single();
+            
+          if (batchError) {
+            await abortTransaction();
+            throw batchError;
+          }
+          
+          // If we're increasing usage, decrease the remaining quantity in material batch
+          // If we're decreasing usage, increase the remaining quantity in material batch
+          const newRemainingQuantity = materialBatch.remaining_quantity - quantityDiff;
+          
+          // Update the material batch remaining quantity
+          const { error: updateBatchError } = await supabase
+            .from("material_batches")
+            .update({ remaining_quantity: newRemainingQuantity })
+            .eq("id", originalUsage.material_batch_id);
+            
+          if (updateBatchError) {
+            await abortTransaction();
+            throw updateBatchError;
+          }
+        }
+        
+        // Update the used material record
         const { error: materialError } = await supabase
           .from("used_materials")
           .update({

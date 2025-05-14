@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
 import { Button } from "@/components/ui/button";
@@ -31,12 +31,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, MoreVertical, Eye, Trash, Loader, Edit } from "lucide-react";
+import { ArrowLeft, MoreVertical, Eye, Trash, Loader, Edit, Plus, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ProductionBatch } from "../types";
+import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
 
 const ProductionHistory = () => {
-  const { productionBatches, deleteProductionBatch, updateProductionBatch, isLoading } = useData();
+  const { 
+    productionBatches, 
+    deleteProductionBatch, 
+    updateProductionBatch, 
+    isLoading,
+    products,
+    materialBatches
+  } = useData();
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -47,6 +57,10 @@ const ProductionHistory = () => {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProductionBatch>>({});
+  
+  // Added for product and material editing
+  const [producedItems, setProducedItems] = useState<ProducedItem[]>([]);
+  const [usedMaterials, setUsedMaterials] = useState<UsedMaterial[]>([]);
   
   const filteredBatches = productionBatches.filter(
     (batch) =>
@@ -83,7 +97,15 @@ const ProductionHistory = () => {
 
     try {
       setIsSaving(true);
-      await updateProductionBatch(selectedBatch.id, editForm);
+      
+      // Include edited produced items and used materials in the update
+      const updateData: Partial<ProductionBatch> = {
+        ...editForm,
+        producedItems: producedItems,
+        usedMaterials: usedMaterials
+      };
+      
+      await updateProductionBatch(selectedBatch.id, updateData);
       
       toast({
         title: "Produção atualizada",
@@ -114,6 +136,8 @@ const ProductionHistory = () => {
 
   const openEditDialog = (batch: ProductionBatch) => {
     setSelectedBatch(batch);
+    
+    // Copy the batch details to edit form
     setEditForm({
       batchNumber: batch.batchNumber,
       productionDate: batch.productionDate,
@@ -121,6 +145,11 @@ const ProductionHistory = () => {
       mixCount: batch.mixCount,
       notes: batch.notes,
     });
+    
+    // Copy the produced items and used materials for editing
+    setProducedItems([...batch.producedItems]);
+    setUsedMaterials([...batch.usedMaterials]);
+    
     setShowEditDialog(true);
   };
   
@@ -146,8 +175,30 @@ const ProductionHistory = () => {
       setTimeout(() => {
         setSelectedBatch(null);
         setEditForm({});
+        setProducedItems([]);
+        setUsedMaterials([]);
       }, 300);
     }
+  };
+  
+  // Update a specific produced item
+  const updateProducedItem = (index: number, field: keyof ProducedItem, value: any) => {
+    const updatedItems = [...producedItems];
+    updatedItems[index] = {
+      ...updatedItems[index],
+      [field]: value
+    };
+    setProducedItems(updatedItems);
+  };
+  
+  // Update a specific used material
+  const updateUsedMaterial = (index: number, field: keyof UsedMaterial, value: any) => {
+    const updatedMaterials = [...usedMaterials];
+    updatedMaterials[index] = {
+      ...updatedMaterials[index],
+      [field]: value
+    };
+    setUsedMaterials(updatedMaterials);
   };
   
   return (
@@ -373,10 +424,10 @@ const ProductionHistory = () => {
         )}
       </Dialog>
       
-      {/* Edit Dialog */}
+      {/* Enhanced Edit Dialog with Products and Materials editing */}
       <Dialog open={showEditDialog} onOpenChange={handleEditDialogClose}>
         {selectedBatch && (
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 Editar Produção - Lote {selectedBatch.batchNumber}
@@ -420,6 +471,83 @@ const ProductionHistory = () => {
                     value={editForm.mixCount || 0}
                     onChange={(e) => setEditForm({...editForm, mixCount: parseInt(e.target.value)})}
                   />
+                </div>
+              </div>
+              
+              {/* Produtos Produzidos - Edição */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Produtos Produzidos</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Lote</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Un.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {producedItems.map((item, index) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.productName}</TableCell>
+                        <TableCell>
+                          <Input 
+                            value={item.batchNumber} 
+                            onChange={(e) => updateProducedItem(index, 'batchNumber', e.target.value)} 
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input 
+                            type="number" 
+                            value={item.quantity} 
+                            onChange={(e) => updateProducedItem(index, 'quantity', parseFloat(e.target.value))} 
+                            className="w-24"
+                          />
+                        </TableCell>
+                        <TableCell>{item.unitOfMeasure}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="text-sm text-amber-600">
+                  Atenção: Alterar a quantidade de um produto ajustará automaticamente o estoque disponível.
+                </div>
+              </div>
+              
+              {/* Insumos Utilizados - Edição */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Insumos Utilizados</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Insumo</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Lote</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Un.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usedMaterials.map((material, index) => (
+                      <TableRow key={material.id}>
+                        <TableCell>{material.materialName}</TableCell>
+                        <TableCell>{material.materialType}</TableCell>
+                        <TableCell>{material.batchNumber}</TableCell>
+                        <TableCell>
+                          <Input 
+                            type="number" 
+                            value={material.quantity} 
+                            onChange={(e) => updateUsedMaterial(index, 'quantity', parseFloat(e.target.value))} 
+                            className="w-24"
+                          />
+                        </TableCell>
+                        <TableCell>{material.unitOfMeasure}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="text-sm text-amber-600">
+                  Atenção: Alterar a quantidade de um insumo ajustará automaticamente o estoque disponível.
                 </div>
               </div>
               
