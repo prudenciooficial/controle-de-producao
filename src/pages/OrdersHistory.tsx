@@ -22,9 +22,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, MoreVertical, Eye, Trash, Check, X, Edit, Loader } from "lucide-react";
+import { ArrowLeft, MoreVertical, Eye, Trash, Check, X, PencilIcon, Loader } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Order } from "../types";
+import { Textarea } from "@/components/ui/textarea";
 
 const OrdersHistory = () => {
   const { orders, deleteOrder, updateOrder } = useData();
@@ -237,12 +238,13 @@ const OrdersHistory = () => {
                               setEditForm({
                                 invoiceNumber: order.invoiceNumber,
                                 date: order.date,
+                                supplierName: order.supplierName,
                                 notes: order.notes
                               });
                               setShowEditDialog(true);
                             }}
                           >
-                            <Edit className="mr-2 h-4 w-4" />
+                            <PencilIcon className="mr-2 h-4 w-4" />
                             Editar
                           </DropdownMenuItem>
                           
@@ -278,7 +280,7 @@ const OrdersHistory = () => {
       <Dialog open={showEditDialog} onOpenChange={(open) => {
         if (!isSubmitting) setShowEditDialog(open);
       }}>
-        <DialogContent>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Editar Pedido</DialogTitle>
             <DialogDescription>
@@ -317,11 +319,41 @@ const OrdersHistory = () => {
               </div>
             </div>
             
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="supplierName" className="text-sm font-medium">
+                  Fornecedor
+                </label>
+                <Input
+                  id="supplierName"
+                  value={editForm.supplierName || ''}
+                  onChange={(e) => setEditForm({...editForm, supplierName: e.target.value})}
+                  className="mt-1"
+                  disabled={true} // Usually supplier is linked by ID, so we prevent changes here
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  O fornecedor não pode ser alterado diretamente.
+                </p>
+              </div>
+              
+              <div>
+                <label htmlFor="status" className="text-sm font-medium">
+                  Status do Pedido
+                </label>
+                <Input
+                  id="status"
+                  value={"Concluído"} // Example status, replace with actual status field if available
+                  className="mt-1"
+                  disabled={true}
+                />
+              </div>
+            </div>
+            
             <div>
               <label htmlFor="notes" className="text-sm font-medium">
                 Observações
               </label>
-              <textarea
+              <Textarea
                 id="notes"
                 rows={3}
                 value={editForm.notes || ''}

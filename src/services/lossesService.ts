@@ -56,25 +56,54 @@ export const createLoss = async (loss: Omit<Loss, "id" | "createdAt" | "updatedA
 };
 
 export const updateLoss = async (id: string, loss: Partial<Loss>): Promise<void> => {
-  const updates: any = {};
-  
-  if (loss.date) {
-    updates.date = loss.date instanceof Date ? loss.date.toISOString() : loss.date;
+  try {
+    console.log("Beginning update process for loss:", id);
+    
+    // Start a transaction
+    await beginTransaction();
+    console.log("Transaction started for loss update");
+    
+    const updates: any = {};
+    
+    if (loss.date) {
+      updates.date = loss.date instanceof Date ? loss.date.toISOString() : loss.date;
+    }
+    if (loss.productionBatchId) updates.production_batch_id = loss.productionBatchId;
+    if (loss.batchNumber) updates.batch_number = loss.batchNumber;
+    if (loss.machine) updates.machine = loss.machine;
+    if (loss.quantity !== undefined) updates.quantity = loss.quantity;
+    if (loss.unitOfMeasure) updates.unit_of_measure = loss.unitOfMeasure;
+    if (loss.productType) updates.product_type = loss.productType;
+    if (loss.notes !== undefined) updates.notes = loss.notes;
+    
+    const { error } = await supabase
+      .from("losses")
+      .update(updates)
+      .eq("id", id);
+    
+    if (error) {
+      console.error("Error updating loss:", error);
+      await abortTransaction();
+      console.log("Transaction aborted due to error");
+      throw error;
+    }
+    
+    console.log("Loss updated successfully");
+    
+    // Commit the transaction
+    await endTransaction();
+    console.log("Transaction committed successfully");
+  } catch (error) {
+    console.error("Error in update loss operation:", error);
+    try {
+      // Only abort if we didn't already
+      await abortTransaction();
+      console.log("Transaction aborted in catch block");
+    } catch (rollbackError) {
+      console.error("Error during rollback:", rollbackError);
+    }
+    throw error;
   }
-  if (loss.productionBatchId) updates.production_batch_id = loss.productionBatchId;
-  if (loss.batchNumber) updates.batch_number = loss.batchNumber;
-  if (loss.machine) updates.machine = loss.machine;
-  if (loss.quantity !== undefined) updates.quantity = loss.quantity;
-  if (loss.unitOfMeasure) updates.unit_of_measure = loss.unitOfMeasure;
-  if (loss.productType) updates.product_type = loss.productType;
-  if (loss.notes !== undefined) updates.notes = loss.notes;
-  
-  const { error } = await supabase
-    .from("losses")
-    .update(updates)
-    .eq("id", id);
-  
-  if (error) throw error;
 };
 
 export const deleteLoss = async (id: string): Promise<void> => {
@@ -116,3 +145,4 @@ export const deleteLoss = async (id: string): Promise<void> => {
     throw error;
   }
 };
+

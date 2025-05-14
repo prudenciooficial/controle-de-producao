@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -29,20 +30,46 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, MoreVertical, Eye, Trash, Loader } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { ArrowLeft, MoreVertical, Eye, Trash, Loader, PencilIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Loss } from "../types";
 import { Badge } from "@/components/ui/badge";
+import { useForm } from "react-hook-form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 const LossesHistory = () => {
-  const { losses, deleteLoss, isLoading } = useData();
+  const { losses, deleteLoss, updateLoss, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [selectedLoss, setSelectedLoss] = useState<Loss | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  
+  // Define the form for editing losses
+  const form = useForm<Partial<Loss>>({
+    defaultValues: {
+      date: new Date(),
+      batchNumber: "",
+      machine: "Outro",
+      quantity: 0,
+      unitOfMeasure: "kg",
+      productType: "Outro",
+      notes: ""
+    }
+  });
   
   const filteredLosses = losses.filter(
     (loss) =>
@@ -72,6 +99,46 @@ const LossesHistory = () => {
       setShowDeleteDialog(false);
       setSelectedLoss(null);
     }
+  };
+  
+  const handleEditSubmit = async (values: Partial<Loss>) => {
+    if (!selectedLoss) return;
+    
+    try {
+      setIsUpdating(true);
+      await updateLoss(selectedLoss.id, values);
+      
+      toast({
+        title: "Perda atualizada",
+        description: "O registro de perda foi atualizado com sucesso.",
+      });
+      setShowEditDialog(false);
+      setSelectedLoss(null);
+    } catch (error) {
+      console.error("Erro ao atualizar perda:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao atualizar o registro de perda.",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  const openEditDialog = (loss: Loss) => {
+    setSelectedLoss(loss);
+    // Reset form with current loss values
+    form.reset({
+      date: loss.date,
+      batchNumber: loss.batchNumber,
+      machine: loss.machine,
+      quantity: loss.quantity,
+      unitOfMeasure: loss.unitOfMeasure,
+      productType: loss.productType,
+      notes: loss.notes
+    });
+    setShowEditDialog(true);
   };
   
   const openDeleteDialog = (loss: Loss) => {
@@ -199,6 +266,16 @@ const LossesHistory = () => {
                             </DropdownMenuItem>
                             
                             <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                openEditDialog(loss);
+                              }}
+                            >
+                              <PencilIcon className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem
                               onSelect={(e) => e.preventDefault()}
                               className="text-destructive"
                               onClick={() => openDeleteDialog(loss)}
@@ -275,6 +352,201 @@ const LossesHistory = () => {
             </div>
           </DialogContent>
         )}
+      </Dialog>
+      
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        if (!isUpdating) setShowEditDialog(open);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Registro de Perda</DialogTitle>
+            <DialogDescription>
+              Atualize os dados do registro de perda.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleEditSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''} 
+                        onChange={(e) => field.onChange(new Date(e.target.value))} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="batchNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número do Lote</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="machine"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Máquina</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a máquina" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Moinho">Moinho</SelectItem>
+                          <SelectItem value="Mexedor">Mexedor</SelectItem>
+                          <SelectItem value="Tombador">Tombador</SelectItem>
+                          <SelectItem value="Embaladora">Embaladora</SelectItem>
+                          <SelectItem value="Outro">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="productType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Produto</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Goma">Goma</SelectItem>
+                          <SelectItem value="Fécula">Fécula</SelectItem>
+                          <SelectItem value="Embalagem">Embalagem</SelectItem>
+                          <SelectItem value="Sorbato">Sorbato</SelectItem>
+                          <SelectItem value="Produto Acabado">Produto Acabado</SelectItem>
+                          <SelectItem value="Outro">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantidade</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="unitOfMeasure"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unidade</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a unidade" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="kg">kg</SelectItem>
+                          <SelectItem value="g">g</SelectItem>
+                          <SelectItem value="l">l</SelectItem>
+                          <SelectItem value="ml">ml</SelectItem>
+                          <SelectItem value="un">un</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observações</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowEditDialog(false)}
+                  disabled={isUpdating}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? (
+                    <>
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar Alterações"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
       </Dialog>
       
       {/* Delete Confirmation Dialog - Using AlertDialog */}
