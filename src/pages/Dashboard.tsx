@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useData } from "@/context/DataContext";
 import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2 } from "lucide-react";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { format, startOfMonth, subMonths } from "date-fns";
+import { SimpleDateFilter } from "@/components/ui/simple-date-filter";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isSameDay, startOfDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { formatMonthYear, formatDayMonth, isWithinOneMonth, formatNumberBR } from "@/components/helpers/dateFormatUtils";
 
 const Dashboard = () => {
   const { 
@@ -18,83 +20,110 @@ const Dashboard = () => {
   } = useData();
   
   React.useEffect(() => {
-    // Set default date range to last 6 months if not set
+    // Set default date range to current month if not set
     if (!dateRange) {
       const today = new Date();
       setDateRange({
-        from: startOfMonth(subMonths(today, 5)),
-        to: today
+        from: startOfMonth(today),
+        to: endOfMonth(today)
       });
     }
   }, [dateRange, setDateRange]);
   
+  // Determine if we should show daily or monthly chart
+  const showDailyChart = React.useMemo(() => {
+    if (dateRange?.from && dateRange?.to) {
+      return isWithinOneMonth(dateRange.from, dateRange.to);
+    }
+    return false;
+  }, [dateRange]);
+  
   // Prepare data for Production vs Sales chart
   const getChartData = () => {
-    const data: { month: string; production: number; sales: number }[] = [];
+    // If no date range, return empty array
+    if (!dateRange?.from || !dateRange?.to) {
+      return [];
+    }
     
-    // Get last 6 months or filtered by date range
-    const today = new Date();
-    const months = [];
-    
-    // If date range is set, use it to determine months
-    if (dateRange?.from) {
+    if (showDailyChart) {
+      // Show daily data
+      const days = eachDayOfInterval({
+        start: dateRange.from,
+        end: dateRange.to
+      });
+      
+      return days.map(day => {
+        // Calculate production for this day
+        const production = productionBatches
+          .filter(batch => {
+            const batchDate = new Date(batch.productionDate);
+            return isSameDay(batchDate, day);
+          })
+          .reduce((total, batch) => {
+            return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
+          }, 0);
+        
+        // Calculate sales for this day
+        const salesAmount = sales
+          .filter(sale => {
+            const saleDate = new Date(sale.date);
+            return isSameDay(saleDate, day);
+          })
+          .reduce((total, sale) => {
+            return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
+          }, 0);
+        
+        return {
+          date: startOfDay(day),
+          day: formatDayMonth(day),
+          production,
+          sales: salesAmount
+        };
+      });
+    } else {
+      // Show monthly data (original logic)
+      const data = [];
       let currentDate = new Date(dateRange.from);
-      const endDate = dateRange.to || today;
+      const endDate = dateRange.to;
       
       while (currentDate <= endDate) {
-        months.push({
-          monthName: format(currentDate, "MMM/yy"),
-          month: currentDate.getMonth(),
-          year: currentDate.getFullYear()
+        const month = currentDate.getMonth();
+        const year = currentDate.getFullYear();
+        const monthName = formatMonthYear(currentDate);
+        
+        // Calculate production for this month
+        const production = productionBatches
+          .filter(batch => {
+            const date = new Date(batch.productionDate);
+            return date.getMonth() === month && date.getFullYear() === year;
+          })
+          .reduce((total, batch) => {
+            return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
+          }, 0);
+        
+        // Calculate sales for this month
+        const salesAmount = sales
+          .filter(sale => {
+            const date = new Date(sale.date);
+            return date.getMonth() === month && date.getFullYear() === year;
+          })
+          .reduce((total, sale) => {
+            return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
+          }, 0);
+        
+        data.push({
+          date: new Date(year, month, 1),
+          month: monthName,
+          production,
+          sales: salesAmount
         });
         
         // Move to next month
         currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
       }
-    } else {
-      // Default to last 6 months
-      for (let i = 5; i >= 0; i--) {
-        const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        months.push({
-          monthName: format(month, "MMM/yy"),
-          month: month.getMonth(),
-          year: month.getFullYear()
-        });
-      }
+      
+      return data;
     }
-    
-    // Calculate production and sales per month
-    months.forEach(monthData => {
-      const { month, year, monthName } = monthData;
-      
-      // Calculate production for this month
-      const production = productionBatches
-        .filter(batch => {
-          const date = new Date(batch.productionDate);
-          return date.getMonth() === month && date.getFullYear() === year;
-        })
-        .reduce((total, batch) => {
-          return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
-        }, 0);
-      
-      // Calculate sales for this month
-      const salesAmount = sales
-        .filter(sale => {
-          const date = new Date(sale.date);
-          return date.getMonth() === month && date.getFullYear() === year;
-        })
-        .reduce((total, sale) => {
-          return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
-        }, 0);
-      
-      data.push({
-        month: monthName,
-        production,
-        sales: salesAmount
-      });
-    });
-    
-    return data;
   };
   
   const chartData = getChartData();
@@ -117,6 +146,28 @@ const Dashboard = () => {
   
   const inventoryData = getInventoryData();
   
+  // Custom tooltip formatter for charts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const dateLabel = showDailyChart 
+        ? format(data.date, "EEEE, dd 'de' MMMM", { locale: ptBR })
+        : format(data.date, "MMMM 'de' yyyy", { locale: ptBR });
+      
+      return (
+        <div className="bg-background border border-border p-2 rounded-md shadow-md">
+          <p className="font-medium">{dateLabel}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={`item-${index}`} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {formatNumberBR(entry.value)} kg
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+  
   if (isLoading.products || isLoading.materialBatches) {
     return (
       <div className="container mx-auto py-6 px-4 flex justify-center items-center h-[80vh]">
@@ -132,10 +183,10 @@ const Dashboard = () => {
     <div className="container mx-auto py-6 px-4 animate-fade-in">
       <div className="mb-6">
         <h2 className="text-2xl font-bold mb-4">Filtro por período</h2>
-        <DateRangePicker 
+        <SimpleDateFilter 
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
-          className="max-w-sm"
+          className="max-w-full"
         />
       </div>
       
@@ -146,7 +197,7 @@ const Dashboard = () => {
             <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.totalProduction} kg</div>
+            <div className="text-2xl font-bold">{formatNumberBR(dashboardStats.totalProduction)} kg</div>
             <p className="text-xs text-muted-foreground">
               {dateRange?.from ? `No período selecionado` : 'Todos os produtos produzidos'}
             </p>
@@ -159,7 +210,7 @@ const Dashboard = () => {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.totalSales} kg</div>
+            <div className="text-2xl font-bold">{formatNumberBR(dashboardStats.totalSales)} kg</div>
             <p className="text-xs text-muted-foreground">
               {dateRange?.from ? `No período selecionado` : 'Total de produtos vendidos'}
             </p>
@@ -172,7 +223,7 @@ const Dashboard = () => {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.currentInventory} kg</div>
+            <div className="text-2xl font-bold">{formatNumberBR(dashboardStats.currentInventory)} kg</div>
             <p className="text-xs text-muted-foreground">Produtos disponíveis em estoque</p>
           </CardContent>
         </Card>
@@ -197,8 +248,8 @@ const Dashboard = () => {
             <CardTitle>Produção x Vendas (kg)</CardTitle>
             {dateRange?.from && (
               <p className="text-sm text-muted-foreground">
-                Período: {format(dateRange.from, "dd/MM/yyyy")} 
-                {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy")}` : ''}
+                Período: {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} 
+                {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}` : ''}
               </p>
             )}
           </CardHeader>
@@ -206,10 +257,15 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
+                <XAxis 
+                  dataKey={showDailyChart ? "day" : "month"} 
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend formatter={(value) => {
+                  return value === "production" ? "Produção" : "Vendas";
+                }}/>
                 <Line 
                   type="monotone" 
                   dataKey="production" 
@@ -240,9 +296,12 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={inventoryData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  formatter={(value: number) => formatNumberBR(value) + " kg"}
+                  labelFormatter={(label) => label}
+                />
                 <Legend />
                 <Bar dataKey="value" fill="#3b82f6" name="Quantidade (kg)" />
               </BarChart>
@@ -266,7 +325,7 @@ const Dashboard = () => {
                       Produção {batch.batchNumber}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {batch.productionDate.toLocaleDateString()} - {batch.producedItems.reduce((sum, item) => sum + item.quantity, 0)} kg
+                      {format(new Date(batch.productionDate), "dd/MM/yyyy", { locale: ptBR })} - {batch.producedItems.reduce((sum, item) => sum + item.quantity, 0)} kg
                     </p>
                   </div>
                 </div>
@@ -282,7 +341,7 @@ const Dashboard = () => {
                       Venda {sale.invoiceNumber}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {sale.date.toLocaleDateString()} - {sale.customerName}
+                      {format(new Date(sale.date), "dd/MM/yyyy", { locale: ptBR })} - {sale.customerName}
                     </p>
                   </div>
                 </div>
