@@ -46,7 +46,6 @@ import { useToast } from "@/hooks/use-toast";
 import { DateRange } from "react-day-picker";
 
 interface DataContextType {
-  // Data collections
   productionBatches: ProductionBatch[];
   sales: Sale[];
   orders: Order[];
@@ -56,7 +55,6 @@ interface DataContextType {
   suppliers: Supplier[];
   materialBatches: MaterialBatch[];
   
-  // Loading states
   isLoading: {
     products: boolean;
     materials: boolean;
@@ -68,18 +66,15 @@ interface DataContextType {
     losses: boolean;
   };
   
-  // Stats
   dashboardStats: DashboardStats;
   dateRange: DateRange | undefined;
   setDateRange: (range: DateRange | undefined) => void;
   
-  // Refetch functions
   refetchProducts: () => Promise<void>;
   refetchMaterials: () => Promise<void>;
   refetchSuppliers: () => Promise<void>;
   refetchMaterialBatches: () => Promise<void>;
   
-  // CRUD operations
   addProductionBatch: (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   updateProductionBatch: (id: string, batch: Partial<ProductionBatch>) => Promise<void>;
   deleteProductionBatch: (id: string) => Promise<void>;
@@ -108,14 +103,12 @@ interface DataContextType {
   updateSupplier: (id: string, supplier: Partial<Supplier>) => Promise<void>;
   deleteSupplier: (id: string) => Promise<void>;
   
-  // Helper methods
   getAvailableMaterials: () => MaterialBatch[];
   getAvailableProducts: () => ProducedItem[];
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// Mock data for initial state
 const mockSales: Sale[] = [
   {
     id: "s1",
@@ -140,7 +133,6 @@ const mockSales: Sale[] = [
   }
 ];
 
-// Sample orders
 const mockOrders: Order[] = [
   {
     id: "o1",
@@ -167,7 +159,6 @@ const mockOrders: Order[] = [
   }
 ];
 
-// Sample losses
 const mockLosses: Loss[] = [
   {
     id: "l1",
@@ -185,7 +176,6 @@ const mockLosses: Loss[] = [
 ];
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // State for all data collections
   const [productionBatches, setProductionBatches] = useState<ProductionBatch[]>([]);
   const [sales, setSales] = useState<Sale[]>(mockSales);
   const [orders, setOrders] = useState<Order[]>(mockOrders);
@@ -196,7 +186,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [materialBatches, setMaterialBatches] = useState<MaterialBatch[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
-  // Loading states
   const [isLoading, setIsLoading] = useState({
     products: true,
     materials: true,
@@ -210,7 +199,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const { toast } = useToast();
 
-  // State for dashboard stats
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
     totalProduction: 0,
     totalSales: 0,
@@ -218,7 +206,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     averageProfitability: 0
   });
 
-  // Fetch all data from Supabase
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -345,7 +332,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadData();
   }, [toast]);
 
-  // Refetch functions
   const refetchProducts = async () => {
     try {
       setIsLoading(prev => ({ ...prev, products: true }));
@@ -414,9 +400,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Calculate dashboard stats based on date range
   useEffect(() => {
-    // Filter data based on date range
     const filterByDateRange = <T extends { date?: Date; productionDate?: Date }>(
       items: T[],
       dateField: 'date' | 'productionDate'
@@ -437,30 +421,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     };
     
-    // Filter production batches and sales
     const filteredProductionBatches = filterByDateRange(productionBatches, 'productionDate');
     const filteredSales = filterByDateRange(sales, 'date');
     
-    // Calculate total production
     const totalProduction = filteredProductionBatches.reduce((acc, batch) => {
       return acc + batch.producedItems.reduce((itemAcc, item) => itemAcc + item.quantity, 0);
     }, 0);
 
-    // Calculate total sales
     const totalSales = filteredSales.reduce((acc, sale) => {
       return acc + sale.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0);
     }, 0);
 
-    // Calculate current inventory (not filtered by date range)
     const currentInventory = productionBatches.reduce((acc, batch) => {
       return acc + batch.producedItems.reduce((itemAcc, item) => {
-        // Ensure we're using a valid number
         const remaining = typeof item.remainingQuantity === 'number' ? item.remainingQuantity : 0;
         return itemAcc + remaining;
       }, 0);
     }, 0);
 
-    // Calculate average profitability (simplified)
     const averageProfitability = totalSales > 0 ? (totalSales / totalProduction) * 100 : 0;
 
     setDashboardStats({
@@ -470,7 +448,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       averageProfitability: parseFloat(averageProfitability.toFixed(2))
     });
 
-    // Log the calculated values for debugging
     console.log("Dashboard stats calculation with date range:", {
       dateRange,
       totalProduction,
@@ -481,12 +458,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   }, [productionBatches, sales, dateRange]);
 
-  // Helper functions
   const generateId = () => {
     return Math.random().toString(36).substring(2, 15);
   };
 
-  // CRUD operations for Production Batches
   const addProductionBatch = async (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newBatch = await createProductionBatchApi(batch);
@@ -546,13 +521,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // CRUD operations for Sales
   const addSale = async (sale: Omit<Sale, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newSale = await createSaleApi(sale);
       setSales(prev => [...prev, newSale]);
       
-      // Update production batches after sale
       await fetchProductionBatches().then(setProductionBatches);
       
       toast({
@@ -596,7 +569,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await deleteSaleApi(id);
       setSales(prev => prev.filter(s => s.id !== id));
       
-      // Refresh production batches after deleting a sale
       await fetchProductionBatches().then(setProductionBatches);
       
       toast({
@@ -614,13 +586,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // CRUD operations for Orders
   const addOrder = async (order: Omit<Order, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newOrder = await createOrderApi(order);
       setOrders(prev => [...prev, newOrder]);
       
-      // Refresh material batches after adding an order
       await fetchMaterialBatchesWithDetails().then(setMaterialBatches);
       
       toast({
@@ -644,6 +614,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setOrders(prev => 
         prev.map(o => o.id === id ? { ...o, ...order, updatedAt: new Date() } : o)
       );
+      
+      await refetchMaterialBatches();
+      
       toast({
         title: "Sucesso",
         description: "Pedido atualizado com sucesso",
@@ -664,7 +637,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await deleteOrderApi(id);
       setOrders(prev => prev.filter(o => o.id !== id));
       
-      // Refresh material batches after deleting an order
       await fetchMaterialBatchesWithDetails().then(setMaterialBatches);
       
       toast({
@@ -682,7 +654,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // CRUD operations for Losses
   const addLoss = async (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newLoss = await createLossApi(loss);
@@ -729,10 +700,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       await deleteLossApi(id);
       
-      // Update the state only after successful deletion
       setLosses(prev => prev.filter(l => l.id !== id));
       
-      // Clear any toasts that might be showing
       toast({
         title: "Sucesso",
         description: "Perda excluída com sucesso",
@@ -750,7 +719,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // CRUD operations for Products - Using Supabase
   const addProduct = async (product: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newProduct = await createProduct(product);
@@ -812,7 +780,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // CRUD operations for Materials - Updated to use Supabase
   const addMaterial = async (material: Omit<Material, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newMaterial = await createMaterial(material);
@@ -874,7 +841,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // CRUD operations for Suppliers - Updated to use Supabase
   const addSupplier = async (supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newSupplier = await createSupplier(supplier);
@@ -936,12 +902,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Helper method to get available materials
   const getAvailableMaterials = () => {
     return materialBatches.filter(batch => batch.remainingQuantity > 0);
   };
 
-  // Helper method to get available products
   const getAvailableProducts = () => {
     const availableProducts: ProducedItem[] = [];
     
