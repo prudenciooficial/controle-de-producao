@@ -1,4 +1,5 @@
 
-import { useToast, toast } from "@/hooks/use-toast";
+// This file re-exports toast functionality from hooks/use-toast.ts
+// This maintains backward compatibility for components using the original import path
 
-export { useToast, toast };
+export { useToast, toast } from "@/hooks/use-toast";
