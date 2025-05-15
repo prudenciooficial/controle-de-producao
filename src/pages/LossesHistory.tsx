@@ -38,13 +38,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, MoreVertical, Eye, Trash, Loader, PencilIcon } from "lucide-react";
+import { ArrowLeft, MoreVertical, Eye, Trash, Loader, PencilIcon, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Loss } from "../types";
 import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const LossesHistory = () => {
   const { losses, deleteLoss, updateLoss, isLoading } = useData();
@@ -365,6 +366,13 @@ const LossesHistory = () => {
               Atualize os dados do registro de perda.
             </DialogDescription>
           </DialogHeader>
+          
+          <Alert variant="warning">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Alterações nos registros de perdas afetam a análise de eficiência da produção.
+            </AlertDescription>
+          </Alert>
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleEditSubmit)} className="space-y-4">

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Order, OrderItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -129,21 +130,171 @@ export const updateOrder = async (
   id: string,
   order: Partial<Order>
 ): Promise<void> => {
-  const updates: any = {};
-  
-  if (order.date) {
-    updates.date = order.date instanceof Date ? order.date.toISOString() : order.date;
+  try {
+    // Start transaction
+    await beginTransaction();
+    
+    // Update the order basic info
+    const updates: any = {};
+    
+    if (order.date) {
+      updates.date = order.date instanceof Date ? order.date.toISOString() : order.date;
+    }
+    if (order.invoiceNumber) updates.invoice_number = order.invoiceNumber;
+    if (order.supplierId) updates.supplier_id = order.supplierId;
+    if (order.notes !== undefined) updates.notes = order.notes;
+    
+    const { error } = await supabase
+      .from("orders")
+      .update(updates)
+      .eq("id", id);
+    
+    if (error) throw error;
+    
+    // If there are items to update
+    if (order.items && order.items.length > 0) {
+      console.log(`Updating ${order.items.length} order items`);
+      
+      // First, get current items to compare
+      const { data: currentItems, error: fetchError } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", id);
+      
+      if (fetchError) throw fetchError;
+      
+      // Check which items need to be updated, which need to be deleted, and which are new
+      const currentItemIds = new Set(currentItems?.map(item => item.id) || []);
+      const updatedItemIds = new Set(order.items.filter(item => item.id).map(item => item.id));
+      
+      // Items to delete: exist in current but not in updated
+      const itemsToDelete = currentItems?.filter(item => !updatedItemIds.has(item.id)) || [];
+      
+      // Items to update: exist in both
+      const itemsToUpdate = order.items.filter(item => item.id && currentItemIds.has(item.id));
+      
+      // Items to add: exist in updated but not in current
+      const itemsToAdd = order.items.filter(item => !item.id || !currentItemIds.has(item.id));
+      
+      console.log(`Deleting ${itemsToDelete.length} items, updating ${itemsToUpdate.length} items, adding ${itemsToAdd.length} items`);
+      
+      // Process deletions
+      for (const item of itemsToDelete) {
+        // First check if any material batches related to this order item need to be deleted
+        const { data: materialBatches } = await supabase
+          .from("material_batches")
+          .select("id")
+          .eq("material_id", item.material_id)
+          .eq("batch_number", item.batch_number);
+        
+        if (materialBatches && materialBatches.length > 0) {
+          // Check if any of these batches are used in production
+          const batchIds = materialBatches.map(batch => batch.id);
+          
+          const { data: usedMaterials } = await supabase
+            .from("used_materials")
+            .select("material_batch_id")
+            .in("material_batch_id", batchIds);
+          
+          if (!usedMaterials || usedMaterials.length === 0) {
+            // Safe to delete the material batch if not used in production
+            const { error: deleteBatchError } = await supabase
+              .from("material_batches")
+              .delete()
+              .in("id", batchIds);
+            
+            if (deleteBatchError) throw deleteBatchError;
+          }
+        }
+        
+        // Now delete the order item
+        const { error: deleteError } = await supabase
+          .from("order_items")
+          .delete()
+          .eq("id", item.id);
+        
+        if (deleteError) throw deleteError;
+      }
+      
+      // Process updates
+      for (const item of itemsToUpdate) {
+        if (!item.id) continue; // Extra safety check
+        
+        const { error: updateError } = await supabase
+          .from("order_items")
+          .update({
+            quantity: item.quantity,
+            unit_of_measure: item.unitOfMeasure,
+            batch_number: item.batchNumber,
+            expiry_date: item.expiryDate instanceof Date ? item.expiryDate.toISOString() : item.expiryDate,
+            has_report: item.hasReport
+          })
+          .eq("id", item.id);
+        
+        if (updateError) throw updateError;
+        
+        // Update corresponding material batch if it exists
+        const { data: materialBatches } = await supabase
+          .from("material_batches")
+          .select("*")
+          .eq("material_id", item.materialId)
+          .eq("batch_number", item.batchNumber);
+        
+        if (materialBatches && materialBatches.length > 0) {
+          // Get the original order item to see if quantity changed
+          const originalItem = currentItems?.find(ci => ci.id === item.id);
+          if (originalItem) {
+            const quantityDiff = item.quantity - originalItem.quantity;
+            if (quantityDiff !== 0) {
+              for (const batch of materialBatches) {
+                // Only update if not being used in production yet
+                const { data: usedMaterials } = await supabase
+                  .from("used_materials")
+                  .select("material_batch_id")
+                  .eq("material_batch_id", batch.id);
+                
+                if (!usedMaterials || usedMaterials.length === 0) {
+                  const { error: updateBatchError } = await supabase
+                    .from("material_batches")
+                    .update({
+                      quantity: batch.quantity + quantityDiff,
+                      supplied_quantity: batch.supplied_quantity + quantityDiff,
+                      remaining_quantity: batch.remaining_quantity + quantityDiff
+                    })
+                    .eq("id", batch.id);
+                  
+                  if (updateBatchError) throw updateBatchError;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Process additions
+      for (const item of itemsToAdd) {
+        // Insert the new order item
+        const { error: insertError } = await supabase
+          .from("order_items")
+          .insert({
+            order_id: id,
+            material_id: item.materialId,
+            quantity: item.quantity,
+            unit_of_measure: item.unitOfMeasure,
+            batch_number: item.batchNumber,
+            expiry_date: item.expiryDate instanceof Date ? item.expiryDate.toISOString() : item.expiryDate,
+            has_report: item.hasReport
+          });
+        
+        if (insertError) throw insertError;
+      }
+    }
+    
+    await endTransaction();
+  } catch (error) {
+    await abortTransaction();
+    throw error;
   }
-  if (order.invoiceNumber) updates.invoice_number = order.invoiceNumber;
-  if (order.supplierId) updates.supplier_id = order.supplierId;
-  if (order.notes !== undefined) updates.notes = order.notes;
-  
-  const { error } = await supabase
-    .from("orders")
-    .update(updates)
-    .eq("id", id);
-  
-  if (error) throw error;
 };
 
 export const deleteOrder = async (id: string): Promise<void> => {

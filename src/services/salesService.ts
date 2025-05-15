@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Sale, SaleItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -147,22 +148,176 @@ export const updateSale = async (
   id: string,
   sale: Partial<Sale>
 ): Promise<void> => {
-  const updates: any = {};
-  
-  if (sale.date) {
-    updates.date = sale.date instanceof Date ? sale.date.toISOString() : sale.date;
+  try {
+    await beginTransaction();
+    
+    // Update basic sale info
+    const updates: any = {};
+    
+    if (sale.date) {
+      updates.date = sale.date instanceof Date ? sale.date.toISOString() : sale.date;
+    }
+    if (sale.invoiceNumber) updates.invoice_number = sale.invoiceNumber;
+    if (sale.customerName) updates.customer_name = sale.customerName;
+    if (sale.type) updates.type = sale.type;
+    if (sale.notes !== undefined) updates.notes = sale.notes;
+    
+    const { error } = await supabase
+      .from("sales")
+      .update(updates)
+      .eq("id", id);
+    
+    if (error) throw error;
+    
+    // If there are items to update
+    if (sale.items && sale.items.length > 0) {
+      console.log(`Updating ${sale.items.length} sale items`);
+      
+      // First, get current items to compare
+      const { data: currentItems, error: fetchError } = await supabase
+        .from("sale_items")
+        .select(`
+          *,
+          produced_items:produced_item_id (remaining_quantity)
+        `)
+        .eq("sale_id", id);
+      
+      if (fetchError) throw fetchError;
+      
+      // Check which items need to be updated, which need to be deleted, and which are new
+      const currentItemIds = new Set(currentItems?.map(item => item.id) || []);
+      const updatedItemIds = new Set(sale.items.filter(item => item.id).map(item => item.id));
+      
+      // Items to delete: exist in current but not in updated
+      const itemsToDelete = currentItems?.filter(item => !updatedItemIds.has(item.id)) || [];
+      
+      // Items to update: exist in both
+      const itemsToUpdate = sale.items.filter(item => item.id && currentItemIds.has(item.id));
+      
+      // Items to add: exist in updated but not in current
+      const itemsToAdd = sale.items.filter(item => !item.id || !currentItemIds.has(item.id));
+      
+      console.log(`Deleting ${itemsToDelete.length} items, updating ${itemsToUpdate.length} items, adding ${itemsToAdd.length} items`);
+      
+      // Process deletions
+      for (const item of itemsToDelete) {
+        // Restore the quantity to the produced item
+        const { error: restoreError } = await supabase
+          .from("produced_items")
+          .update({
+            remaining_quantity: item.produced_items.remaining_quantity + item.quantity
+          })
+          .eq("id", item.produced_item_id);
+        
+        if (restoreError) throw restoreError;
+        
+        // Now delete the sale item
+        const { error: deleteError } = await supabase
+          .from("sale_items")
+          .delete()
+          .eq("id", item.id);
+        
+        if (deleteError) throw deleteError;
+      }
+      
+      // Process updates
+      for (const itemUpdate of itemsToUpdate) {
+        if (!itemUpdate.id) continue; // Safety check
+        
+        // Find the original item to calculate quantity difference
+        const originalItem = currentItems?.find(ci => ci.id === itemUpdate.id);
+        
+        if (originalItem) {
+          const quantityDiff = itemUpdate.quantity - originalItem.quantity;
+          
+          if (quantityDiff !== 0) {
+            // Update the produced item's remaining quantity
+            const { data: producedItem, error: fetchProducedError } = await supabase
+              .from("produced_items")
+              .select("remaining_quantity")
+              .eq("id", itemUpdate.producedItemId || originalItem.produced_item_id)
+              .single();
+            
+            if (fetchProducedError) throw fetchProducedError;
+            
+            const newRemainingQty = producedItem.remaining_quantity - quantityDiff;
+            
+            // Check if we have enough remaining quantity
+            if (newRemainingQty < 0) {
+              throw new Error(`Não há quantidade suficiente disponível para o produto ${itemUpdate.productName || 'selecionado'}`);
+            }
+            
+            // Update the produced item
+            const { error: updateProducedError } = await supabase
+              .from("produced_items")
+              .update({ remaining_quantity: newRemainingQty })
+              .eq("id", itemUpdate.producedItemId || originalItem.produced_item_id);
+            
+            if (updateProducedError) throw updateProducedError;
+          }
+          
+          // Update the sale item
+          const { error: updateError } = await supabase
+            .from("sale_items")
+            .update({
+              product_id: itemUpdate.productId || originalItem.product_id,
+              produced_item_id: itemUpdate.producedItemId || originalItem.produced_item_id,
+              quantity: itemUpdate.quantity,
+              unit_of_measure: itemUpdate.unitOfMeasure
+            })
+            .eq("id", itemUpdate.id);
+          
+          if (updateError) throw updateError;
+        }
+      }
+      
+      // Process additions
+      for (const itemToAdd of itemsToAdd) {
+        // Check if we have enough remaining quantity
+        const { data: producedItem, error: fetchProducedError } = await supabase
+          .from("produced_items")
+          .select("remaining_quantity")
+          .eq("id", itemToAdd.producedItemId)
+          .single();
+        
+        if (fetchProducedError) throw fetchProducedError;
+        
+        const newRemainingQty = producedItem.remaining_quantity - itemToAdd.quantity;
+        
+        // Check if we have enough remaining quantity
+        if (newRemainingQty < 0) {
+          throw new Error(`Não há quantidade suficiente disponível para o produto ${itemToAdd.productName || 'selecionado'}`);
+        }
+        
+        // Update the produced item
+        const { error: updateProducedError } = await supabase
+          .from("produced_items")
+          .update({ remaining_quantity: newRemainingQty })
+          .eq("id", itemToAdd.producedItemId);
+        
+        if (updateProducedError) throw updateProducedError;
+        
+        // Add the new sale item
+        const { error: insertError } = await supabase
+          .from("sale_items")
+          .insert({
+            sale_id: id,
+            product_id: itemToAdd.productId,
+            produced_item_id: itemToAdd.producedItemId,
+            quantity: itemToAdd.quantity,
+            unit_of_measure: itemToAdd.unitOfMeasure
+          });
+        
+        if (insertError) throw insertError;
+      }
+    }
+    
+    await endTransaction();
+  } catch (error) {
+    // Rollback on error
+    await abortTransaction();
+    throw error;
   }
-  if (sale.invoiceNumber) updates.invoice_number = sale.invoiceNumber;
-  if (sale.customerName) updates.customer_name = sale.customerName;
-  if (sale.type) updates.type = sale.type;
-  if (sale.notes !== undefined) updates.notes = sale.notes;
-  
-  const { error } = await supabase
-    .from("sales")
-    .update(updates)
-    .eq("id", id);
-  
-  if (error) throw error;
 };
 
 export const deleteSale = async (id: string): Promise<void> => {
