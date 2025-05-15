@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
@@ -415,7 +414,7 @@ const OrdersHistory = () => {
           </DialogHeader>
           
           <div className="grid gap-6">
-            <Alert variant="warning">
+            <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 Atenção: Alterar quantidades dos insumos afetará diretamente o estoque. Adições e reduções de quantidade serão automaticamente aplicadas.

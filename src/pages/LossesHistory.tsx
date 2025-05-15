@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
@@ -367,7 +366,7 @@ const LossesHistory = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <Alert variant="warning">
+          <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               Alterações nos registros de perdas afetam a análise de eficiência da produção.
