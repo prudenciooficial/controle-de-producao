@@ -21,14 +21,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, MoreVertical, Eye, Trash, Edit, Loader, PlusCircle, MinusCircle, AlertCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Sale, SaleItem, ProducedItem } from "../types";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const SalesHistory = () => {
-  const { sales, products, producedItems, deleteSale, updateSale } = useData();
+  const { sales, products, getAvailableProducts, deleteSale, updateSale } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -71,14 +71,15 @@ const SalesHistory = () => {
       setEditedItems(selectedSale.items.map(item => ({ ...item })));
       
       // Get all available produced items with remaining quantity > 0
-      const available = producedItems.filter(item => item.remainingQuantity > 0);
+      const available = getAvailableProducts();
       setAvailableItems(available);
     }
-  }, [selectedSale, producedItems]);
+  }, [selectedSale, getAvailableProducts]);
   
   useEffect(() => {
     if (newItem.productId) {
-      const batches = producedItems.filter(
+      const availableProducts = getAvailableProducts();
+      const batches = availableProducts.filter(
         item => item.productId === newItem.productId && item.remainingQuantity > 0
       );
       setAvailableBatchesForProduct(batches);
@@ -93,7 +94,7 @@ const SalesHistory = () => {
     } else {
       setAvailableBatchesForProduct([]);
     }
-  }, [newItem.productId, producedItems]);
+  }, [newItem.productId, getAvailableProducts]);
   
   const handleDelete = (id: string) => {
     deleteSale(id);
@@ -160,7 +161,7 @@ const SalesHistory = () => {
     
     // Find the product and batch data
     const product = products.find(p => p.id === newItem.productId);
-    const batch = producedItems.find(p => p.id === newItem.producedItemId);
+    const batch = getAvailableProducts().find(p => p.id === newItem.producedItemId);
     
     if (!product || !batch) {
       toast({
