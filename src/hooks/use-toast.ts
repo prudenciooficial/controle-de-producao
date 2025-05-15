@@ -208,17 +208,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     };
   }, [state.toasts, dismissToast]);
 
-  // Fix: Use correct JSX syntax for the Provider
   return (
-    <ToastContext.Provider 
-      value={{
-        toasts: state.toasts,
-        addToast,
-        updateToast,
-        dismissToast,
-        removeToast,
-      }}
-    >
+    <ToastContext.Provider value={{
+      toasts: state.toasts,
+      addToast,
+      updateToast,
+      dismissToast,
+      removeToast,
+    }}>
       {children}
     </ToastContext.Provider>
   );
