@@ -120,7 +120,7 @@ const reducer = (state: State, action: Action): State => {
   }
 };
 
-const Toast = React.createContext<{
+const ToastContext = React.createContext<{
   toasts: ToasterToast[];
   addToast: (toast: ToasterToast) => void;
   updateToast: (toast: Partial<ToasterToast>) => void;
@@ -135,7 +135,7 @@ const Toast = React.createContext<{
 });
 
 export const useToast = () => {
-  const context = React.useContext(Toast);
+  const context = React.useContext(ToastContext);
 
   if (context === undefined) {
     throw new Error("useToast must be used within a ToastProvider");
@@ -206,7 +206,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [state.toasts, dismissToast]);
 
   return (
-    <Toast.Provider
+    <ToastContext.Provider
       value={{
         toasts: state.toasts,
         addToast,
@@ -216,32 +216,28 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-    </Toast.Provider>
+    </ToastContext.Provider>
   );
 }
 
 type Toast = Omit<ToasterToast, "id">;
 
 export function toast(props: Toast) {
-  const { toasts, addToast } = useToast();
-
+  const { addToast } = useToast();
   return addToast({ ...props, id: genId() });
 }
 
 toast.update = (id: string, props: Toast) => {
   const { updateToast } = useToast();
-
   return updateToast({ id, ...props });
 };
 
 toast.dismiss = (id?: string) => {
   const { dismissToast } = useToast();
-
   return dismissToast(id);
 };
 
 toast.remove = (id?: string) => {
   const { removeToast } = useToast();
-
   return removeToast(id);
 };
