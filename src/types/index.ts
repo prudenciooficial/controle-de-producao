@@ -1,4 +1,3 @@
-
 import { DateRange } from "react-day-picker";
 
 export interface ProductionBatch {
@@ -13,7 +12,6 @@ export interface ProductionBatch {
   mixDay: string;
   mixCount: number;
   notes?: string;
-  feculaBags?: number; // Adding field for the number of fécula bags
   createdAt: Date;
   updatedAt: Date;
 }
@@ -107,8 +105,6 @@ export interface Product {
   description?: string;
   unitOfMeasure: string;
   weightFactor?: number;
-  feculaConversionFactor?: number;  // For fécula conversion (usually 25)
-  productionPredictionFactor?: number;  // For production prediction
   type?: string;
   notes?: string;
   createdAt: Date;

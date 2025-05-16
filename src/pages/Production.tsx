@@ -26,10 +26,6 @@ const productionFormSchema = z.object({
     .number()
     .int()
     .positive({ message: "Quantidade de mexidas deve ser maior que zero" }),
-  feculaBags: z
-    .number()
-    .int()
-    .nonnegative({ message: "Quantidade de sacos de fécula deve ser maior ou igual a zero" }),
   notes: z.string().optional(),
   producedItems: z.array(
     z.object({
@@ -66,7 +62,6 @@ const Production = () => {
       batchNumber: `PROD-${today}`,
       mixDate: today,
       mixCount: 1,
-      feculaBags: 1,
       notes: "",
       producedItems: [{ productId: "", quantity: 0 }],
       usedMaterials: [
@@ -151,7 +146,6 @@ const Production = () => {
         productionDate: parseDateString(data.productionDate),
         mixDay: data.mixDate,
         mixCount: data.mixCount,
-        feculaBags: data.feculaBags,
         notes: data.notes,
         producedItems,
         usedMaterials,
@@ -170,7 +164,6 @@ const Production = () => {
         batchNumber: `PROD-${today}`,
         mixDate: today,
         mixCount: 1,
-        feculaBags: 1,
         notes: "",
         producedItems: [{ productId: "", quantity: 0 }],
         usedMaterials: [{ materialBatchId: "", quantity: 0 }],
@@ -214,7 +207,7 @@ const Production = () => {
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   {/* Production details */}
-                  <div className={cn("grid gap-6", isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3")}>
+                  <div className={cn("grid gap-6", isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4")}>
                     <FormField
                       control={form.control}
                       name="productionDate"
@@ -263,24 +256,6 @@ const Production = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Quantidade de Mexidas</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="feculaBags"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Sacos de Fécula</FormLabel>
                           <FormControl>
                             <Input
                               type="number"

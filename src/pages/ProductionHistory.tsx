@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
@@ -60,25 +61,6 @@ const ProductionHistory = () => {
   // Added for product and material editing
   const [producedItems, setProducedItems] = useState<ProducedItem[]>([]);
   const [usedMaterials, setUsedMaterials] = useState<UsedMaterial[]>([]);
-  
-  // Calculation helper functions
-  const calculateFeculaUsed = (batch: ProductionBatch, products: Product[]) => {
-    const conversionFactor = products.find(p => p.name.includes("Fécula"))?.feculaConversionFactor || 25;
-    return (batch.mixCount * (batch.feculaBags || 0)) * conversionFactor;
-  };
-  
-  const calculatePredictedKg = (feculaKg: number, products: Product[]) => {
-    const predictionFactor = products.find(p => p.name.includes("Fécula"))?.productionPredictionFactor || 5;
-    return feculaKg * predictionFactor;
-  };
-  
-  const calculateProducedKg = (items: ProducedItem[], products: Product[]) => {
-    return items.reduce((total, item) => {
-      const product = products.find(p => p.id === item.productId);
-      const weightFactor = product?.weightFactor || 1;
-      return total + (item.quantity * weightFactor);
-    }, 0);
-  };
   
   const filteredBatches = productionBatches.filter(
     (batch) =>
@@ -346,7 +328,7 @@ const ProductionHistory = () => {
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={handleDetailsDialogClose}>
         {selectedBatch && (
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>
                 Detalhes da Produção - Lote {selectedBatch.batchNumber}
@@ -370,52 +352,7 @@ const ProductionHistory = () => {
                     <p className="text-sm font-medium">Qtd. de Mexidas:</p>
                     <p className="text-sm">{selectedBatch.mixCount}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">Sacos de Fécula:</p>
-                    <p className="text-sm">{selectedBatch.feculaBags || 0}</p>
-                  </div>
                 </div>
-              </div>
-              
-              {/* Production Metrics */}
-              <div className="bg-muted/30 p-4 rounded-md">
-                <h3 className="text-lg font-medium mb-2">
-                  Métricas de Produção
-                </h3>
-                
-                {(() => {
-                  // Calculate metrics
-                  const feculaKg = calculateFeculaUsed(selectedBatch, products);
-                  const predictedKg = calculatePredictedKg(feculaKg, products);
-                  const producedKg = calculateProducedKg(selectedBatch.producedItems, products);
-                  const difference = producedKg - predictedKg;
-                  const average = feculaKg > 0 ? (producedKg / feculaKg).toFixed(2) : "N/A";
-                  
-                  return (
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                      <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow">
-                        <p className="text-xs text-muted-foreground">Fécula Utilizada</p>
-                        <p className="text-lg font-bold">{feculaKg.toFixed(2)} kg</p>
-                      </div>
-                      <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow">
-                        <p className="text-xs text-muted-foreground">KG's Previstos</p>
-                        <p className="text-lg font-bold">{predictedKg.toFixed(2)} kg</p>
-                      </div>
-                      <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow">
-                        <p className="text-xs text-muted-foreground">KG's Produzidos</p>
-                        <p className="text-lg font-bold">{producedKg.toFixed(2)} kg</p>
-                      </div>
-                      <div className={`bg-white dark:bg-gray-800 p-3 rounded-md shadow ${difference >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                        <p className="text-xs text-muted-foreground">Diferença</p>
-                        <p className="text-lg font-bold">{difference.toFixed(2)} kg</p>
-                      </div>
-                      <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow">
-                        <p className="text-xs text-muted-foreground">Média Produção</p>
-                        <p className="text-lg font-bold">{average}</p>
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
               
               <div>
