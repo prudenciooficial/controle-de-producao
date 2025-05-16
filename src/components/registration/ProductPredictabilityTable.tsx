@@ -18,6 +18,8 @@ import { updateProduct } from "@/services";
 
 interface ExtendedProduct extends Product {
   weightFactor: number;
+  feculaConversionFactor?: number;
+  productionPredictionFactor?: number;
   isEditing?: boolean;
 }
 
@@ -31,6 +33,8 @@ const ProductPredictabilityTable = () => {
     const productsWithWeightFactor = products.map(product => ({
       ...product,
       weightFactor: product.weightFactor || 1,
+      feculaConversionFactor: product.feculaConversionFactor || 25,
+      productionPredictionFactor: product.productionPredictionFactor || 5,
       isEditing: false
     }));
     setEditableProducts(productsWithWeightFactor);
@@ -60,6 +64,8 @@ const ProductPredictabilityTable = () => {
           return { 
             ...originalProduct!, 
             weightFactor: originalProduct?.weightFactor || 1,
+            feculaConversionFactor: originalProduct?.feculaConversionFactor || 25,
+            productionPredictionFactor: originalProduct?.productionPredictionFactor || 5,
             isEditing: false 
           };
         }
@@ -68,12 +74,12 @@ const ProductPredictabilityTable = () => {
     );
   };
   
-  const handleInputChange = (id: string, value: string) => {
+  const handleInputChange = (id: string, field: string, value: string) => {
     const numValue = parseFloat(value) || 0;
     setEditableProducts(prev => 
       prev.map(product => 
         product.id === id 
-          ? { ...product, weightFactor: numValue } 
+          ? { ...product, [field]: numValue } 
           : product
       )
     );
@@ -85,7 +91,9 @@ const ProductPredictabilityTable = () => {
     
     try {
       await updateProduct(id, { 
-        weightFactor: product.weightFactor 
+        weightFactor: product.weightFactor,
+        feculaConversionFactor: product.feculaConversionFactor,
+        productionPredictionFactor: product.productionPredictionFactor
       });
       
       setEditableProducts(prev => 
@@ -95,17 +103,17 @@ const ProductPredictabilityTable = () => {
       );
       
       toast({
-        title: "Fator de peso atualizado",
-        description: `O fator de peso para ${product.name} foi atualizado com sucesso.`
+        title: "Fatores atualizados",
+        description: `Os fatores para ${product.name} foram atualizados com sucesso.`
       });
       
       // Refresh products to get updated data
       refetchProducts();
     } catch (error) {
-      console.error("Erro ao atualizar fator de peso:", error);
+      console.error("Erro ao atualizar fatores:", error);
       toast({
         title: "Erro ao salvar",
-        description: "Ocorreu um erro ao atualizar o fator de peso.",
+        description: "Ocorreu um erro ao atualizar os fatores.",
         variant: "destructive"
       });
     }
@@ -125,10 +133,10 @@ const ProductPredictabilityTable = () => {
       <div className="mb-4 p-4 bg-muted/50 rounded-md">
         <h3 className="font-medium mb-2">Sobre a Previsibilidade</h3>
         <p className="text-sm text-muted-foreground">
-          Configure quanto cada unidade de produto representa em peso. Por exemplo:<br/>
-          • Produto de 1kg = fator 1 (1 unidade = 1kg)<br/>
-          • Produto de 500g = fator 0.5 (1 unidade = 0.5kg)<br/>
-          • Caixa com 10 unidades de 1kg = fator 10 (1 unidade = 10kg)
+          Configure os fatores de previsibilidade e conversão para cada produto:<br/>
+          • <strong>Fator de Peso (kg):</strong> Quanto cada unidade de produto representa em peso.<br/>
+          • <strong>Fator de Conversão de Fécula:</strong> Fator multiplicador para converter sacos de fécula em kg (normalmente 25).<br/>
+          • <strong>Fator de Previsão KG Produção:</strong> Fator multiplicador para estimar kg produzidos a partir de kg de fécula.
         </p>
       </div>
       
@@ -139,6 +147,8 @@ const ProductPredictabilityTable = () => {
             <TableHead>Código</TableHead>
             <TableHead>Unidade Base</TableHead>
             <TableHead>Fator de Peso (kg)</TableHead>
+            <TableHead>Fator de Conversão de Fécula</TableHead>
+            <TableHead>Fator de Previsão KG Produção</TableHead>
             <TableHead className="w-[100px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -156,11 +166,39 @@ const ProductPredictabilityTable = () => {
                       step="0.01"
                       min="0"
                       value={product.weightFactor}
-                      onChange={e => handleInputChange(product.id, e.target.value)}
+                      onChange={e => handleInputChange(product.id, 'weightFactor', e.target.value)}
                       className="w-24"
                     />
                   ) : (
                     product.weightFactor
+                  )}
+                </TableCell>
+                <TableCell>
+                  {product.isEditing ? (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={product.feculaConversionFactor}
+                      onChange={e => handleInputChange(product.id, 'feculaConversionFactor', e.target.value)}
+                      className="w-24"
+                    />
+                  ) : (
+                    product.feculaConversionFactor
+                  )}
+                </TableCell>
+                <TableCell>
+                  {product.isEditing ? (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={product.productionPredictionFactor}
+                      onChange={e => handleInputChange(product.id, 'productionPredictionFactor', e.target.value)}
+                      className="w-24"
+                    />
+                  ) : (
+                    product.productionPredictionFactor
                   )}
                 </TableCell>
                 <TableCell>
@@ -197,7 +235,7 @@ const ProductPredictabilityTable = () => {
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={5} className="text-center">
+              <TableCell colSpan={7} className="text-center">
                 Nenhum produto encontrado
               </TableCell>
             </TableRow>

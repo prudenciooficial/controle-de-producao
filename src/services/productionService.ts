@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -88,6 +87,7 @@ const fetchProductionBatchById = async (id: string): Promise<ProductionBatch> =>
     productionDate: new Date(data.production_date),
     mixDay: data.mix_day,
     mixCount: data.mix_count,
+    feculaBags: data.fecula_bags || 0, // Add feculaBags with a default of 0
     notes: data.notes,
     producedItems: producedItems,
     usedMaterials: usedMaterials,
@@ -119,6 +119,7 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
       productionDate: new Date(batch.production_date),
       mixDay: batch.mix_day,
       mixCount: batch.mix_count,
+      feculaBags: batch.fecula_bags || 0, // Add feculaBags with a default of 0
       notes: batch.notes,
       producedItems: producedItems,
       usedMaterials: usedMaterials,
@@ -145,6 +146,7 @@ export const createProductionBatch = async (
         production_date: batch.productionDate.toISOString(),
         mix_day: batch.mixDay,
         mix_count: batch.mixCount,
+        fecula_bags: batch.feculaBags || 0, // Add feculaBags to the insert
         notes: batch.notes
       })
       .select()
@@ -249,6 +251,7 @@ export const updateProductionBatch = async (
     if (batch.productionDate) updates.production_date = batch.productionDate.toISOString();
     if (batch.mixDay) updates.mix_day = batch.mixDay;
     if (batch.mixCount) updates.mix_count = batch.mixCount;
+    if (batch.feculaBags !== undefined) updates.fecula_bags = batch.feculaBags;
     if (batch.notes !== undefined) updates.notes = batch.notes;
 
     // Update the production batch
