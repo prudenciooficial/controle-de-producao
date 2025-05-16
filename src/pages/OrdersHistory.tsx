@@ -240,8 +240,8 @@ const OrdersHistory = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Nota Fiscal</TableHead>
                 <TableHead>Data</TableHead>
-                <TableHead>Nota Fiscal</TableHead>                
                 <TableHead>Fornecedor</TableHead>
                 <TableHead>Insumos</TableHead>
                 <TableHead>Quantidade Total</TableHead>
