@@ -340,7 +340,7 @@ const Orders = () => {
                             control={form.control}
                             name={`items.${index}.hasReport`}
                             render={({ field }) => (
-                              <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-6">
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0 items-center">
                                 <FormControl>
                                   <Checkbox
                                     checked={field.value}
