@@ -1,6 +1,6 @@
 
-import { Toast, ToastActionElement, ToastProps } from "@/components/ui/toast";
 import * as React from "react";
+import { Toast, ToastActionElement, ToastProps } from "@/components/ui/toast";
 
 const TOAST_LIMIT = 5;
 const TOAST_REMOVE_DELAY = 1000000;
@@ -122,7 +122,7 @@ export const reducer = (state: State, action: Action): State => {
   }
 };
 
-const listeners: Array<(state: State) => void> = [];
+const listeners: ((state: State) => void)[] = [];
 
 let memoryState: State = { toasts: [] };
 
