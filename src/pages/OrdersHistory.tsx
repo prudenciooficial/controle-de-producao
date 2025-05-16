@@ -240,8 +240,8 @@ const OrdersHistory = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nota Fiscal</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead>Nota Fiscal</TableHead>                
                 <TableHead>Fornecedor</TableHead>
                 <TableHead>Insumos</TableHead>
                 <TableHead>Quantidade Total</TableHead>
@@ -251,9 +251,9 @@ const OrdersHistory = () => {
             <TableBody>
               {filteredOrders.length > 0 ? (
                 filteredOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>{order.invoiceNumber}</TableCell>
+                  <TableRow key={order.id}>                   
                     <TableCell>{new Date(order.date).toLocaleDateString()}</TableCell>
+                    <TableCell>{order.invoiceNumber}</TableCell>
                     <TableCell>{order.supplierName}</TableCell>
                     <TableCell>
                       {order.items
