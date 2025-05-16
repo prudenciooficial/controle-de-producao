@@ -158,10 +158,6 @@ const Orders = () => {
       </div>
       
       <Tabs defaultValue="novo-pedido" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="novo-pedido">Novo Pedido</TabsTrigger>
-        </TabsList>
-        
         <TabsContent value="novo-pedido">
           <Card>
             <CardHeader>

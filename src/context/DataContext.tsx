@@ -187,9 +187,9 @@ const mockLosses: Loss[] = [
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // State for all data collections
   const [productionBatches, setProductionBatches] = useState<ProductionBatch[]>([]);
-  const [sales, setSales] = useState<Sale[]>(mockSales);
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
-  const [losses, setLosses] = useState<Loss[]>(mockLosses);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [losses, setLosses] = useState<Loss[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
