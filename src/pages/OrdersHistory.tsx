@@ -102,10 +102,6 @@ const OrdersHistory = () => {
   const handleDelete = (id: string) => {
     deleteOrder(id);
     setShowDeleteDialog(false);
-    toast({
-      title: "Pedido excluído",
-      description: "O registro de pedido foi excluído com sucesso.",
-    });
   };
 
   const handleEdit = async () => {
@@ -122,10 +118,6 @@ const OrdersHistory = () => {
       
       await updateOrder(selectedOrder.id, updatedOrder);
       setShowEditDialog(false);
-      toast({
-        title: "Pedido atualizado",
-        description: "O registro de pedido foi atualizado com sucesso.",
-      });
     } catch (error) {
       console.error("Erro ao atualizar pedido:", error);
       toast({
