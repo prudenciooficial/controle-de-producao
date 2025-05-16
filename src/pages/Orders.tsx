@@ -117,10 +117,7 @@ const Orders = () => {
       
       addOrder(order);
       
-      toast({
-        title: "Pedido registrado",
-        description: `Pedido ${data.invoiceNumber} para ${supplier.name} registrado com sucesso.`,
-      });
+      
       
       // Reset form
       form.reset({
