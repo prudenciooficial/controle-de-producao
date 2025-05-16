@@ -347,7 +347,7 @@ const Orders = () => {
                                     onCheckedChange={field.onChange}
                                   />
                                 </FormControl>
-                                <div className="space-y-1 leading-none">
+                                <div className="space-y-1 leading-none center">
                                   <FormLabel>Possui Laudo</FormLabel>
                                 </div>
                               </FormItem>
