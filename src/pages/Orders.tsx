@@ -148,7 +148,7 @@ const Orders = () => {
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Registrar Novo Pedido</h1>
+        <h1 className="text-2xl font-bold">Pedidos</h1>
         <div className="flex space-x-2">
           <Button variant="outline" onClick={() => navigate("/pedidos/historico")}>
             <History className="mr-2 h-4 w-4" />
@@ -161,6 +161,7 @@ const Orders = () => {
         <TabsContent value="novo-pedido">
           <Card>
             <CardHeader>
+              <CardTitle>Registrar Novo Pedido</CardTitle>
               <CardDescription>
                 Registre os detalhes do pedido e os insumos recebidos.
               </CardDescription>
