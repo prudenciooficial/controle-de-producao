@@ -1,4 +1,5 @@
 
+
 import { supabase } from "@/integrations/supabase/client";
 import { Product } from "../types";
 
@@ -18,6 +19,8 @@ export const fetchProducts = async (): Promise<Product[]> => {
     description: product.description,
     unitOfMeasure: product.unit_of_measure,
     weightFactor: product.weight_factor || 1, // Default to 1 if not set
+    feculaConversionFactor: product.fecula_conversion_factor || 25, // Default to 25 if not set
+    productionPredictionFactor: product.production_prediction_factor || 1.5, // Default to 1.5 if not set
     createdAt: new Date(product.created_at),
     updatedAt: new Date(product.updated_at)
   }));
@@ -48,6 +51,8 @@ export const createProduct = async (
     description: data.description,
     unitOfMeasure: data.unit_of_measure,
     weightFactor: data.weight_factor || 1,
+    feculaConversionFactor: data.fecula_conversion_factor || 25,
+    productionPredictionFactor: data.production_prediction_factor || 1.5,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
@@ -81,3 +86,4 @@ export const deleteProduct = async (id: string): Promise<void> => {
   
   if (error) throw error;
 };
+

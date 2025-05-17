@@ -6,6 +6,7 @@ import ProductsTable from "@/components/registration/ProductsTable";
 import MaterialsTable from "@/components/registration/MaterialsTable";
 import SuppliersTable from "@/components/registration/SuppliersTable";
 import ProductPredictabilityTable from "@/components/registration/ProductPredictabilityTable";
+import CalcTable from "@/components/registration/CalcTable";
 import { useData } from "@/context/DataContext";
 import { Loader2 } from "lucide-react";
 
@@ -24,6 +25,7 @@ const Registration = () => {
           <TabsTrigger value="materials">Matérias-Primas</TabsTrigger>
           <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
           <TabsTrigger value="predictability">Previsibilidade</TabsTrigger>
+          <TabsTrigger value="calculations">Cálculos</TabsTrigger>
         </TabsList>
         
         <TabsContent value="products">
@@ -90,6 +92,17 @@ const Registration = () => {
               ) : (
                 <ProductPredictabilityTable />
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="calculations">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cálculos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CalcTable />
             </CardContent>
           </Card>
         </TabsContent>

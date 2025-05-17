@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
+import { supabase } from "@/integrations/supabase/client";
 
 const ProductionHistory = () => {
   const { 
@@ -61,6 +62,36 @@ const ProductionHistory = () => {
   // Added for product and material editing
   const [producedItems, setProducedItems] = useState<ProducedItem[]>([]);
   const [usedMaterials, setUsedMaterials] = useState<UsedMaterial[]>([]);
+  
+  // Global calculation factors
+  const [globalFactors, setGlobalFactors] = useState({
+    feculaConversionFactor: 25,
+    productionPredictionFactor: 1.5
+  });
+
+  // Fetch global factors on component mount
+  useEffect(() => {
+    fetchGlobalFactors();
+  }, []);
+
+  const fetchGlobalFactors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("fecula_conversion_factor, production_prediction_factor")
+        .limit(1)
+        .single();
+      
+      if (!error && data) {
+        setGlobalFactors({
+          feculaConversionFactor: data.fecula_conversion_factor || 25,
+          productionPredictionFactor: data.production_prediction_factor || 1.5
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching global factors:", error);
+    }
+  };
   
   const filteredBatches = productionBatches.filter(
     (batch) =>
@@ -199,6 +230,44 @@ const ProductionHistory = () => {
       [field]: value
     };
     setUsedMaterials(updatedMaterials);
+  };
+
+  // Calculate production metrics based on the selected batch
+  const calculateProductionMetrics = (batch: ProductionBatch) => {
+    // Find fécula material in used materials
+    const feculaMaterial = batch.usedMaterials.find(
+      m => m.materialType.toLowerCase() === "fécula" || m.materialName.toLowerCase().includes("fécula")
+    );
+    
+    // Calculate fécula utilizada
+    const feculaQuantity = feculaMaterial ? feculaMaterial.quantity : 0;
+    const feculaUtilizada = batch.mixCount * feculaQuantity * globalFactors.feculaConversionFactor;
+    
+    // Calculate kg's previstos
+    const kgPrevistos = feculaUtilizada * globalFactors.productionPredictionFactor;
+    
+    // Calculate kg's produzidos (considering weight factor for each product)
+    let kgProduzidos = 0;
+    
+    for (const item of batch.producedItems) {
+      const product = products.find(p => p.id === item.productId);
+      const weightFactor = product?.weightFactor || 1;
+      kgProduzidos += item.quantity * weightFactor;
+    }
+    
+    // Calculate diferença
+    const diferenca = kgProduzidos - kgPrevistos;
+    
+    // Calculate média da produção
+    const mediaProducao = feculaUtilizada > 0 ? kgProduzidos / feculaUtilizada : 0;
+    
+    return {
+      feculaUtilizada: feculaUtilizada.toFixed(2),
+      kgPrevistos: kgPrevistos.toFixed(2),
+      kgProduzidos: kgProduzidos.toFixed(2),
+      diferenca: diferenca.toFixed(2),
+      mediaProducao: mediaProducao.toFixed(2)
+    };
   };
   
   return (
@@ -352,6 +421,44 @@ const ProductionHistory = () => {
                     <p className="text-sm font-medium">Qtd. de Mexidas:</p>
                     <p className="text-sm">{selectedBatch.mixCount}</p>
                   </div>
+                </div>
+              </div>
+              
+              {/* Production Metrics */}
+              <div>
+                <h3 className="text-lg font-medium mb-2">
+                  Métricas de Produção
+                </h3>
+                <div className="bg-muted p-4 rounded-md">
+                  {(() => {
+                    const metrics = calculateProductionMetrics(selectedBatch);
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm font-medium">Fécula utilizada:</p>
+                          <p className="text-sm">{metrics.feculaUtilizada} kg</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Kg's previstos:</p>
+                          <p className="text-sm">{metrics.kgPrevistos} kg</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Kg's produzidos:</p>
+                          <p className="text-sm">{metrics.kgProduzidos} kg</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Diferença:</p>
+                          <p className={`text-sm ${parseFloat(metrics.diferenca) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {metrics.diferenca} kg
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Média da produção:</p>
+                          <p className="text-sm">{metrics.mediaProducao}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
               
