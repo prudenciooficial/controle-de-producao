@@ -1,4 +1,3 @@
-
 import { DateRange } from "react-day-picker";
 
 export interface ProductionBatch {
@@ -106,8 +105,6 @@ export interface Product {
   description?: string;
   unitOfMeasure: string;
   weightFactor?: number;
-  feculaConversionFactor?: number;
-  productionPredictionFactor?: number;
   type?: string;
   notes?: string;
   createdAt: Date;

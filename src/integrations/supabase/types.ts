@@ -323,10 +323,8 @@ export type Database = {
           code: string | null
           created_at: string
           description: string | null
-          fecula_conversion_factor: number | null
           id: string
           name: string
-          production_prediction_factor: number | null
           unit_of_measure: string
           updated_at: string
           weight_factor: number | null
@@ -335,10 +333,8 @@ export type Database = {
           code?: string | null
           created_at?: string
           description?: string | null
-          fecula_conversion_factor?: number | null
           id?: string
           name: string
-          production_prediction_factor?: number | null
           unit_of_measure: string
           updated_at?: string
           weight_factor?: number | null
@@ -347,10 +343,8 @@ export type Database = {
           code?: string | null
           created_at?: string
           description?: string | null
-          fecula_conversion_factor?: number | null
           id?: string
           name?: string
-          production_prediction_factor?: number | null
           unit_of_measure?: string
           updated_at?: string
           weight_factor?: number | null
