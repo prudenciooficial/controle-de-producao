@@ -33,9 +33,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, MoreVertical, Eye, Trash, Loader, Edit, Plus, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
+import { ProductionBatch, ProducedItem, UsedMaterial, Product } from "../types";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
+import { Separator } from "@/components/ui/separator";
 
 const ProductionHistory = () => {
   const { 
@@ -61,6 +62,15 @@ const ProductionHistory = () => {
   // Added for product and material editing
   const [producedItems, setProducedItems] = useState<ProducedItem[]>([]);
   const [usedMaterials, setUsedMaterials] = useState<UsedMaterial[]>([]);
+  
+  // Added for production metrics
+  const [productionMetrics, setProductionMetrics] = useState({
+    feculaUsed: 0,
+    expectedProduction: 0,
+    actualProduction: 0,
+    difference: 0,
+    productionRate: 0
+  });
   
   const filteredBatches = productionBatches.filter(
     (batch) =>
@@ -131,6 +141,7 @@ const ProductionHistory = () => {
   
   const openDetailsDialog = (batch: ProductionBatch) => {
     setSelectedBatch(batch);
+    calculateProductionMetrics(batch);
     setShowDetailsDialog(true);
   };
 
@@ -151,6 +162,53 @@ const ProductionHistory = () => {
     setUsedMaterials([...batch.usedMaterials]);
     
     setShowEditDialog(true);
+  };
+  
+  // Calculate production metrics based on the selected batch
+  const calculateProductionMetrics = (batch: ProductionBatch) => {
+    // Find fécula materials used in production
+    const feculaMaterials = batch.usedMaterials.filter(
+      material => material.materialType.toLowerCase() === "fécula" || 
+                 material.materialName.toLowerCase().includes("fécula")
+    );
+    
+    // Calculate total amount of fécula used in kg
+    const feculaQuantity = feculaMaterials.reduce((total, material) => {
+      // Get the product to determine conversion factor
+      const product = products.find(p => 
+        batch.producedItems.some(item => item.productId === p.id)
+      );
+      
+      const conversionFactor = product?.feculaConversionFactor || 25; // default is 25kg per unit
+      return total + (material.quantity * conversionFactor);
+    }, 0);
+    
+    // Find prediction factor for products in this batch
+    const productionPredictionFactor = products.find(p => 
+      batch.producedItems.some(item => item.productId === p.id)
+    )?.productionPredictionFactor || 3.5;
+    
+    // Calculate expected production based on fécula used and prediction factor
+    const expectedProduction = feculaQuantity * productionPredictionFactor;
+    
+    // Calculate actual production based on produced items and their weight factors
+    const actualProduction = batch.producedItems.reduce((total, item) => {
+      const product = products.find(p => p.id === item.productId);
+      const weightFactor = product?.weightFactor || 1;
+      return total + (item.quantity * weightFactor);
+    }, 0);
+    
+    // Calculate difference and production rate
+    const difference = actualProduction - expectedProduction;
+    const productionRate = feculaQuantity > 0 ? actualProduction / feculaQuantity : 0;
+    
+    setProductionMetrics({
+      feculaUsed: parseFloat(feculaQuantity.toFixed(2)),
+      expectedProduction: parseFloat(expectedProduction.toFixed(2)),
+      actualProduction: parseFloat(actualProduction.toFixed(2)),
+      difference: parseFloat(difference.toFixed(2)),
+      productionRate: parseFloat(productionRate.toFixed(2))
+    });
   };
   
   const handleDeleteDialogClose = () => {
@@ -354,6 +412,39 @@ const ProductionHistory = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Production Metrics Section */}
+              <div>
+                <h3 className="text-lg font-medium mb-2">
+                  Métricas de Produção
+                </h3>
+                <div className="bg-muted p-4 rounded-md grid grid-cols-2 gap-x-8 gap-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Fécula utilizada:</p>
+                    <p className="text-xl font-semibold">{productionMetrics.feculaUsed} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">KG's previstos:</p>
+                    <p className="text-xl font-semibold">{productionMetrics.expectedProduction} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">KG's produzidos:</p>
+                    <p className="text-xl font-semibold">{productionMetrics.actualProduction} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Diferença:</p>
+                    <p className={`text-xl font-semibold ${productionMetrics.difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {productionMetrics.difference >= 0 ? '+' : ''}{productionMetrics.difference} kg
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-sm font-medium text-muted-foreground">Média da produção:</p>
+                    <p className="text-xl font-semibold">{productionMetrics.productionRate} kg/kg de fécula</p>
+                  </div>
+                </div>
+              </div>
+              
+              <Separator />
               
               <div>
                 <h3 className="text-lg font-medium mb-2">
