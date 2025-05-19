@@ -1,0 +1,32 @@
+diff --git a/src/pages/LossesHistory.tsx b/src/pages/LossesHistory.tsx
+--- src/pages/LossesHistory.tsx
++++ src/pages/LossesHistory.tsx
+@@ -81,13 +81,8 @@
+   const handleDelete = async (id: string) => {
+     try {
+       setIsDeleting(true);
+       await deleteLoss(id);
+-      
+-      toast({
+-        title: "Perda excluída",
+-        description: "O registro de perda foi excluído com sucesso.",
+-      });
+     } catch (error) {
+       console.error("Erro ao excluir perda:", error);
+       toast({
+         variant: "destructive",
+@@ -106,13 +101,8 @@
+     
+     try {
+       setIsUpdating(true);
+       await updateLoss(selectedLoss.id, values);
+-      
+-      toast({
+-        title: "Perda atualizada",
+-        description: "O registro de perda foi atualizado com sucesso.",
+-      });
+       setShowEditDialog(false);
+       setSelectedLoss(null);
+     } catch (error) {
+       console.error("Erro ao atualizar perda:", error);
+       
