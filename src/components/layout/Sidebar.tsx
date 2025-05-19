@@ -59,8 +59,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           className={cn(
             "flex items-center rounded-md px-4 py-3 text-sm font-medium transition-colors",
             location.pathname === item.path
-              ? "bg-primary text-white"
-              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              ? "bg-sidebar-accent text-white"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
           )}
         >
           <item.icon className="mr-3 h-5 w-5" />
@@ -77,12 +77,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         if (!open) onClose?.();
       }}>
         <SheetContent side="left" className="w-64 p-0 bg-sidebar">
-          <div className="flex h-16 items-center border-b px-6">
+          <div className="flex h-16 items-center border-b border-sidebar-border px-6">
             <h1 className="text-xl font-bold text-white">Sistema de Produção</h1>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="absolute right-4 top-4" 
+              className="absolute right-4 top-4 text-white hover:bg-sidebar-accent" 
               onClick={() => {
                 setShowMobileMenu(false);
                 onClose?.();
@@ -99,8 +99,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }
   
   return (
-    <div className="h-screen w-64 flex-shrink-0 border-r bg-sidebar fixed hidden md:block">
-      <div className="flex h-16 items-center border-b px-6">
+    <div className="h-screen w-64 flex-shrink-0 border-r border-sidebar-border bg-sidebar fixed hidden md:block">
+      <div className="flex h-16 items-center border-b border-sidebar-border px-6">
         <h1 className="text-xl font-bold text-white">Sistema de Produção</h1>
       </div>
       {sidebarContent}
