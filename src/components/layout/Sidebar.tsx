@@ -78,7 +78,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       }}>
         <SheetContent side="left" className="w-64 p-0 bg-sidebar">
           <div className="flex h-16 items-center border-b px-6">
-            <h1 className="text-xl font-bold text-primary">Sistema de Produção</h1>
+            <h1 className="text-xl font-bold text-white">Sistema de Produção</h1>
             <Button 
               variant="ghost" 
               size="icon" 
@@ -101,7 +101,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <div className="h-screen w-64 flex-shrink-0 border-r bg-sidebar fixed hidden md:block">
       <div className="flex h-16 items-center border-b px-6">
-        <h1 className="text-xl font-bold text-primary">Sistema de Produção</h1>
+        <h1 className="text-xl font-bold text-white">Sistema de Produção</h1>
       </div>
       {sidebarContent}
     </div>
