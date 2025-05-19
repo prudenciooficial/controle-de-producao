@@ -153,10 +153,6 @@ const Production = () => {
       
       addProductionBatch(productionBatch);
       
-      toast({
-        title: "Produção registrada",
-        description: `Lote ${data.batchNumber} registrado com sucesso.`,
-      });
       
       // Reset form
       form.reset({

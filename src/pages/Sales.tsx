@@ -99,11 +99,6 @@ const Sales = () => {
       
       addSale(sale);
       
-      toast({
-        title: "Venda registrada",
-        description: `Venda ${data.invoiceNumber} para ${data.customerName} registrada com sucesso.`,
-      });
-      
       // Reset form
       form.reset({
         date: getTodayDateString(),

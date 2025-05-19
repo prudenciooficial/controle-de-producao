@@ -106,10 +106,6 @@ const ProductionHistory = () => {
       setIsDeleting(true);
       await deleteProductionBatch(id);
       
-      toast({
-        title: "Produção excluída",
-        description: "O registro de produção foi excluído com sucesso.",
-      });
     } catch (error) {
       console.error("Erro ao excluir produção:", error);
       toast({
@@ -138,10 +134,6 @@ const ProductionHistory = () => {
       
       await updateProductionBatch(selectedBatch.id, updateData);
       
-      toast({
-        title: "Produção atualizada",
-        description: "O registro de produção foi atualizado com sucesso.",
-      });
       setShowEditDialog(false);
     } catch (error) {
       console.error("Erro ao atualizar produção:", error);

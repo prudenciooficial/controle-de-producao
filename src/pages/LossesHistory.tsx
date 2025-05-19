@@ -82,11 +82,6 @@ const LossesHistory = () => {
     try {
       setIsDeleting(true);
       await deleteLoss(id);
-      
-      toast({
-        title: "Perda excluída",
-        description: "O registro de perda foi excluído com sucesso.",
-      });
     } catch (error) {
       console.error("Erro ao excluir perda:", error);
       toast({
@@ -107,11 +102,6 @@ const LossesHistory = () => {
     try {
       setIsUpdating(true);
       await updateLoss(selectedLoss.id, values);
-      
-      toast({
-        title: "Perda atualizada",
-        description: "O registro de perda foi atualizado com sucesso.",
-      });
       setShowEditDialog(false);
       setSelectedLoss(null);
     } catch (error) {

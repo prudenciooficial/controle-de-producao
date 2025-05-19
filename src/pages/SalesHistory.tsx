@@ -99,11 +99,7 @@ const SalesHistory = () => {
   const handleDelete = (id: string) => {
     deleteSale(id);
     setShowDeleteDialog(false);
-    toast({
-      title: "Venda excluída",
-      description: "O registro de venda foi excluído com sucesso.",
-    });
-  };
+    };
   
   const handleEdit = async () => {
     if (!selectedSale || !editForm) return;
@@ -119,10 +115,6 @@ const SalesHistory = () => {
       
       await updateSale(selectedSale.id, updatedSale);
       setShowEditDialog(false);
-      toast({
-        title: "Venda atualizada",
-        description: "O registro de venda foi atualizado com sucesso.",
-      });
     } catch (error) {
       console.error("Erro ao atualizar venda:", error);
       toast({
