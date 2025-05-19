@@ -1,5 +1,4 @@
 
-
 import { supabase } from "@/integrations/supabase/client";
 import { Product } from "../types";
 
@@ -69,6 +68,10 @@ export const updateProduct = async (
   if (product.description !== undefined) updates.description = product.description;
   if (product.unitOfMeasure) updates.unit_of_measure = product.unitOfMeasure;
   if (product.weightFactor !== undefined) updates.weight_factor = product.weightFactor;
+  if (product.feculaConversionFactor !== undefined) 
+    updates.fecula_conversion_factor = product.feculaConversionFactor;
+  if (product.productionPredictionFactor !== undefined) 
+    updates.production_prediction_factor = product.productionPredictionFactor;
   
   const { error } = await supabase
     .from("products")
@@ -86,4 +89,3 @@ export const deleteProduct = async (id: string): Promise<void> => {
   
   if (error) throw error;
 };
-

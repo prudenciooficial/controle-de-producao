@@ -1,11 +1,11 @@
 
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useData } from "@/context/DataContext";
-import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2 } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2, TrendingDown, TrendingUp } from "lucide-react";
 import { SimpleDateFilter } from "@/components/ui/simple-date-filter";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isSameDay, startOfDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isSameDay, startOfDay, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatMonthYear, formatDayMonth, isWithinOneMonth, formatNumberBR } from "@/components/helpers/dateFormatUtils";
 
@@ -18,6 +18,80 @@ const Dashboard = () => {
     dateRange,
     setDateRange
   } = useData();
+  
+  // Define previous month stats for comparison
+  const [previousMonthStats, setPreviousMonthStats] = React.useState({
+    totalProduction: 0,
+    totalSales: 0,
+    currentInventory: 0,
+    averageProfitability: 0
+  });
+  
+  // Calculate previous month date range
+  const previousMonthRange = useMemo(() => {
+    if (dateRange?.from && dateRange?.to) {
+      const prevMonth = subMonths(dateRange.from, 1);
+      return {
+        from: startOfMonth(prevMonth),
+        to: endOfMonth(prevMonth)
+      };
+    }
+    return null;
+  }, [dateRange]);
+  
+  // Calculate previous month stats
+  useEffect(() => {
+    if (previousMonthRange && productionBatches && sales) {
+      // Calculate previous month production
+      const prevProduction = productionBatches
+        .filter(batch => {
+          const batchDate = new Date(batch.productionDate);
+          return batchDate >= previousMonthRange.from && batchDate <= previousMonthRange.to;
+        })
+        .reduce((total, batch) => {
+          return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
+        }, 0);
+      
+      // Calculate previous month sales
+      const prevSales = sales
+        .filter(sale => {
+          const saleDate = new Date(sale.date);
+          return saleDate >= previousMonthRange.from && saleDate <= previousMonthRange.to;
+        })
+        .reduce((total, sale) => {
+          return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
+        }, 0);
+      
+      // For inventory and profitability, since these are point-in-time metrics,
+      // we'll use a simple estimate based on current values and changes
+      // In a real app, you'd want to calculate these from historical data
+      const prevInventory = Math.max(0, dashboardStats.currentInventory - 
+        (dashboardStats.totalProduction - dashboardStats.totalSales));
+      
+      // For profitability, use the current value if no historical data is available
+      const prevProfitability = prevProduction > 0 ? (prevSales / prevProduction) * 100 : dashboardStats.averageProfitability;
+      
+      setPreviousMonthStats({
+        totalProduction: prevProduction,
+        totalSales: prevSales,
+        currentInventory: prevInventory,
+        averageProfitability: prevProfitability
+      });
+    }
+  }, [previousMonthRange, productionBatches, sales, dashboardStats]);
+  
+  // Calculate percentage changes
+  const getPercentChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+  
+  const percentChanges = {
+    production: getPercentChange(dashboardStats.totalProduction, previousMonthStats.totalProduction),
+    sales: getPercentChange(dashboardStats.totalSales, previousMonthStats.totalSales),
+    inventory: getPercentChange(dashboardStats.currentInventory, previousMonthStats.currentInventory),
+    profitability: getPercentChange(dashboardStats.averageProfitability, previousMonthStats.averageProfitability)
+  };
   
   React.useEffect(() => {
     // Set default date range to current month if not set
@@ -179,6 +253,21 @@ const Dashboard = () => {
     );
   }
   
+  // Helper for rendering the trend indicator
+  const renderTrendIndicator = (percentChange: number) => {
+    if (percentChange === 0) return null;
+    
+    const isPositive = percentChange > 0;
+    const Icon = isPositive ? TrendingUp : TrendingDown;
+    
+    return (
+      <div className={`flex items-center ${isPositive ? 'text-success' : 'text-destructive'}`}>
+        <Icon className="h-4 w-4 mr-1" />
+        <span>{Math.abs(percentChange).toFixed(1)}%</span>
+      </div>
+    );
+  };
+  
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">
       <div className="mb-6">
@@ -198,9 +287,12 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumberBR(dashboardStats.totalProduction)} kg</div>
-            <p className="text-xs text-muted-foreground">
-              {dateRange?.from ? `No período selecionado` : 'Todos os produtos produzidos'}
-            </p>
+            <div className="flex justify-between items-center mt-1">
+              <p className="text-xs text-muted-foreground">
+                {dateRange?.from ? `No período selecionado` : 'Todos os produtos produzidos'}
+              </p>
+              {renderTrendIndicator(percentChanges.production)}
+            </div>
           </CardContent>
         </Card>
         
@@ -211,9 +303,12 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumberBR(dashboardStats.totalSales)} kg</div>
-            <p className="text-xs text-muted-foreground">
-              {dateRange?.from ? `No período selecionado` : 'Total de produtos vendidos'}
-            </p>
+            <div className="flex justify-between items-center mt-1">
+              <p className="text-xs text-muted-foreground">
+                {dateRange?.from ? `No período selecionado` : 'Total de produtos vendidos'}
+              </p>
+              {renderTrendIndicator(percentChanges.sales)}
+            </div>
           </CardContent>
         </Card>
         
@@ -224,7 +319,10 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumberBR(dashboardStats.currentInventory)} kg</div>
-            <p className="text-xs text-muted-foreground">Produtos disponíveis em estoque</p>
+            <div className="flex justify-between items-center mt-1">
+              <p className="text-xs text-muted-foreground">Produtos disponíveis em estoque</p>
+              {renderTrendIndicator(percentChanges.inventory)}
+            </div>
           </CardContent>
         </Card>
         
@@ -235,9 +333,12 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dashboardStats.averageProfitability}%</div>
-            <p className="text-xs text-muted-foreground">
-              {dateRange?.from ? `No período selecionado` : 'Eficiência de produção'}
-            </p>
+            <div className="flex justify-between items-center mt-1">
+              <p className="text-xs text-muted-foreground">
+                {dateRange?.from ? `No período selecionado` : 'Eficiência de produção'}
+              </p>
+              {renderTrendIndicator(percentChanges.profitability)}
+            </div>
           </CardContent>
         </Card>
       </div>
