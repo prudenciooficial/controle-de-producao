@@ -349,6 +349,7 @@ const Dashboard = () => {
     return null;
   };
   
+  // Loading state rendering
   if (isLoading.products || isLoading.materialBatches) {
     return (
       <div className="container mx-auto py-6 px-4 flex justify-center items-center h-[80vh]">
@@ -504,8 +505,8 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table stickyHeader>
-              <TableHeader sticky>
+            <Table>
+              <TableHeader>
                 <TableRow>
                   <TableHead>Produto</TableHead>
                   <TableHead>Quantidade</TableHead>
