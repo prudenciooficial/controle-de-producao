@@ -499,7 +499,7 @@ const Dashboard = () => {
         <Card className="animate-scale-in" style={{ animationDelay: "0.5s" }}>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <PackageCheck className="mr-2 h-5 w-5" />
+              <Package className="mr-2 h-5 w-5" />
               Estoque de Produtos Acabados
             </CardTitle>
           </CardHeader>
