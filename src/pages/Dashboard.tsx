@@ -1,13 +1,15 @@
-
 import React, { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useData } from "@/context/DataContext";
-import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2, TrendingDown, TrendingUp, Info } from "lucide-react";
 import { SimpleDateFilter } from "@/components/ui/simple-date-filter";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isSameDay, startOfDay, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatMonthYear, formatDayMonth, isWithinOneMonth, formatNumberBR } from "@/components/helpers/dateFormatUtils";
+import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
 
 const Dashboard = () => {
   const { 
@@ -16,8 +18,16 @@ const Dashboard = () => {
     sales,
     isLoading,
     dateRange,
-    setDateRange
+    setDateRange,
+    getAvailableProducts,
+    getAvailableMaterials,
   } = useData();
+  
+  // State for inventory details dialog
+  const [selectedItem, setSelectedItem] = React.useState<any>(null);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogType, setDialogType] = React.useState<"product" | "material">("product");
+  const [selectedBatches, setSelectedBatches] = React.useState<any[]>([]);
   
   // Define previous month stats for comparison
   const [previousMonthStats, setPreviousMonthStats] = React.useState({
@@ -202,23 +212,120 @@ const Dashboard = () => {
   
   const chartData = getChartData();
   
-  // Prepare data for inventory
-  const getInventoryData = () => {
-    // Get finished products inventory
-    const finishedProducts = dashboardStats.currentInventory;
+  // Get available products and materials
+  const availableProducts = getAvailableProducts();
+  const availableMaterials = getAvailableMaterials();
+  
+  // Group products by name
+  const groupedProducts = availableProducts.reduce((acc, product) => {
+    const name = product.productName;
+    if (!acc[name]) {
+      acc[name] = [];
+    }
+    acc[name].push(product);
+    return acc;
+  }, {} as Record<string, typeof availableProducts>);
+  
+  // Calculate total quantity for each product
+  const productTotals = Object.entries(groupedProducts).map(([name, products]) => {
+    const total = products.reduce((sum, p) => sum + p.remainingQuantity, 0);
+    const unitOfMeasure = products[0]?.unitOfMeasure || "kg";
+    const firstProduct = products[0];
     
-    // Get raw materials inventory (sum of remaining quantities)
-    const rawMaterials = useData().materialBatches.reduce((total, batch) => {
-      return total + batch.remainingQuantity;
-    }, 0);
+    return {
+      name,
+      total,
+      unitOfMeasure,
+      products,
+      firstProduct
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+  
+  // Group materials by type
+  const groupedMaterials = availableMaterials.reduce((acc, material) => {
+    const type = material.materialType || "Desconhecido";
+    if (!acc[type]) {
+      acc[type] = [];
+    }
+    acc[type].push(material);
+    return acc;
+  }, {} as Record<string, typeof availableMaterials>);
+  
+  // Calculate materials by type and name
+  const materialTypes = Object.entries(groupedMaterials).map(([type, materials]) => {
+    // Group by name within type
+    const byName = materials.reduce((acc, material) => {
+      const name = material.materialName || "Desconhecido";
+      if (!acc[name]) {
+        acc[name] = [];
+      }
+      acc[name].push(material);
+      return acc;
+    }, {} as Record<string, typeof materials>);
     
-    return [
-      { name: "Produtos Acabados", value: finishedProducts },
-      { name: "Matérias-Primas", value: rawMaterials }
-    ];
+    // Calculate totals by name
+    const materialsByName = Object.entries(byName).map(([name, items]) => {
+      const total = items.reduce((sum, m) => sum + m.remainingQuantity, 0);
+      return {
+        name,
+        total,
+        unitOfMeasure: items[0]?.unitOfMeasure || "kg",
+        materials: items,
+        firstMaterial: items[0]
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+    
+    return {
+      type,
+      materials: materialsByName
+    };
+  }).sort((a, b) => {
+    // Custom sort order for material types
+    const typeOrder = {
+      "Fécula": 1,
+      "Conservante": 2,
+      "Embalagem": 3,
+      "Saco": 4,
+      "Caixa": 5
+    };
+    
+    const orderA = typeOrder[a.type as keyof typeof typeOrder] || 99;
+    const orderB = typeOrder[b.type as keyof typeof typeOrder] || 99;
+    
+    return orderA - orderB;
+  });
+  
+  // Handle view details
+  const handleViewDetails = (item: any, type: "product" | "material") => {
+    setSelectedItem(item);
+    setDialogType(type);
+    
+    if (type === "product") {
+      setSelectedBatches(item.products);
+    } else {
+      setSelectedBatches(item.materials);
+    }
+    
+    setDialogOpen(true);
   };
   
-  const inventoryData = getInventoryData();
+  // Get material type icon and color
+  const getMaterialTypeIcon = (type: string) => {
+    switch (type) {
+      case "Fécula":
+        return <Package className="h-4 w-4 text-blue-500" />;
+      case "Conservante":
+        return <Package className="h-4 w-4 text-green-500" />;
+      case "Embalagem":
+        return <Package className="h-4 w-4 text-yellow-500" />;
+      case "Saco":
+        return <Package className="h-4 w-4 text-purple-500" />;
+      case "Caixa":
+        return <Package className="h-4 w-4 text-orange-500" />;
+      default:
+        return <Package className="h-4 w-4 text-gray-500" />;
+    }
+  };
   
   // Custom tooltip formatter for charts
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -391,66 +498,113 @@ const Dashboard = () => {
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="animate-scale-in" style={{ animationDelay: "0.5s" }}>
           <CardHeader>
-            <CardTitle>Estoque Atual por Tipo</CardTitle>
+            <CardTitle className="flex items-center">
+              <PackageCheck className="mr-2 h-5 w-5" />
+              Estoque de Produtos Acabados
+            </CardTitle>
           </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={inventoryData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip 
-                  formatter={(value: number) => formatNumberBR(value) + " kg"}
-                  labelFormatter={(label) => label}
-                />
-                <Legend />
-                <Bar dataKey="value" fill="#3b82f6" name="Quantidade (kg)" />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent>
+            <Table stickyHeader>
+              <TableHeader sticky>
+                <TableRow>
+                  <TableHead>Produto</TableHead>
+                  <TableHead>Quantidade</TableHead>
+                  <TableHead>Un.</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {productTotals.length > 0 ? (
+                  productTotals.map((product) => (
+                    <TableRow key={product.name}>
+                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell>{formatNumberBR(product.total)}</TableCell>
+                      <TableCell>{product.unitOfMeasure}</TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewDetails(product, "product")}
+                        >
+                          <Info className="h-4 w-4 mr-1" />
+                          Detalhes
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4">
+                      Nenhum produto disponível em estoque.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
         
         <Card className="animate-scale-in" style={{ animationDelay: "0.6s" }}>
           <CardHeader>
-            <CardTitle>Últimas Atividades</CardTitle>
+            <CardTitle>Estoque de Matérias-Primas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {productionBatches.slice(0, 3).map(batch => (
-                <div key={batch.id} className="flex items-center">
-                  <div className="mr-4 rounded-full bg-primary/10 p-2">
-                    <Factory className="h-4 w-4 text-primary" />
+            {materialTypes.length > 0 ? (
+              <div className="space-y-6">
+                {materialTypes.map((typeGroup) => (
+                  <div key={typeGroup.type} className="space-y-2">
+                    <h3 className="text-lg font-medium flex items-center">
+                      {getMaterialTypeIcon(typeGroup.type)}
+                      <span className="ml-2">{typeGroup.type}</span>
+                    </h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Insumo</TableHead>
+                          <TableHead>Quantidade</TableHead>
+                          <TableHead>Un.</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {typeGroup.materials.map((material) => (
+                          <TableRow key={material.name}>
+                            <TableCell className="font-medium">{material.name}</TableCell>
+                            <TableCell>{formatNumberBR(material.total)}</TableCell>
+                            <TableCell>{material.unitOfMeasure}</TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleViewDetails(material, "material")}
+                              >
+                                <Info className="h-4 w-4 mr-1" />
+                                Detalhes
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">
-                      Produção {batch.batchNumber}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(batch.productionDate), "dd/MM/yyyy", { locale: ptBR })} - {batch.producedItems.reduce((sum, item) => sum + item.quantity, 0)} kg
-                    </p>
-                  </div>
-                </div>
-              ))}
-              
-              {sales.slice(0, 3).map(sale => (
-                <div key={sale.id} className="flex items-center">
-                  <div className="mr-4 rounded-full bg-green-500/10 p-2">
-                    <ShoppingCart className="h-4 w-4 text-green-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">
-                      Venda {sale.invoiceNumber}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(sale.date), "dd/MM/yyyy", { locale: ptBR })} - {sale.customerName}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                Nenhum material disponível em estoque.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+      
+      <InventoryDetailsDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        item={selectedItem?.firstProduct || selectedItem}
+        type={dialogType}
+        batches={selectedBatches}
+      />
     </div>
   );
 };
