@@ -2,25 +2,26 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Package, PackageCheck, Loader2 } from "lucide-react";
+import { Package, PackageCheck, Loader2, Info } from "lucide-react";
+import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
 
 const Inventory = () => {
   const { getAvailableProducts, getAvailableMaterials, materialBatches, isLoading } = useData();
   const [productSearch, setProductSearch] = useState("");
   const [materialSearch, setMaterialSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<"product" | "material">("product");
+  const [selectedBatches, setSelectedBatches] = useState<any[]>([]);
   
   const availableProducts = getAvailableProducts();
   const availableMaterials = getAvailableMaterials();
-  
-  // Debugging: log material batches when they change
-  useEffect(() => {
-    console.log("Available materials:", availableMaterials);
-  }, [availableMaterials]);
-  
+
   // Filter products
   const filteredProducts = availableProducts.filter(
     (product) =>
@@ -64,8 +65,83 @@ const Inventory = () => {
     }
   };
   
-  // Calculate days until expiry
-  const getDaysUntilExpiry = (expiryDate: Date | undefined) => {
+  // Group products by name
+  const groupedProducts = filteredProducts.reduce((acc, product) => {
+    const name = product.productName;
+    if (!acc[name]) {
+      acc[name] = [];
+    }
+    acc[name].push(product);
+    return acc;
+  }, {} as Record<string, typeof filteredProducts>);
+  
+  // Calculate total quantity for each product
+  const productTotals = Object.entries(groupedProducts).map(([name, products]) => {
+    const total = products.reduce((sum, p) => sum + p.remainingQuantity, 0);
+    const unitOfMeasure = products[0]?.unitOfMeasure || "kg";
+    const firstProduct = products[0];
+    
+    return {
+      name,
+      total,
+      unitOfMeasure,
+      products,
+      firstProduct
+    };
+  });
+  
+  // Calculate total quantity for each material type
+  const materialTypeTotals = Object.entries(groupedMaterials).map(([type, materials]) => {
+    const total = materials.reduce((sum, m) => sum + m.remainingQuantity, 0);
+    
+    // Group materials by name within each type
+    const groupedByName = materials.reduce((acc, material) => {
+      const name = material.materialName || "";
+      if (!acc[name]) {
+        acc[name] = [];
+      }
+      acc[name].push(material);
+      return acc;
+    }, {} as Record<string, typeof materials>);
+    
+    // Calculate total for each material name
+    const materialTotals = Object.entries(groupedByName).map(([name, materials]) => {
+      const total = materials.reduce((sum, m) => sum + m.remainingQuantity, 0);
+      const unitOfMeasure = materials[0]?.unitOfMeasure || "kg";
+      const firstMaterial = materials[0];
+      
+      return {
+        name,
+        total,
+        unitOfMeasure,
+        materials,
+        firstMaterial
+      };
+    });
+    
+    return {
+      type,
+      total,
+      materials: materialTotals
+    };
+  });
+  
+  // Handle view details
+  const handleViewDetails = (item: any, type: "product" | "material") => {
+    setSelectedItem(item);
+    setDialogType(type);
+    
+    if (type === "product") {
+      setSelectedBatches(item.products);
+    } else {
+      setSelectedBatches(item.materials);
+    }
+    
+    setDialogOpen(true);
+  };
+  
+  // Get expiry badge
+  const getExpiryBadge = (expiryDate: Date | undefined) => {
     if (!expiryDate) return null;
     
     const today = new Date();
@@ -73,23 +149,12 @@ const Inventory = () => {
     const diffTime = expiry.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    return diffDays;
-  };
-  
-  // Get expiry badge
-  const getExpiryBadge = (expiryDate: Date | undefined) => {
-    if (!expiryDate) return null;
-    
-    const daysUntilExpiry = getDaysUntilExpiry(expiryDate);
-    
-    if (daysUntilExpiry === null) return null;
-    
-    if (daysUntilExpiry < 0) {
+    if (diffDays < 0) {
       return <Badge variant="destructive">Vencido</Badge>;
-    } else if (daysUntilExpiry <= 30) {
-      return <Badge variant="destructive">Vence em {daysUntilExpiry} dias</Badge>;
-    } else if (daysUntilExpiry <= 90) {
-      return <Badge className="bg-yellow-500">Vence em {daysUntilExpiry} dias</Badge>;
+    } else if (diffDays <= 30) {
+      return <Badge variant="destructive">Vence em {diffDays} dias</Badge>;
+    } else if (diffDays <= 90) {
+      return <Badge className="bg-yellow-500">Vence em {diffDays} dias</Badge>;
     } else {
       return <Badge variant="outline">{new Date(expiryDate).toLocaleDateString()}</Badge>;
     }
@@ -133,36 +198,45 @@ const Inventory = () => {
                       className="max-w-sm"
                     />
                   </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produto</TableHead>
-                        <TableHead>Lote</TableHead>
-                        <TableHead>Produzido</TableHead>
-                        <TableHead>Disponível</TableHead>
-                        <TableHead>Un.</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredProducts.length > 0 ? (
-                        filteredProducts.map((product) => (
-                          <TableRow key={product.id}>
-                            <TableCell>{product.productName}</TableCell>
-                            <TableCell>{product.batchNumber}</TableCell>
-                            <TableCell>{product.quantity}</TableCell>
-                            <TableCell>{product.remainingQuantity}</TableCell>
-                            <TableCell>{product.unitOfMeasure}</TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader sticky>
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-4">
-                            Nenhum produto disponível em estoque.
-                          </TableCell>
+                          <TableHead>Produto</TableHead>
+                          <TableHead>Quantidade Total</TableHead>
+                          <TableHead>Un.</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {productTotals.length > 0 ? (
+                          productTotals.map((product) => (
+                            <TableRow key={product.name}>
+                              <TableCell className="font-medium">{product.name}</TableCell>
+                              <TableCell>{product.total}</TableCell>
+                              <TableCell>{product.unitOfMeasure}</TableCell>
+                              <TableCell className="text-right">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleViewDetails(product, "product")}
+                                >
+                                  <Info className="h-4 w-4 mr-1" />
+                                  Detalhes
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-4">
+                              Nenhum produto disponível em estoque.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </>
               )}
             </CardContent>
@@ -196,51 +270,47 @@ const Inventory = () => {
                     />
                   </div>
                   
-                  {Object.keys(groupedMaterials).length > 0 ? (
-                    Object.entries(groupedMaterials).map(([type, materials]) => (
-                      <div key={type} className="mb-8">
+                  {materialTypeTotals.length > 0 ? (
+                    materialTypeTotals.map((typeGroup) => (
+                      <div key={typeGroup.type} className="mb-8">
                         <h3 className="text-lg font-medium mb-4 flex items-center">
-                          {getMaterialTypeIcon(type)}
-                          <span className="ml-2">{type}</span>
+                          {getMaterialTypeIcon(typeGroup.type)}
+                          <span className="ml-2">{typeGroup.type}</span>
+                          <span className="ml-2 text-muted-foreground text-sm">
+                            ({typeGroup.total} kg total)
+                          </span>
                         </h3>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Insumo</TableHead>
-                              <TableHead>Lote</TableHead>
-                              <TableHead>Recebido</TableHead>
-                              <TableHead>Disponível</TableHead>
-                              <TableHead>Un.</TableHead>
-                              <TableHead>Validade</TableHead>
-                              <TableHead>Laudo</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {materials.map((material) => (
-                              <TableRow key={material.id}>
-                                <TableCell>{material.materialName || "Nome não disponível"}</TableCell>
-                                <TableCell>{material.batchNumber}</TableCell>
-                                <TableCell>{material.suppliedQuantity}</TableCell>
-                                <TableCell>{material.remainingQuantity}</TableCell>
-                                <TableCell>{material.unitOfMeasure}</TableCell>
-                                <TableCell>
-                                  {getExpiryBadge(material.expiryDate)}
-                                </TableCell>
-                                <TableCell>
-                                  {material.hasReport ? (
-                                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                                      Sim
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
-                                      Não
-                                    </Badge>
-                                  )}
-                                </TableCell>
+                        <div className="rounded-md border">
+                          <Table>
+                            <TableHeader sticky>
+                              <TableRow>
+                                <TableHead>Insumo</TableHead>
+                                <TableHead>Quantidade Total</TableHead>
+                                <TableHead>Un.</TableHead>
+                                <TableHead className="text-right">Ações</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {typeGroup.materials.map((material) => (
+                                <TableRow key={material.name}>
+                                  <TableCell className="font-medium">{material.name}</TableCell>
+                                  <TableCell>{material.total}</TableCell>
+                                  <TableCell>{material.unitOfMeasure}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleViewDetails(material, "material")}
+                                    >
+                                      <Info className="h-4 w-4 mr-1" />
+                                      Detalhes
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -254,6 +324,14 @@ const Inventory = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      <InventoryDetailsDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        item={selectedItem?.firstProduct || selectedItem}
+        type={dialogType}
+        batches={selectedBatches}
+      />
     </div>
   );
 };
