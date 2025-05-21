@@ -12,6 +12,12 @@ import { formatMonthYear, formatDayMonth, isWithinOneMonth, formatNumberBR } fro
 import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
+// Utility function to calculate percentage change
+const getPercentChange = (current: number, previous: number): number => {
+  if (previous === 0) return 0;
+  return ((current - previous) / previous) * 100;
+};
+
 const Dashboard = () => {
   const { 
     dashboardStats,
@@ -38,6 +44,16 @@ const Dashboard = () => {
     currentInventory: 0,
     averageProfitability: 0
   });
+  
+  // Calculate percentage changes for the stats cards
+  const percentChanges = useMemo(() => {
+    return {
+      production: getPercentChange(dashboardStats.totalProduction, previousMonthStats.totalProduction),
+      sales: getPercentChange(dashboardStats.totalSales, previousMonthStats.totalSales),
+      inventory: getPercentChange(dashboardStats.currentInventory, previousMonthStats.currentInventory),
+      profitability: getPercentChange(dashboardStats.averageProfitability, previousMonthStats.averageProfitability)
+    };
+  }, [dashboardStats, previousMonthStats]);
   
   // Calculate previous month date range
   const previousMonthRange = useMemo(() => {
@@ -172,8 +188,8 @@ const Dashboard = () => {
     } else {
       // Show monthly data (original logic)
       const data = [];
-      let currentDate = new Date(dateRange.from);
-      const endDate = dateRange.to;
+      let currentDate = new Date(dateRange?.from || new Date());
+      const endDate = dateRange?.to || new Date();
       
       while (currentDate <= endDate) {
         const month = currentDate.getMonth();
