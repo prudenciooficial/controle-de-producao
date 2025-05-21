@@ -12,6 +12,12 @@ import { formatMonthYear, formatDayMonth, isWithinOneMonth, formatNumberBR } fro
 import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
+// Helper function to calculate percentage change
+const getPercentChange = (current: number, previous: number) => {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+};
+
 const Dashboard = () => {
   const { 
     dashboardStats,
@@ -93,11 +99,6 @@ const Dashboard = () => {
   }, [previousMonthRange, productionBatches, sales, dashboardStats]);
   
   // Calculate percentage changes
-  const getPercentChange = (current: number, previous: number) => {
-    if (previous === 0) return current > 0 ? 100 : 0;
-    return ((current - previous) / previous) * 100;
-  };
-  
   const percentChanges = {
     production: getPercentChange(dashboardStats.totalProduction, previousMonthStats.totalProduction),
     sales: getPercentChange(dashboardStats.totalSales, previousMonthStats.totalSales),
@@ -138,7 +139,7 @@ const Dashboard = () => {
         end: dateRange.to
       });
       
-      return days.map(day => {
+      return days.map((day, index) => {
         // Calculate production for this day
         const production = productionBatches
           .filter(batch => {
@@ -159,11 +160,43 @@ const Dashboard = () => {
             return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
           }, 0);
         
+        // Calculate previous day's values
+        let previousDayProduction = 0;
+        let previousDaySales = 0;
+        
+        if (index > 0) {
+          const previousDay = days[index - 1];
+          
+          previousDayProduction = productionBatches
+            .filter(batch => {
+              const batchDate = new Date(batch.productionDate);
+              return isSameDay(batchDate, previousDay);
+            })
+            .reduce((total, batch) => {
+              return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
+            }, 0);
+          
+          previousDaySales = sales
+            .filter(sale => {
+              const saleDate = new Date(sale.date);
+              return isSameDay(saleDate, previousDay);
+            })
+            .reduce((total, sale) => {
+              return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
+            }, 0);
+        }
+        
+        // Calculate percentage changes
+        const productionChange = getPercentChange(production, previousDayProduction);
+        const salesChange = getPercentChange(salesAmount, previousDaySales);
+        
         return {
           date: startOfDay(day),
           day: formatDayMonth(day),
           production,
-          sales: salesAmount
+          sales: salesAmount,
+          productionChange,
+          salesChange
         };
       });
     } else {
@@ -171,6 +204,10 @@ const Dashboard = () => {
       const data = [];
       let currentDate = new Date(dateRange.from);
       const endDate = dateRange.to;
+      
+      let previousMonth = null;
+      let previousMonthProduction = 0;
+      let previousMonthSales = 0;
       
       while (currentDate <= endDate) {
         const month = currentDate.getMonth();
@@ -197,12 +234,28 @@ const Dashboard = () => {
             return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
           }, 0);
         
+        // Calculate percentage changes compared to previous month
+        let productionChange = 0;
+        let salesChange = 0;
+        
+        if (previousMonth !== null) {
+          productionChange = getPercentChange(production, previousMonthProduction);
+          salesChange = getPercentChange(salesAmount, previousMonthSales);
+        }
+        
         data.push({
           date: new Date(year, month, 1),
           month: monthName,
           production,
-          sales: salesAmount
+          sales: salesAmount,
+          productionChange,
+          salesChange
         });
+        
+        // Save current month's data for next iteration
+        previousMonth = { month, year };
+        previousMonthProduction = production;
+        previousMonthSales = salesAmount;
         
         // Move to next month
         currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
