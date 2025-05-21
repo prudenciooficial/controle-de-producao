@@ -12,12 +12,6 @@ import { formatMonthYear, formatDayMonth, isWithinOneMonth, formatNumberBR } fro
 import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
-// Utility function to calculate percentage change
-const getPercentChange = (current: number, previous: number): number => {
-  if (previous === 0) return 0;
-  return ((current - previous) / previous) * 100;
-};
-
 const Dashboard = () => {
   const { 
     dashboardStats,
@@ -44,16 +38,6 @@ const Dashboard = () => {
     currentInventory: 0,
     averageProfitability: 0
   });
-  
-  // Calculate percentage changes for the stats cards
-  const percentChanges = useMemo(() => {
-    return {
-      production: getPercentChange(dashboardStats.totalProduction, previousMonthStats.totalProduction),
-      sales: getPercentChange(dashboardStats.totalSales, previousMonthStats.totalSales),
-      inventory: getPercentChange(dashboardStats.currentInventory, previousMonthStats.currentInventory),
-      profitability: getPercentChange(dashboardStats.averageProfitability, previousMonthStats.averageProfitability)
-    };
-  }, [dashboardStats, previousMonthStats]);
   
   // Calculate previous month date range
   const previousMonthRange = useMemo(() => {
@@ -108,6 +92,30 @@ const Dashboard = () => {
     }
   }, [previousMonthRange, productionBatches, sales, dashboardStats]);
   
+  // Calculate percentage changes
+  const getPercentChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+  
+  const percentChanges = {
+    production: getPercentChange(dashboardStats.totalProduction, previousMonthStats.totalProduction),
+    sales: getPercentChange(dashboardStats.totalSales, previousMonthStats.totalSales),
+    inventory: getPercentChange(dashboardStats.currentInventory, previousMonthStats.currentInventory),
+    profitability: getPercentChange(dashboardStats.averageProfitability, previousMonthStats.averageProfitability)
+  };
+  
+  React.useEffect(() => {
+    // Set default date range to current month if not set
+    if (!dateRange) {
+      const today = new Date();
+      setDateRange({
+        from: startOfMonth(today),
+        to: endOfMonth(today)
+      });
+    }
+  }, [dateRange, setDateRange]);
+  
   // Determine if we should show daily or monthly chart
   const showDailyChart = React.useMemo(() => {
     if (dateRange?.from && dateRange?.to) {
@@ -130,7 +138,7 @@ const Dashboard = () => {
         end: dateRange.to
       });
       
-      return days.map((day, index) => {
+      return days.map(day => {
         // Calculate production for this day
         const production = productionBatches
           .filter(batch => {
@@ -151,45 +159,18 @@ const Dashboard = () => {
             return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
           }, 0);
         
-        // Calculate production for previous day
-        const previousDay = index > 0 ? days[index - 1] : subDays(day, 1);
-        const previousProduction = productionBatches
-          .filter(batch => {
-            const batchDate = new Date(batch.productionDate);
-            return isSameDay(batchDate, previousDay);
-          })
-          .reduce((total, batch) => {
-            return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
-          }, 0);
-        
-        // Calculate sales for previous day
-        const previousSales = sales
-          .filter(sale => {
-            const saleDate = new Date(sale.date);
-            return isSameDay(saleDate, previousDay);
-          })
-          .reduce((total, sale) => {
-            return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
-          }, 0);
-        
-        // Calculate percentage changes
-        const productionChange = getPercentChange(production, previousProduction);
-        const salesChange = getPercentChange(salesAmount, previousSales);
-        
         return {
           date: startOfDay(day),
           day: formatDayMonth(day),
           production,
-          sales: salesAmount,
-          productionChange,
-          salesChange
+          sales: salesAmount
         };
       });
     } else {
       // Show monthly data (original logic)
       const data = [];
-      let currentDate = new Date(dateRange?.from || new Date());
-      const endDate = dateRange?.to || new Date();
+      let currentDate = new Date(dateRange.from);
+      const endDate = dateRange.to;
       
       while (currentDate <= endDate) {
         const month = currentDate.getMonth();
@@ -216,39 +197,11 @@ const Dashboard = () => {
             return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
           }, 0);
         
-        // Calculate previous month's production and sales
-        const previousMonthDate = subMonths(currentDate, 1);
-        const previousMonthProduction = productionBatches
-          .filter(batch => {
-            const date = new Date(batch.productionDate);
-            return date.getMonth() === previousMonthDate.getMonth() && 
-                   date.getFullYear() === previousMonthDate.getFullYear();
-          })
-          .reduce((total, batch) => {
-            return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
-          }, 0);
-        
-        const previousMonthSales = sales
-          .filter(sale => {
-            const date = new Date(sale.date);
-            return date.getMonth() === previousMonthDate.getMonth() && 
-                   date.getFullYear() === previousMonthDate.getFullYear();
-          })
-          .reduce((total, sale) => {
-            return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
-          }, 0);
-        
-        // Calculate percentage changes
-        const productionChange = getPercentChange(production, previousMonthProduction);
-        const salesChange = getPercentChange(salesAmount, previousMonthSales);
-        
         data.push({
           date: new Date(year, month, 1),
           month: monthName,
           production,
-          sales: salesAmount,
-          productionChange,
-          salesChange
+          sales: salesAmount
         });
         
         // Move to next month
@@ -523,34 +476,11 @@ const Dashboard = () => {
       return (
         <div className="bg-background border border-border p-2 rounded-md shadow-md">
           <p className="font-medium">{dateLabel}</p>
-          {payload.map((entry: any, index: number) => {
-            const entryName = entry.name === "production" ? "Produção" : "Vendas";
-            const percentageChange = entry.name === "production" ? data.productionChange : data.salesChange;
-            
-            return (
-              <div key={`item-${index}`} className="space-y-1">
-                <p className="text-sm" style={{ color: entry.color }}>
-                  {entryName}: {formatNumberBR(entry.value)} kg
-                </p>
-                {percentageChange !== 0 && (
-                  <div className="flex items-center text-xs ml-2 mb-1">
-                    <span className="mr-1">Variação:</span>
-                    {percentageChange > 0 ? (
-                      <span className="flex items-center text-success">
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                        +{percentageChange.toFixed(1)}%
-                      </span>
-                    ) : (
-                      <span className="flex items-center text-destructive">
-                        <TrendingDown className="h-3 w-3 mr-1" />
-                        {percentageChange.toFixed(1)}%
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {payload.map((entry: any, index: number) => (
+            <p key={`item-${index}`} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {formatNumberBR(entry.value)} kg
+            </p>
+          ))}
         </div>
       );
     }
