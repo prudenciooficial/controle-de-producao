@@ -2,20 +2,22 @@ import React, { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useData } from "@/context/DataContext";
-import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2, TrendingDown, TrendingUp, Info } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2, TrendingDown, TrendingUp, Info, AlertTriangle } from "lucide-react";
 import { SimpleDateFilter } from "@/components/ui/simple-date-filter";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isSameDay, startOfDay, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isSameDay, startOfDay, subMonths, subDays, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatMonthYear, formatDayMonth, isWithinOneMonth, formatNumberBR } from "@/components/helpers/dateFormatUtils";
 import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 const Dashboard = () => {
   const { 
     dashboardStats,
     productionBatches,
     sales,
+    losses,
     isLoading,
     dateRange,
     setDateRange,
@@ -210,7 +212,105 @@ const Dashboard = () => {
     }
   };
   
+  // NEW: Prepare data for Losses chart
+  const getLossesChartData = () => {
+    // If no date range or losses data, return empty array
+    if (!dateRange?.from || !dateRange?.to || !losses || losses.length === 0) {
+      return [];
+    }
+    
+    if (showDailyChart) {
+      // Show daily data
+      const days = eachDayOfInterval({
+        start: dateRange.from,
+        end: dateRange.to
+      });
+      
+      return days.map((day, index) => {
+        // Calculate losses for this day
+        const lossesAmount = losses
+          .filter(loss => {
+            const lossDate = new Date(loss.date);
+            return isSameDay(lossDate, day);
+          })
+          .reduce((total, loss) => {
+            return total + loss.quantity;
+          }, 0);
+        
+        // Calculate previous day's losses for percentage change
+        const previousDay = index > 0 ? days[index - 1] : subDays(day, 1);
+        const previousDayLosses = losses
+          .filter(loss => {
+            const lossDate = new Date(loss.date);
+            return isSameDay(lossDate, previousDay);
+          })
+          .reduce((total, loss) => {
+            return total + loss.quantity;
+          }, 0);
+        
+        // Calculate percentage change
+        const percentageChange = getPercentChange(lossesAmount, previousDayLosses);
+        
+        return {
+          date: startOfDay(day),
+          day: formatDayMonth(day),
+          losses: lossesAmount,
+          percentageChange: percentageChange
+        };
+      });
+    } else {
+      // Show monthly data
+      const data = [];
+      let currentDate = new Date(dateRange.from);
+      const endDate = dateRange.to;
+      
+      while (currentDate <= endDate) {
+        const month = currentDate.getMonth();
+        const year = currentDate.getFullYear();
+        const monthName = formatMonthYear(currentDate);
+        
+        // Calculate losses for this month
+        const lossesAmount = losses
+          .filter(loss => {
+            const date = new Date(loss.date);
+            return date.getMonth() === month && date.getFullYear() === year;
+          })
+          .reduce((total, loss) => {
+            return total + loss.quantity;
+          }, 0);
+        
+        // Calculate previous month's losses for percentage change
+        const previousMonthDate = subMonths(currentDate, 1);
+        const previousMonthLosses = losses
+          .filter(loss => {
+            const date = new Date(loss.date);
+            return date.getMonth() === previousMonthDate.getMonth() && 
+                   date.getFullYear() === previousMonthDate.getFullYear();
+          })
+          .reduce((total, loss) => {
+            return total + loss.quantity;
+          }, 0);
+        
+        // Calculate percentage change
+        const percentageChange = getPercentChange(lossesAmount, previousMonthLosses);
+        
+        data.push({
+          date: new Date(year, month, 1),
+          month: monthName,
+          losses: lossesAmount,
+          percentageChange: percentageChange
+        });
+        
+        // Move to next month
+        currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+      }
+      
+      return data;
+    }
+  };
+  
   const chartData = getChartData();
+  const lossesChartData = getLossesChartData();
   
   // Get available products and materials
   const availableProducts = getAvailableProducts();
@@ -327,7 +427,45 @@ const Dashboard = () => {
     }
   };
   
-  // Custom tooltip formatter for charts
+  // Custom tooltip formatter for Losses chart
+  const LossesTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length && payload[0].payload) {
+      const data = payload[0].payload;
+      const dateLabel = showDailyChart 
+        ? format(data.date, "EEEE, dd 'de' MMMM", { locale: ptBR })
+        : format(data.date, "MMMM 'de' yyyy", { locale: ptBR });
+      
+      const percentageChangeValue = data.percentageChange;
+      
+      return (
+        <div className="bg-background border border-border p-2 rounded-md shadow-md">
+          <p className="font-medium">{dateLabel}</p>
+          <p className="text-sm text-red-500">
+            Perdas: {formatNumberBR(data.losses)} kg
+          </p>
+          {percentageChangeValue !== 0 && (
+            <div className="flex items-center text-sm mt-1">
+              <span className="mr-1">Variação:</span>
+              {percentageChangeValue > 0 ? (
+                <span className="flex items-center text-destructive">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  +{percentageChangeValue.toFixed(1)}%
+                </span>
+              ) : (
+                <span className="flex items-center text-success">
+                  <TrendingDown className="h-3 w-3 mr-1" />
+                  {percentageChangeValue.toFixed(1)}%
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+  
+  // Custom tooltip formatter for Production/Sales chart
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -492,6 +630,52 @@ const Dashboard = () => {
                 />
               </LineChart>
             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* New Losses Chart */}
+      <div className="grid gap-6 md:grid-cols-2 mb-6">
+        <Card className="col-span-2 animate-scale-in" style={{ animationDelay: "0.45s" }}>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <AlertTriangle className="mr-2 h-5 w-5 text-red-500" />
+              Perdas (kg)
+            </CardTitle>
+            {dateRange?.from && (
+              <p className="text-sm text-muted-foreground">
+                Período: {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} 
+                {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}` : ''}
+              </p>
+            )}
+          </CardHeader>
+          <CardContent className="h-80">
+            {lossesChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={lossesChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey={showDailyChart ? "day" : "month"} 
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip content={<LossesTooltip />} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="losses" 
+                    stroke="#ea384c" 
+                    name="Perdas" 
+                    strokeWidth={2} 
+                    activeDot={{ r: 8 }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col h-full items-center justify-center text-muted-foreground">
+                <AlertTriangle className="h-10 w-10 mb-2 text-muted-foreground" />
+                <p>Nenhum dado de perdas disponível para o período selecionado.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
