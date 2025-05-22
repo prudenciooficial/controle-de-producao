@@ -529,11 +529,35 @@ const Dashboard = () => {
       return (
         <div className="bg-background border border-border p-2 rounded-md shadow-md">
           <p className="font-medium">{dateLabel}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={`item-${index}`} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {formatNumberBR(entry.value)} kg
-            </p>
-          ))}
+          {payload.map((entry: any, index: number) => {
+            const isProduction = entry.name === "Produção";
+            const percentChange = isProduction ? data.productionChange : data.salesChange;
+            
+            return (
+              <div key={`item-${index}`} className="flex flex-col">
+                <p className="text-sm" style={{ color: entry.color }}>
+                  {entry.name}: {formatNumberBR(entry.value)} kg
+                </p>
+                
+                {percentChange !== 0 && (
+                  <div className="flex items-center text-xs ml-2">
+                    <span className="mr-1">Variação:</span>
+                    {percentChange > 0 ? (
+                      <span className="flex items-center text-success">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        +{percentChange.toFixed(1)}%
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-destructive">
+                        <TrendingDown className="h-3 w-3 mr-1" />
+                        {percentChange.toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       );
     }
