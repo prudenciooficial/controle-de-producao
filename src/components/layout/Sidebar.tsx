@@ -51,22 +51,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   ];
   
   const sidebarContent = (
-    <nav className="space-y-1 px-3 py-4">
-      {menuItems.map((item) => (
-        <Link
-          key={item.path}
-          to={item.path}
-          className={cn(
-            "flex items-center rounded-md px-4 py-3 text-sm font-medium transition-colors",
-            location.pathname === item.path
-              ? "bg-sidebar-accent text-white"
-              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
-          )}
-        >
-          <item.icon className="mr-3 h-5 w-5" />
-          {item.name}
-        </Link>
-      ))}
+    <nav className="space-y-1 px-4 py-6">
+      {menuItems.map((item) => {
+        const isActive = location.pathname === item.path;
+        return (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={cn(
+              "flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
+              isActive
+                ? "bg-sidebar-accent text-white shadow-sm translate-x-1"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-white hover:translate-x-1"
+            )}
+          >
+            <item.icon className="mr-3 h-5 w-5" />
+            {item.name}
+          </Link>
+        );
+      })}
     </nav>
   );
 

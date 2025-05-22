@@ -14,26 +14,26 @@ const Registration = () => {
   const { isLoading } = useData();
 
   return (
-    <div className="container mx-auto py-6 px-4 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Cadastros</h1>
+    <div className="container mx-auto py-6 px-4 animate-fade-in space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold tracking-tight">Cadastros</h1>
       </div>
       
       <Tabs defaultValue="products" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="products">Produtos</TabsTrigger>
-          <TabsTrigger value="materials">Matérias-Primas</TabsTrigger>
-          <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
-          <TabsTrigger value="predictability">Previsibilidade</TabsTrigger>
-          <TabsTrigger value="calculations">Cálculos</TabsTrigger>
+        <TabsList className="mb-6 bg-muted/70 p-1 rounded-lg w-full sm:w-auto flex flex-wrap justify-center">
+          <TabsTrigger value="products" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">Produtos</TabsTrigger>
+          <TabsTrigger value="materials" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">Matérias-Primas</TabsTrigger>
+          <TabsTrigger value="suppliers" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">Fornecedores</TabsTrigger>
+          <TabsTrigger value="predictability" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">Previsibilidade</TabsTrigger>
+          <TabsTrigger value="calculations" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">Cálculos</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="products">
+        <TabsContent value="products" className="animate-fade-in">
           <Card>
-            <CardHeader>
+            <CardHeader className="bg-muted/20 rounded-t-lg border-b">
               <CardTitle>Produtos</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {isLoading.products ? (
                 <div className="flex justify-center items-center h-40">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -45,12 +45,12 @@ const Registration = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="materials">
+        <TabsContent value="materials" className="animate-fade-in">
           <Card>
-            <CardHeader>
+            <CardHeader className="bg-muted/20 rounded-t-lg border-b">
               <CardTitle>Matérias-Primas</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {isLoading.materials ? (
                 <div className="flex justify-center items-center h-40">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -62,12 +62,12 @@ const Registration = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="suppliers">
+        <TabsContent value="suppliers" className="animate-fade-in">
           <Card>
-            <CardHeader>
+            <CardHeader className="bg-muted/20 rounded-t-lg border-b">
               <CardTitle>Fornecedores</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {isLoading.suppliers ? (
                 <div className="flex justify-center items-center h-40">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -79,12 +79,12 @@ const Registration = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="predictability">
+        <TabsContent value="predictability" className="animate-fade-in">
           <Card>
-            <CardHeader>
+            <CardHeader className="bg-muted/20 rounded-t-lg border-b">
               <CardTitle>Previsibilidade</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {isLoading.products ? (
                 <div className="flex justify-center items-center h-40">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -96,12 +96,12 @@ const Registration = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="calculations">
+        <TabsContent value="calculations" className="animate-fade-in">
           <Card>
-            <CardHeader>
+            <CardHeader className="bg-muted/20 rounded-t-lg border-b">
               <CardTitle>Cálculos</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <CalcTable />
             </CardContent>
           </Card>

@@ -50,7 +50,7 @@ export function Header({ title, toggleSidebar }: HeaderProps) {
   
   return (
     <header className={cn(
-      "sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background px-4 md:px-6",
+      "sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background/95 backdrop-blur-sm px-4 md:px-6",
       isMobile ? "pr-4" : ""
     )}>
       <div className="flex items-center gap-2">
@@ -60,7 +60,7 @@ export function Header({ title, toggleSidebar }: HeaderProps) {
             <span className="sr-only">Toggle Menu</span>
           </Button>
         )}
-        <h1 className="text-xl font-bold">{getPageTitle()}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{getPageTitle()}</h1>
       </div>
       <div className="flex items-center gap-4">
         <Clock />
