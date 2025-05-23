@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
@@ -48,6 +49,15 @@ const SalesHistory = () => {
     unitOfMeasure: "kg"
   });
   const [availableBatchesForProduct, setAvailableBatchesForProduct] = useState<ProducedItem[]>([]);
+  
+  // Calculate total weight in kg for a sale
+  const calculateTotalWeightInKg = (sale: Sale) => {
+    return sale.items.reduce((total, item) => {
+      const product = products.find(p => p.id === item.productId);
+      const weightFactor = product?.weightFactor || 1;
+      return total + (item.quantity * weightFactor);
+    }, 0);
+  };
   
   const filteredSales = sales.filter(
     (sale) =>
@@ -272,8 +282,7 @@ const SalesHistory = () => {
                         .join(", ")}
                     </TableCell>
                     <TableCell>
-                      {sale.items.reduce((total, item) => total + item.quantity, 0)}{" "}
-                      {sale.items.length > 0 ? sale.items[0].unitOfMeasure : ""}
+                      {calculateTotalWeightInKg(sale).toFixed(2)} kg
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -374,19 +383,25 @@ const SalesHistory = () => {
                     <TableRow>
                       <TableHead>Produto</TableHead>
                       <TableHead>Lote</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Un.</TableHead>
+                      <TableHead>Un. Vendidas</TableHead>
+                      <TableHead>Quantidade (kg)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedSale.items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.productName}</TableCell>
-                        <TableCell>{item.batchNumber}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{item.unitOfMeasure}</TableCell>
-                      </TableRow>
-                    ))}
+                    {selectedSale.items.map((item) => {
+                      const product = products.find(p => p.id === item.productId);
+                      const weightFactor = product?.weightFactor || 1;
+                      const quantityInKg = item.quantity * weightFactor;
+                      
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.productName}</TableCell>
+                          <TableCell>{item.batchNumber}</TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>{quantityInKg.toFixed(2)} kg</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

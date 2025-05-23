@@ -441,27 +441,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const filteredProductionBatches = filterByDateRange(productionBatches, 'productionDate');
     const filteredSales = filterByDateRange(sales, 'date');
     
-    // Calculate total production
+    // Calculate total production in KG using weight factors
     const totalProduction = filteredProductionBatches.reduce((acc, batch) => {
-      return acc + batch.producedItems.reduce((itemAcc, item) => itemAcc + item.quantity, 0);
+      return acc + batch.producedItems.reduce((itemAcc, item) => {
+        const product = products.find(p => p.id === item.productId);
+        const weightFactor = product?.weightFactor || 1;
+        return itemAcc + (item.quantity * weightFactor);
+      }, 0);
     }, 0);
 
-    // Calculate total sales
+    // Calculate total sales in KG using weight factors
     const totalSales = filteredSales.reduce((acc, sale) => {
-      return acc + sale.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0);
+      return acc + sale.items.reduce((itemAcc, item) => {
+        const product = products.find(p => p.id === item.productId);
+        const weightFactor = product?.weightFactor || 1;
+        return itemAcc + (item.quantity * weightFactor);
+      }, 0);
     }, 0);
 
-    // Calculate current inventory (not filtered by date range)
+    // Calculate current inventory in KG using weight factors (not filtered by date range)
     const currentInventory = productionBatches.reduce((acc, batch) => {
       return acc + batch.producedItems.reduce((itemAcc, item) => {
+        const product = products.find(p => p.id === item.productId);
+        const weightFactor = product?.weightFactor || 1;
         // Ensure we're using a valid number
         const remaining = typeof item.remainingQuantity === 'number' ? item.remainingQuantity : 0;
-        return itemAcc + remaining;
+        return itemAcc + (remaining * weightFactor);
       }, 0);
     }, 0);
 
     // Calculate average profitability (simplified)
-    const averageProfitability = totalSales > 0 ? (totalSales / totalProduction) * 100 : 0;
+    const averageProfitability = totalProduction > 0 ? (totalSales / totalProduction) * 100 : 0;
 
     setDashboardStats({
       totalProduction,
@@ -479,7 +489,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       averageProfitability: parseFloat(averageProfitability.toFixed(2))
     });
 
-  }, [productionBatches, sales, dateRange]);
+  }, [productionBatches, sales, dateRange, products]);
 
   // Helper functions
   const generateId = () => {
