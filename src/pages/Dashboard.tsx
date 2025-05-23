@@ -140,35 +140,27 @@ const Dashboard = () => {
       });
       
       return days.map((day, index) => {
-        // Calculate production for this day using weight factors
+        // Calculate production for this day
         const production = productionBatches
           .filter(batch => {
             const batchDate = new Date(batch.productionDate);
             return isSameDay(batchDate, day);
           })
           .reduce((total, batch) => {
-            return total + batch.producedItems.reduce((sum, item) => {
-              const product = products.find(p => p.id === item.productId);
-              const weightFactor = product?.weightFactor || 1;
-              return sum + (item.quantity * weightFactor);
-            }, 0);
+            return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
           }, 0);
         
-        // Calculate sales for this day using weight factors
+        // Calculate sales for this day
         const salesAmount = sales
           .filter(sale => {
             const saleDate = new Date(sale.date);
             return isSameDay(saleDate, day);
           })
           .reduce((total, sale) => {
-            return total + sale.items.reduce((sum, item) => {
-              const product = products.find(p => p.id === item.productId);
-              const weightFactor = product?.weightFactor || 1;
-              return sum + (item.quantity * weightFactor);
-            }, 0);
+            return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
           }, 0);
         
-        // Calculate previous day's values with weight factors
+        // Calculate previous day's values
         let previousDayProduction = 0;
         let previousDaySales = 0;
         
@@ -181,11 +173,7 @@ const Dashboard = () => {
               return isSameDay(batchDate, previousDay);
             })
             .reduce((total, batch) => {
-              return total + batch.producedItems.reduce((sum, item) => {
-                const product = products.find(p => p.id === item.productId);
-                const weightFactor = product?.weightFactor || 1;
-                return sum + (item.quantity * weightFactor);
-              }, 0);
+              return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
             }, 0);
           
           previousDaySales = sales
@@ -194,11 +182,7 @@ const Dashboard = () => {
               return isSameDay(saleDate, previousDay);
             })
             .reduce((total, sale) => {
-              return total + sale.items.reduce((sum, item) => {
-                const product = products.find(p => p.id === item.productId);
-                const weightFactor = product?.weightFactor || 1;
-                return sum + (item.quantity * weightFactor);
-              }, 0);
+              return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
             }, 0);
         }
         
@@ -216,7 +200,7 @@ const Dashboard = () => {
         };
       });
     } else {
-      // Show monthly data with weight factors
+      // Show monthly data (original logic)
       const data = [];
       let currentDate = new Date(dateRange.from);
       const endDate = dateRange.to;
@@ -230,32 +214,24 @@ const Dashboard = () => {
         const year = currentDate.getFullYear();
         const monthName = formatMonthYear(currentDate);
         
-        // Calculate production for this month with weight factors
+        // Calculate production for this month
         const production = productionBatches
           .filter(batch => {
             const date = new Date(batch.productionDate);
             return date.getMonth() === month && date.getFullYear() === year;
           })
           .reduce((total, batch) => {
-            return total + batch.producedItems.reduce((sum, item) => {
-              const product = products.find(p => p.id === item.productId);
-              const weightFactor = product?.weightFactor || 1;
-              return sum + (item.quantity * weightFactor);
-            }, 0);
+            return total + batch.producedItems.reduce((sum, item) => sum + item.quantity, 0);
           }, 0);
         
-        // Calculate sales for this month with weight factors
+        // Calculate sales for this month
         const salesAmount = sales
           .filter(sale => {
             const date = new Date(sale.date);
             return date.getMonth() === month && date.getFullYear() === year;
           })
           .reduce((total, sale) => {
-            return total + sale.items.reduce((sum, item) => {
-              const product = products.find(p => p.id === item.productId);
-              const weightFactor = product?.weightFactor || 1;
-              return sum + (item.quantity * weightFactor);
-            }, 0);
+            return total + sale.items.reduce((sum, item) => sum + item.quantity, 0);
           }, 0);
         
         // Calculate percentage changes compared to previous month
