@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
@@ -91,6 +90,15 @@ const ProductionHistory = () => {
     } catch (error) {
       console.error("Error fetching global factors:", error);
     }
+  };
+  
+  // Calculate total weight in kg for a production batch
+  const calculateTotalWeightInKg = (batch: ProductionBatch) => {
+    return batch.producedItems.reduce((total, item) => {
+      const product = products.find(p => p.id === item.productId);
+      const weightFactor = product?.weightFactor || 1;
+      return total + (item.quantity * weightFactor);
+    }, 0);
   };
   
   const filteredBatches = productionBatches.filter(
@@ -324,11 +332,7 @@ const ProductionHistory = () => {
                           .join(", ")}
                       </TableCell>
                       <TableCell>
-                        {batch.producedItems.reduce(
-                          (total, item) => total + item.quantity,
-                          0
-                        )}{" "}
-                        kg
+                        {calculateTotalWeightInKg(batch).toFixed(2)} kg
                       </TableCell>
                       <TableCell>{batch.mixDay}</TableCell>
                       <TableCell>{batch.mixCount}</TableCell>
@@ -463,21 +467,27 @@ const ProductionHistory = () => {
                     <TableRow>
                       <TableHead>Produto</TableHead>
                       <TableHead>Lote</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Un.</TableHead>
-                      <TableHead>Estoque Atual</TableHead>
+                      <TableHead>Un. Produzidas</TableHead>
+                      <TableHead>Quantidade (kg)</TableHead>
+                      <TableHead>Estoque Atual (un.)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedBatch.producedItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.productName}</TableCell>
-                        <TableCell>{item.batchNumber}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{item.unitOfMeasure}</TableCell>
-                        <TableCell>{item.remainingQuantity}</TableCell>
-                      </TableRow>
-                    ))}
+                    {selectedBatch.producedItems.map((item) => {
+                      const product = products.find(p => p.id === item.productId);
+                      const weightFactor = product?.weightFactor || 1;
+                      const quantityInKg = item.quantity * weightFactor;
+                      
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.productName}</TableCell>
+                          <TableCell>{item.batchNumber}</TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>{quantityInKg.toFixed(2)} kg</TableCell>
+                          <TableCell>{item.remainingQuantity}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
