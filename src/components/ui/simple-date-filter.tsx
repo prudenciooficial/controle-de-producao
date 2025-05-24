@@ -91,46 +91,59 @@ export function SimpleDateFilter({
   };
 
   return (
-    <div className={cn("flex flex-col space-y-4", className)}>
+    <div className={cn("flex flex-col space-y-6", className)}>
       {/* Quick period filters */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Button 
-          variant="outline" 
-          className="w-full text-sm" 
-          onClick={setCurrentMonth}
-        >
-          Mês atual
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          className="w-full text-sm" 
-          onClick={setLast3Months}
-        >
-          Últimos 3 meses
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          className="w-full text-sm" 
-          onClick={setLast6Months}
-        >
-          Últimos 6 meses
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          className="w-full text-sm" 
-          onClick={setLastYear}
-        >
-          Último 1 ano
-        </Button>
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-gray-700">Períodos Rápidos</h3>
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-xs font-medium" 
+            onClick={setCurrentMonth}
+          >
+            Mês Atual
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-xs font-medium" 
+            onClick={setLast3Months}
+          >
+            Últimos 3 Meses
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-xs font-medium" 
+            onClick={setLast6Months}
+          >
+            Últimos 6 Meses
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-xs font-medium" 
+            onClick={setLastYear}
+          >
+            Último Ano
+          </Button>
+        </div>
       </div>
 
-      {/* Date navigation controls */}
-      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 items-start">
-        <div className="flex space-x-1 w-full sm:w-auto">
-          <Button variant="outline" size="icon" onClick={setPreviousMonth}>
+      {/* Custom date selection and navigation */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-gray-700">Seleção Personalizada</h3>
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="icon"
+            className="h-9 w-9 shrink-0" 
+            onClick={setPreviousMonth}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           
@@ -139,23 +152,25 @@ export function SimpleDateFilter({
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal",
+                  "flex-1 justify-start text-left font-normal min-w-0",
                   !dateRange && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} -{" "}
-                      {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
-                    </>
+                <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} -{" "}
+                        {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+                      </>
+                    ) : (
+                      format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
+                    )
                   ) : (
-                    format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
-                  )
-                ) : (
-                  <span>Selecione um período</span>
-                )}
+                    "Selecione um período"
+                  )}
+                </span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -171,7 +186,12 @@ export function SimpleDateFilter({
             </PopoverContent>
           </Popover>
 
-          <Button variant="outline" size="icon" onClick={setNextMonth}>
+          <Button 
+            variant="outline" 
+            size="icon"
+            className="h-9 w-9 shrink-0" 
+            onClick={setNextMonth}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
