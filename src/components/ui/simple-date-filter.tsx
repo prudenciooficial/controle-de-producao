@@ -100,7 +100,7 @@ export function SimpleDateFilter({
           className="text-xs font-medium" 
           onClick={setLastYear}
         >
-          Último Ano
+          Últimos 12 Meses
         </Button>
 
         <Popover>
