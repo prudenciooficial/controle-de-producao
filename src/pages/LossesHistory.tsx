@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
@@ -45,11 +46,13 @@ import { useForm } from "react-hook-form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const LossesHistory = () => {
   const { losses, deleteLoss, updateLoss, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [selectedLoss, setSelectedLoss] = useState<Loss | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -209,103 +212,105 @@ const LossesHistory = () => {
               <span className="ml-2">Carregando dados...</span>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Lote</TableHead>
-                  <TableHead>Máquina</TableHead>
-                  <TableHead>Tipo de Produto</TableHead>
-                  <TableHead>Quantidade</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLosses.length > 0 ? (
-                  filteredLosses.map((loss) => (
-                    <TableRow key={loss.id}>
-                      <TableCell>{new Date(loss.date).toLocaleDateString()}</TableCell>
-                      <TableCell>{loss.batchNumber}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={getMachineColor(loss.machine)}>
-                          {loss.machine}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={getProductTypeColor(loss.productType)}>
-                          {loss.productType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{loss.quantity} {loss.unitOfMeasure}</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                openDetailsDialog(loss);
-                              }}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Detalhes
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                openEditDialog(loss);
-                              }}
-                            >
-                              <PencilIcon className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}
-                              className="text-destructive"
-                              onClick={() => openDeleteDialog(loss)}
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Lote</TableHead>
+                    <TableHead className={isMobile ? "hidden" : ""}>Máquina</TableHead>
+                    <TableHead className={isMobile ? "hidden" : ""}>Tipo de Produto</TableHead>
+                    <TableHead>Quantidade</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLosses.length > 0 ? (
+                    filteredLosses.map((loss) => (
+                      <TableRow key={loss.id}>
+                        <TableCell>{new Date(loss.date).toLocaleDateString()}</TableCell>
+                        <TableCell className="font-medium">{loss.batchNumber}</TableCell>
+                        <TableCell className={isMobile ? "hidden" : ""}>
+                          <Badge variant="secondary" className={getMachineColor(loss.machine)}>
+                            {loss.machine}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={isMobile ? "hidden" : ""}>
+                          <Badge variant="secondary" className={getProductTypeColor(loss.productType)}>
+                            {loss.productType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{loss.quantity} {loss.unitOfMeasure}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  openDetailsDialog(loss);
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Detalhes
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  openEditDialog(loss);
+                                }}
+                              >
+                                <PencilIcon className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}
+                                className="text-destructive"
+                                onClick={() => openDeleteDialog(loss)}
+                              >
+                                <Trash className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-4">
+                        Nenhum registro de perda encontrado.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4">
-                      Nenhum registro de perda encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
       
-      {/* Details Dialog */}
+      {/* Details Dialog with Mobile Responsiveness */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         {selectedLoss && (
-          <DialogContent className="max-w-md">
+          <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] p-4' : 'max-w-md'}`}>
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className={isMobile ? 'text-lg' : ''}>
                 Detalhes da Perda
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className={isMobile ? 'text-sm' : ''}>
                 Data: {new Date(selectedLoss.date).toLocaleDateString()}
               </DialogDescription>
             </DialogHeader>
             
             <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                 <div>
                   <p className="text-sm font-medium">Lote de Produção:</p>
                   <p className="text-sm">{selectedLoss.batchNumber}</p>
@@ -318,7 +323,7 @@ const LossesHistory = () => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                 <div>
                   <p className="text-sm font-medium">Tipo de Produto:</p>
                   <Badge variant="secondary" className={getProductTypeColor(selectedLoss.productType)}>
@@ -336,7 +341,7 @@ const LossesHistory = () => {
               {selectedLoss.notes && (
                 <div>
                   <p className="text-sm font-medium">Observações:</p>
-                  <p className="text-sm">{selectedLoss.notes}</p>
+                  <p className="text-sm bg-muted p-3 rounded-md">{selectedLoss.notes}</p>
                 </div>
               )}
             </div>
@@ -344,21 +349,21 @@ const LossesHistory = () => {
         )}
       </Dialog>
       
-      {/* Edit Dialog */}
+      {/* Edit Dialog with Mobile Responsiveness */}
       <Dialog open={showEditDialog} onOpenChange={(open) => {
         if (!isUpdating) setShowEditDialog(open);
       }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] p-4' : 'max-w-md'} overflow-y-auto`}>
           <DialogHeader>
-            <DialogTitle>Editar Registro de Perda</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className={isMobile ? 'text-lg' : ''}>Editar Registro de Perda</DialogTitle>
+            <DialogDescription className={isMobile ? 'text-sm' : ''}>
               Atualize os dados do registro de perda.
             </DialogDescription>
           </DialogHeader>
           
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
+            <AlertDescription className={isMobile ? 'text-sm' : ''}>
               Alterações nos registros de perdas afetam a análise de eficiência da produção.
             </AlertDescription>
           </Alert>
@@ -397,7 +402,7 @@ const LossesHistory = () => {
                 )}
               />
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                 <FormField
                   control={form.control}
                   name="machine"
@@ -456,7 +461,7 @@ const LossesHistory = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                 <FormField
                   control={form.control}
                   name="quantity"
@@ -518,18 +523,20 @@ const LossesHistory = () => {
                 )}
               />
               
-              <DialogFooter>
+              <DialogFooter className={isMobile ? 'flex-col space-y-2' : ''}>
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={() => setShowEditDialog(false)}
                   disabled={isUpdating}
+                  className={isMobile ? 'w-full' : ''}
                 >
                   Cancelar
                 </Button>
                 <Button 
                   type="submit"
                   disabled={isUpdating}
+                  className={isMobile ? 'w-full' : ''}
                 >
                   {isUpdating ? (
                     <>
@@ -546,9 +553,9 @@ const LossesHistory = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Confirmation Dialog - Using AlertDialog */}
+      {/* Delete Confirmation Dialog with Mobile Responsiveness */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className={isMobile ? 'max-w-[90vw]' : ''}>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
@@ -557,12 +564,14 @@ const LossesHistory = () => {
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className={isMobile ? 'flex-col space-y-2' : ''}>
+            <AlertDialogCancel disabled={isDeleting} className={isMobile ? 'w-full' : ''}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => selectedLoss && handleDelete(selectedLoss.id)}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={`bg-destructive text-destructive-foreground hover:bg-destructive/90 ${isMobile ? 'w-full' : ''}`}
             >
               {isDeleting ? (
                 <>

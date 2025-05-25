@@ -36,6 +36,7 @@ import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const ProductionHistory = () => {
   const { 
@@ -49,6 +50,7 @@ const ProductionHistory = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [selectedBatch, setSelectedBatch] = useState<ProductionBatch | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -306,109 +308,113 @@ const ProductionHistory = () => {
               <span className="ml-2">Carregando dados...</span>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Lote</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Produtos</TableHead>
-                  <TableHead>Quantidade Total</TableHead>
-                  <TableHead>Dia da Mexida</TableHead>
-                  <TableHead>Qtd. Mexidas</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBatches.length > 0 ? (
-                  filteredBatches.map((batch) => (
-                    <TableRow key={batch.id}>
-                      <TableCell>{batch.batchNumber}</TableCell>
-                      <TableCell>
-                        {new Date(batch.productionDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        {batch.producedItems
-                          .map((item) => item.productName)
-                          .join(", ")}
-                      </TableCell>
-                      <TableCell>
-                        {calculateTotalWeightInKg(batch).toFixed(2)} kg
-                      </TableCell>
-                      <TableCell>{batch.mixDay}</TableCell>
-                      <TableCell>{batch.mixCount}</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                openDetailsDialog(batch);
-                              }}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Detalhes
-                            </DropdownMenuItem>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Lote</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead className={isMobile ? "hidden" : ""}>Produtos</TableHead>
+                    <TableHead>Quantidade Total</TableHead>
+                    <TableHead className={isMobile ? "hidden" : ""}>Dia da Mexida</TableHead>
+                    <TableHead className={isMobile ? "hidden" : ""}>Qtd. Mexidas</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredBatches.length > 0 ? (
+                    filteredBatches.map((batch) => (
+                      <TableRow key={batch.id}>
+                        <TableCell className="font-medium">{batch.batchNumber}</TableCell>
+                        <TableCell>
+                          {new Date(batch.productionDate).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className={isMobile ? "hidden" : ""}>
+                          <div className="max-w-xs truncate">
+                            {batch.producedItems
+                              .map((item) => item.productName)
+                              .join(", ")}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {calculateTotalWeightInKg(batch).toFixed(2)} kg
+                        </TableCell>
+                        <TableCell className={isMobile ? "hidden" : ""}>{batch.mixDay}</TableCell>
+                        <TableCell className={isMobile ? "hidden" : ""}>{batch.mixCount}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  openDetailsDialog(batch);
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Detalhes
+                              </DropdownMenuItem>
 
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                openEditDialog(batch);
-                              }}
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}
-                              className="text-destructive"
-                              onClick={() => openDeleteDialog(batch)}
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  openEditDialog(batch);
+                                }}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}
+                                className="text-destructive"
+                                onClick={() => openDeleteDialog(batch)}
+                              >
+                                <Trash className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-4">
+                        Nenhum registro de produção encontrado.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4">
-                      Nenhum registro de produção encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
       
-      {/* Details Dialog */}
+      {/* Enhanced Details Dialog with Mobile Responsiveness */}
       <Dialog open={showDetailsDialog} onOpenChange={handleDetailsDialogClose}>
         {selectedBatch && (
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>
+          <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] p-4' : 'max-w-4xl max-h-[85vh]'} overflow-y-auto`}>
+            <DialogHeader className="space-y-2">
+              <DialogTitle className={`${isMobile ? 'text-lg' : 'text-xl'} leading-tight`}>
                 Detalhes da Produção - Lote {selectedBatch.batchNumber}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className={isMobile ? 'text-sm' : ''}>
                 Data: {new Date(selectedBatch.productionDate).toLocaleDateString()}
               </DialogDescription>
             </DialogHeader>
             
-            <div className="grid gap-6">
+            <div className={`grid gap-${isMobile ? '4' : '6'}`}>
               <div>
-                <h3 className="text-lg font-medium mb-2">
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
                   Informações Gerais
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                   <div>
                     <p className="text-sm font-medium">Dia da Mexida:</p>
                     <p className="text-sm">{selectedBatch.mixDay}</p>
@@ -420,16 +426,16 @@ const ProductionHistory = () => {
                 </div>
               </div>
               
-              {/* Production Metrics */}
+              {/* Production Metrics with Mobile Layout */}
               <div>
-                <h3 className="text-lg font-medium mb-2">
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
                   Métricas de Produção
                 </h3>
-                <div className="bg-muted p-4 rounded-md">
+                <div className={`bg-muted p-${isMobile ? '3' : '4'} rounded-md`}>
                   {(() => {
                     const metrics = calculateProductionMetrics(selectedBatch);
                     return (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-${isMobile ? '3' : '4'}`}>
                         <div>
                           <p className="text-sm font-medium">Fécula utilizada:</p>
                           <p className="text-sm">{metrics.feculaUtilizada} kg</p>
@@ -458,74 +464,80 @@ const ProductionHistory = () => {
                 </div>
               </div>
               
+              {/* Products Table with Mobile Scrolling */}
               <div>
-                <h3 className="text-lg font-medium mb-2">
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
                   Produtos Produzidos
                 </h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>Lote</TableHead>
-                      <TableHead>Un. Produzidas</TableHead>
-                      <TableHead>Quantidade (kg)</TableHead>
-                      <TableHead>Estoque Atual (un.)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedBatch.producedItems.map((item) => {
-                      const product = products.find(p => p.id === item.productId);
-                      const weightFactor = product?.weightFactor || 1;
-                      const quantityInKg = item.quantity * weightFactor;
-                      
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.productName}</TableCell>
-                          <TableCell>{item.batchNumber}</TableCell>
-                          <TableCell>{item.quantity}</TableCell>
-                          <TableCell>{quantityInKg.toFixed(2)} kg</TableCell>
-                          <TableCell>{item.remainingQuantity}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <Table stickyHeader={isMobile}>
+                    <TableHeader sticky={isMobile}>
+                      <TableRow>
+                        <TableHead className="min-w-[120px]">Produto</TableHead>
+                        <TableHead className="min-w-[100px]">Lote</TableHead>
+                        <TableHead className="min-w-[100px]">Un. Produzidas</TableHead>
+                        <TableHead className="min-w-[120px]">Quantidade (kg)</TableHead>
+                        <TableHead className="min-w-[120px]">Estoque Atual (un.)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedBatch.producedItems.map((item) => {
+                        const product = products.find(p => p.id === item.productId);
+                        const weightFactor = product?.weightFactor || 1;
+                        const quantityInKg = item.quantity * weightFactor;
+                        
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.productName}</TableCell>
+                            <TableCell>{item.batchNumber}</TableCell>
+                            <TableCell>{item.quantity}</TableCell>
+                            <TableCell>{quantityInKg.toFixed(2)} kg</TableCell>
+                            <TableCell>{item.remainingQuantity}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
               
+              {/* Materials Table with Mobile Scrolling */}
               <div>
-                <h3 className="text-lg font-medium mb-2">
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
                   Insumos Utilizados
                 </h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Insumo</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Lote</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Un.</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedBatch.usedMaterials.map((material) => (
-                      <TableRow key={material.id}>
-                        <TableCell>{material.materialName}</TableCell>
-                        <TableCell>{material.materialType}</TableCell>
-                        <TableCell>{material.batchNumber}</TableCell>
-                        <TableCell>{material.quantity}</TableCell>
-                        <TableCell>{material.unitOfMeasure}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table stickyHeader={isMobile}>
+                    <TableHeader sticky={isMobile}>
+                      <TableRow>
+                        <TableHead className="min-w-[120px]">Insumo</TableHead>
+                        <TableHead className="min-w-[80px]">Tipo</TableHead>
+                        <TableHead className="min-w-[100px]">Lote</TableHead>
+                        <TableHead className="min-w-[100px]">Quantidade</TableHead>
+                        <TableHead className="min-w-[60px]">Un.</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedBatch.usedMaterials.map((material) => (
+                        <TableRow key={material.id}>
+                          <TableCell className="font-medium">{material.materialName}</TableCell>
+                          <TableCell>{material.materialType}</TableCell>
+                          <TableCell>{material.batchNumber}</TableCell>
+                          <TableCell>{material.quantity}</TableCell>
+                          <TableCell>{material.unitOfMeasure}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
               
               {selectedBatch.notes && (
                 <div>
-                  <h3 className="text-lg font-medium mb-2">
+                  <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
                     Observações
                   </h3>
-                  <p className="text-sm">{selectedBatch.notes}</p>
+                  <p className="text-sm bg-muted p-3 rounded-md">{selectedBatch.notes}</p>
                 </div>
               )}
             </div>
@@ -536,18 +548,18 @@ const ProductionHistory = () => {
       {/* Enhanced Edit Dialog with Products and Materials editing */}
       <Dialog open={showEditDialog} onOpenChange={handleEditDialogClose}>
         {selectedBatch && (
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] p-4' : 'max-w-4xl max-h-[90vh]'} overflow-y-auto`}>
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className={isMobile ? 'text-lg' : 'text-xl'}>
                 Editar Produção - Lote {selectedBatch.batchNumber}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className={isMobile ? 'text-sm' : ''}>
                 Modifique as informações necessárias e salve as alterações
               </DialogDescription>
             </DialogHeader>
             
             <div className="grid gap-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Número do Lote</label>
                   <Input 
@@ -583,79 +595,84 @@ const ProductionHistory = () => {
                 </div>
               </div>
               
-              {/* Produtos Produzidos - Edição */}
+              {/* Produtos Produzidos - Edição com responsividade */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Produtos Produzidos</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>Lote</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Un.</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {producedItems.map((item, index) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.productName}</TableCell>
-                        <TableCell>
-                          <Input 
-                            value={item.batchNumber} 
-                            onChange={(e) => updateProducedItem(index, 'batchNumber', e.target.value)} 
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input 
-                            type="number" 
-                            value={item.quantity} 
-                            onChange={(e) => updateProducedItem(index, 'quantity', parseFloat(e.target.value))} 
-                            className="w-24"
-                          />
-                        </TableCell>
-                        <TableCell>{item.unitOfMeasure}</TableCell>
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium`}>Produtos Produzidos</h3>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[120px]">Produto</TableHead>
+                        <TableHead className="min-w-[100px]">Lote</TableHead>
+                        <TableHead className="min-w-[100px]">Quantidade</TableHead>
+                        <TableHead className="min-w-[60px]">Un.</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="text-sm text-amber-600">
+                    </TableHeader>
+                    <TableBody>
+                      {producedItems.map((item, index) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.productName}</TableCell>
+                          <TableCell>
+                            <Input 
+                              value={item.batchNumber} 
+                              onChange={(e) => updateProducedItem(index, 'batchNumber', e.target.value)} 
+                              className="min-w-[100px]"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input 
+                              type="number" 
+                              value={item.quantity} 
+                              onChange={(e) => updateProducedItem(index, 'quantity', parseFloat(e.target.value))} 
+                              className="w-20"
+                            />
+                          </TableCell>
+                          <TableCell className="text-sm">{item.unitOfMeasure}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
                   Atenção: Alterar a quantidade de um produto ajustará automaticamente o estoque disponível.
                 </div>
               </div>
               
-              {/* Insumos Utilizados - Edição */}
+              {/* Insumos Utilizados - Edição com responsividade */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Insumos Utilizados</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Insumo</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Lote</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Un.</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {usedMaterials.map((material, index) => (
-                      <TableRow key={material.id}>
-                        <TableCell>{material.materialName}</TableCell>
-                        <TableCell>{material.materialType}</TableCell>
-                        <TableCell>{material.batchNumber}</TableCell>
-                        <TableCell>
-                          <Input 
-                            type="number" 
-                            value={material.quantity} 
-                            onChange={(e) => updateUsedMaterial(index, 'quantity', parseFloat(e.target.value))} 
-                            className="w-24"
-                          />
-                        </TableCell>
-                        <TableCell>{material.unitOfMeasure}</TableCell>
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium`}>Insumos Utilizados</h3>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[120px]">Insumo</TableHead>
+                        <TableHead className="min-w-[80px]">Tipo</TableHead>
+                        <TableHead className="min-w-[100px]">Lote</TableHead>
+                        <TableHead className="min-w-[100px]">Quantidade</TableHead>
+                        <TableHead className="min-w-[60px]">Un.</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="text-sm text-amber-600">
+                    </TableHeader>
+                    <TableBody>
+                      {usedMaterials.map((material, index) => (
+                        <TableRow key={material.id}>
+                          <TableCell className="font-medium">{material.materialName}</TableCell>
+                          <TableCell>{material.materialType}</TableCell>
+                          <TableCell>{material.batchNumber}</TableCell>
+                          <TableCell>
+                            <Input 
+                              type="number" 
+                              value={material.quantity} 
+                              onChange={(e) => updateUsedMaterial(index, 'quantity', parseFloat(e.target.value))} 
+                              className="w-20"
+                            />
+                          </TableCell>
+                          <TableCell className="text-sm">{material.unitOfMeasure}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
                   Atenção: Alterar a quantidade de um insumo ajustará automaticamente o estoque disponível.
                 </div>
               </div>
@@ -670,13 +687,16 @@ const ProductionHistory = () => {
                 />
               </div>
               
-              <DialogFooter>
+              <DialogFooter className={isMobile ? 'flex-col space-y-2' : ''}>
                 <DialogClose asChild>
-                  <Button variant="outline" disabled={isSaving}>Cancelar</Button>
+                  <Button variant="outline" disabled={isSaving} className={isMobile ? 'w-full' : ''}>
+                    Cancelar
+                  </Button>
                 </DialogClose>
                 <Button 
                   onClick={handleEditSubmit} 
                   disabled={isSaving}
+                  className={isMobile ? 'w-full' : ''}
                 >
                   {isSaving ? (
                     <>
@@ -695,7 +715,7 @@ const ProductionHistory = () => {
       
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={handleDeleteDialogClose}>
-        <AlertDialogContent>
+        <AlertDialogContent className={isMobile ? 'max-w-[90vw]' : ''}>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
@@ -706,12 +726,14 @@ const ProductionHistory = () => {
               <strong>Os insumos utilizados serão retornados ao estoque.</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className={isMobile ? 'flex-col space-y-2' : ''}>
+            <AlertDialogCancel disabled={isDeleting} className={isMobile ? 'w-full' : ''}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => selectedBatch && handleDelete(selectedBatch.id)}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={`bg-destructive text-destructive-foreground hover:bg-destructive/90 ${isMobile ? 'w-full' : ''}`}
             >
               {isDeleting ? (
                 <>
