@@ -29,36 +29,33 @@ export function SimpleDateFilter({
     });
   };
 
-  // Set last 3 months
+  // Set last 3 months (including current month)
   const setLast3Months = () => {
     const today = new Date();
-    const threeMonthsAgo = subMonths(today, 3);
-    const lastMonth = subMonths(today, 1);
+    const threeMonthsAgo = subMonths(today, 2);
     onDateRangeChange({
       from: startOfMonth(threeMonthsAgo),
-      to: endOfMonth(lastMonth)
+      to: endOfMonth(today)
     });
   };
 
-  // Set last 6 months
+  // Set last 6 months (including current month)
   const setLast6Months = () => {
     const today = new Date();
-    const sixMonthsAgo = subMonths(today, 6);
-    const lastMonth = subMonths(today, 1);
+    const sixMonthsAgo = subMonths(today, 5);
     onDateRangeChange({
       from: startOfMonth(sixMonthsAgo),
-      to: endOfMonth(lastMonth)
+      to: endOfMonth(today)
     });
   };
 
-  // Set last year
+  // Set last year (including current month)
   const setLastYear = () => {
     const today = new Date();
-    const oneYearAgo = subMonths(today, 12);
-    const lastMonth = subMonths(today, 1);
+    const oneYearAgo = subMonths(today, 11);
     onDateRangeChange({
       from: startOfMonth(oneYearAgo),
-      to: endOfMonth(lastMonth)
+      to: endOfMonth(today)
     });
   };
 
@@ -108,25 +105,11 @@ export function SimpleDateFilter({
             <Button
               variant="outline"
               size="sm"
-              className={cn(
-                "text-xs font-medium justify-start text-left",
-                !dateRange && "text-muted-foreground"
-              )}
+              className="text-xs font-medium justify-start text-left"
             >
               <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
               <span className="truncate">
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      {format(dateRange.from, "dd/MM", { locale: ptBR })} -{" "}
-                      {format(dateRange.to, "dd/MM", { locale: ptBR })}
-                    </>
-                  ) : (
-                    format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
-                  )
-                ) : (
-                  "Personalizado"
-                )}
+                Personalizado
               </span>
             </Button>
           </PopoverTrigger>
