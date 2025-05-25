@@ -627,7 +627,7 @@ const Dashboard = () => {
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-4">Filtro por período</h2>
+        <h2 className="text-2xl font-bold mb-4">Período</h2>
         <SimpleDateFilter 
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
