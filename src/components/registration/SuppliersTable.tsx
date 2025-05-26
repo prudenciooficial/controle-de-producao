@@ -38,7 +38,6 @@ import { Supplier } from "@/types";
 // Schema for form validation
 const supplierFormSchema = z.object({
   name: z.string().min(2, { message: "Nome deve ter no mínimo 2 caracteres" }),
-  code: z.string().min(2, { message: "Código deve ter no mínimo 2 caracteres" }),
   contacts: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -59,7 +58,6 @@ const SuppliersTable = () => {
     resolver: zodResolver(supplierFormSchema),
     defaultValues: {
       name: "",
-      code: "",
       contacts: "",
       notes: "",
     },
@@ -69,7 +67,6 @@ const SuppliersTable = () => {
     resolver: zodResolver(supplierFormSchema),
     defaultValues: {
       name: "",
-      code: "",
       contacts: "",
       notes: "",
     },
@@ -77,8 +74,7 @@ const SuppliersTable = () => {
   
   const filteredSuppliers = suppliers.filter(
     supplier => 
-      supplier.name.toLowerCase().includes(search.toLowerCase()) ||
-      supplier.code.toLowerCase().includes(search.toLowerCase())
+      supplier.name.toLowerCase().includes(search.toLowerCase())
   );
   
   const handleAdd = async (data: SupplierFormValues) => {
@@ -86,7 +82,7 @@ const SuppliersTable = () => {
       setLoading(true);
       await addSupplier({
         name: data.name,
-        code: data.code,
+        code: "", // Still include empty code as it's in the database schema
         contacts: data.contacts,
         notes: data.notes,
       });
@@ -121,7 +117,6 @@ const SuppliersTable = () => {
       setLoading(true);
       await updateSupplier(selectedSupplier, {
         name: data.name,
-        code: data.code,
         contacts: data.contacts,
         notes: data.notes,
       });
@@ -184,7 +179,6 @@ const SuppliersTable = () => {
     // Set the form values
     editForm.reset({
       name: supplier.name,
-      code: supplier.code,
       contacts: supplier.contacts || "",
       notes: supplier.notes || "",
     });
@@ -223,7 +217,6 @@ const SuppliersTable = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>Código</TableHead>
               <TableHead>Contatos</TableHead>
               <TableHead className="w-[100px]">Ações</TableHead>
             </TableRow>
@@ -233,7 +226,6 @@ const SuppliersTable = () => {
               filteredSuppliers.map(supplier => (
                 <TableRow key={supplier.id}>
                   <TableCell>{supplier.name}</TableCell>
-                  <TableCell>{supplier.code}</TableCell>
                   <TableCell>{supplier.contacts || "-"}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
@@ -249,7 +241,7 @@ const SuppliersTable = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
+                <TableCell colSpan={3} className="text-center">
                   Nenhum fornecedor encontrado
                 </TableCell>
               </TableRow>
@@ -276,20 +268,6 @@ const SuppliersTable = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={addForm.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Código</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -367,20 +345,6 @@ const SuppliersTable = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Código</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>

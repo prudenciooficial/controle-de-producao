@@ -39,12 +39,11 @@ const ProductsTable = () => {
   
   const filteredProducts = products.filter(
     product => 
-      product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.code.toLowerCase().includes(search.toLowerCase())
+      product.name.toLowerCase().includes(search.toLowerCase())
   );
   
   const handleAddProduct = async () => {
-    if (!newProduct.name || !newProduct.code) return;
+    if (!newProduct.name) return;
     
     await addProduct(newProduct);
     setNewProduct({
@@ -90,7 +89,6 @@ const ProductsTable = () => {
         <TableHeader>
           <TableRow>
             <TableHead>Nome</TableHead>
-            <TableHead>Código</TableHead>
             <TableHead>Unidade</TableHead>
             <TableHead className="w-[100px]">Ações</TableHead>
           </TableRow>
@@ -100,7 +98,6 @@ const ProductsTable = () => {
             filteredProducts.map(product => (
               <TableRow key={product.id}>
                 <TableCell>{product.name}</TableCell>
-                <TableCell>{product.code}</TableCell>
                 <TableCell>{product.unitOfMeasure}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
@@ -131,7 +128,7 @@ const ProductsTable = () => {
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={4} className="text-center">
+              <TableCell colSpan={3} className="text-center">
                 Nenhum produto encontrado
               </TableCell>
             </TableRow>
@@ -157,17 +154,6 @@ const ProductsTable = () => {
                 id="name"
                 value={newProduct.name}
                 onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="code" className="text-right">
-                Código
-              </Label>
-              <Input
-                id="code"
-                value={newProduct.code}
-                onChange={(e) => setNewProduct({ ...newProduct, code: e.target.value })}
                 className="col-span-3"
               />
             </div>
@@ -222,17 +208,6 @@ const ProductsTable = () => {
                   id="edit-name"
                   value={selectedProduct.name}
                   onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-code" className="text-right">
-                  Código
-                </Label>
-                <Input
-                  id="edit-code"
-                  value={selectedProduct.code}
-                  onChange={(e) => setSelectedProduct({ ...selectedProduct, code: e.target.value })}
                   className="col-span-3"
                 />
               </div>

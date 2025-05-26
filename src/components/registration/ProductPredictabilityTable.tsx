@@ -38,8 +38,7 @@ const ProductPredictabilityTable = () => {
   
   const filteredProducts = editableProducts.filter(
     product => 
-      product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.code.toLowerCase().includes(search.toLowerCase())
+      product.name.toLowerCase().includes(search.toLowerCase())
   );
   
   const handleEdit = (id: string) => {
@@ -99,7 +98,7 @@ const ProductPredictabilityTable = () => {
         description: `O fator de peso para ${product.name} foi atualizado com sucesso.`
       });
       
-      // Refresh products to get updated data
+      //Refresh products to get updated data
       refetchProducts();
     } catch (error) {
       console.error("Erro ao atualizar fator de peso:", error);
@@ -136,7 +135,6 @@ const ProductPredictabilityTable = () => {
         <TableHeader>
           <TableRow>
             <TableHead>Produto</TableHead>
-            <TableHead>Código</TableHead>
             <TableHead>Unidade Base</TableHead>
             <TableHead>Fator de Peso (kg)</TableHead>
             <TableHead className="w-[100px]">Ações</TableHead>
@@ -147,7 +145,6 @@ const ProductPredictabilityTable = () => {
             filteredProducts.map(product => (
               <TableRow key={product.id}>
                 <TableCell>{product.name}</TableCell>
-                <TableCell>{product.code}</TableCell>
                 <TableCell>{product.unitOfMeasure}</TableCell>
                 <TableCell>
                   {product.isEditing ? (
@@ -197,7 +194,7 @@ const ProductPredictabilityTable = () => {
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={5} className="text-center">
+              <TableCell colSpan={4} className="text-center">
                 Nenhum produto encontrado
               </TableCell>
             </TableRow>

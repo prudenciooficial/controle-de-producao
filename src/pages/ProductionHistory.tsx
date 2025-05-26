@@ -30,12 +30,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, MoreVertical, Eye, Trash, Loader, Edit, Plus, Minus } from "lucide-react";
+import { ArrowLeft, MoreVertical, Eye, Trash, Loader, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const ProductionHistory = () => {
