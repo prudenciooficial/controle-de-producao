@@ -81,7 +81,7 @@ const Sales = () => {
           productId: productDetails.productId,
           productName: productDetails.productName,
           producedItemId: item.producedItemId,
-          batchNumber: productDetails.batchNumber,
+          batchNumber: productDetails.batchNumber, // This should already be clean since it comes from produced items
           quantity: item.quantity,
           unitOfMeasure: productDetails.unitOfMeasure,
         };

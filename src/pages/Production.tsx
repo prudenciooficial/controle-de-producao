@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -112,7 +113,7 @@ const Production = () => {
           productName: product.name,
           quantity: item.quantity,
           unitOfMeasure: product.unitOfMeasure,
-          batchNumber: `${data.batchNumber}-${product.code}`,
+          batchNumber: data.batchNumber, // FIXED: Use only the batch number without product code
           remainingQuantity: item.quantity,
         };
       });
