@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -43,10 +42,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Edit, Trash, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Schema for form validation
+// Schema for form validation - removed code field
 const materialFormSchema = z.object({
   name: z.string().min(2, { message: "Nome deve ter no mínimo 2 caracteres" }),
-  code: z.string().min(2, { message: "Código deve ter no mínimo 2 caracteres" }),
   type: z.string().min(1, { message: "Tipo é obrigatório" }),
   unitOfMeasure: z.string().min(1, { message: "Unidade de medida é obrigatória" }),
   description: z.string().optional(),
@@ -68,7 +66,6 @@ const MaterialsTable = () => {
     resolver: zodResolver(materialFormSchema),
     defaultValues: {
       name: "",
-      code: "",
       type: "",
       unitOfMeasure: "kg",
       description: "",
@@ -79,17 +76,16 @@ const MaterialsTable = () => {
     resolver: zodResolver(materialFormSchema),
     defaultValues: {
       name: "",
-      code: "",
       type: "",
       unitOfMeasure: "kg",
       description: "",
     },
   });
   
+  // Updated filter to exclude code field
   const filteredMaterials = materials.filter(
     material => 
       material.name.toLowerCase().includes(search.toLowerCase()) ||
-      material.code.toLowerCase().includes(search.toLowerCase()) ||
       material.type.toLowerCase().includes(search.toLowerCase())
   );
   
@@ -115,7 +111,7 @@ const MaterialsTable = () => {
       setLoading(true);
       await addMaterial({
         name: data.name,
-        code: data.code,
+        code: "", // Set empty code since we're removing this field
         type: data.type as "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro",
         unitOfMeasure: data.unitOfMeasure,
         description: data.description,
@@ -151,7 +147,7 @@ const MaterialsTable = () => {
       setLoading(true);
       await updateMaterial(selectedMaterial, {
         name: data.name,
-        code: data.code,
+        code: "", // Set empty code since we're removing this field
         type: data.type as "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro",
         unitOfMeasure: data.unitOfMeasure,
         description: data.description,
@@ -212,10 +208,9 @@ const MaterialsTable = () => {
   };
   
   const openEditDialog = (material: Material) => {
-    // Set the form values
+    // Set the form values - removed code field
     editForm.reset({
       name: material.name,
-      code: material.code,
       type: material.type,
       unitOfMeasure: material.unitOfMeasure,
       description: material.description || "",
@@ -255,7 +250,6 @@ const MaterialsTable = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>Código</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Unidade</TableHead>
               <TableHead className="w-[100px]">Ações</TableHead>
@@ -266,7 +260,6 @@ const MaterialsTable = () => {
               filteredMaterials.map(material => (
                 <TableRow key={material.id}>
                   <TableCell>{material.name}</TableCell>
-                  <TableCell>{material.code}</TableCell>
                   <TableCell>
                     <Badge className={getMaterialTypeColor(material.type)}>
                       {material.type}
@@ -287,7 +280,7 @@ const MaterialsTable = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={4} className="text-center">
                   Nenhuma matéria-prima encontrada
                 </TableCell>
               </TableRow>
@@ -296,7 +289,7 @@ const MaterialsTable = () => {
         </Table>
       )}
       
-      {/* Add Dialog */}
+      {/* Add Dialog - removed code field */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -314,20 +307,6 @@ const MaterialsTable = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={addForm.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Código</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -430,7 +409,7 @@ const MaterialsTable = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Edit Dialog */}
+      {/* Edit Dialog - removed code field */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -448,20 +427,6 @@ const MaterialsTable = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Código</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
