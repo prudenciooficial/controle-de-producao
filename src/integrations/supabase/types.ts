@@ -320,7 +320,6 @@ export type Database = {
       }
       products: {
         Row: {
-          code: string | null
           created_at: string
           description: string | null
           fecula_conversion_factor: number | null
@@ -332,7 +331,6 @@ export type Database = {
           weight_factor: number | null
         }
         Insert: {
-          code?: string | null
           created_at?: string
           description?: string | null
           fecula_conversion_factor?: number | null
@@ -344,7 +342,6 @@ export type Database = {
           weight_factor?: number | null
         }
         Update: {
-          code?: string | null
           created_at?: string
           description?: string | null
           fecula_conversion_factor?: number | null

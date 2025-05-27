@@ -470,26 +470,62 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }, 0);
     }, 0);
 
-    // Calculate average profitability (simplified)
-    const averageProfitability = totalProduction > 0 ? (totalSales / totalProduction) * 100 : 0;
+    // Calculate average profitability using production efficiency method
+    const productionEfficiencies: number[] = [];
+    
+    filteredProductionBatches.forEach(batch => {
+      // Calculate KG produced for this batch
+      const kgProduced = batch.producedItems.reduce((acc, item) => {
+        const product = products.find(p => p.id === item.productId);
+        const weightFactor = product?.weightFactor || 1;
+        return acc + (item.quantity * weightFactor);
+      }, 0);
+      
+      // Calculate total starch used (fécula) for this batch
+      const feculaUsed = batch.usedMaterials.reduce((acc, material) => {
+        // Find the material to check if it's starch
+        const materialData = materials.find(m => m.name === material.materialName);
+        if (materialData && materialData.type.toLowerCase().includes('fécula')) {
+          // Get the fecula conversion factor from products (using first product's factor as default)
+          const product = products.find(p => p.id === batch.producedItems[0]?.productId);
+          const feculaConversionFactor = product?.feculaConversionFactor || 25;
+          
+          // Calculate actual fécula used: quantity * mixCount * conversion factor
+          return acc + (material.quantity * batch.mixCount * feculaConversionFactor);
+        }
+        return acc;
+      }, 0);
+      
+      // Only calculate efficiency if we have both production and starch usage
+      if (kgProduced > 0 && feculaUsed > 0) {
+        const efficiency = kgProduced / feculaUsed;
+        productionEfficiencies.push(efficiency);
+      }
+    });
+    
+    // Calculate average profitability as the mean of all production efficiencies
+    const averageProfitability = productionEfficiencies.length > 0 
+      ? productionEfficiencies.reduce((sum, eff) => sum + eff, 0) / productionEfficiencies.length 
+      : 0;
 
     setDashboardStats({
       totalProduction,
       totalSales,
       currentInventory,
-      averageProfitability: parseFloat(averageProfitability.toFixed(2))
+      averageProfitability: parseFloat(averageProfitability.toFixed(4))
     });
 
     // Log the calculated values for debugging
-    console.log("Dashboard stats calculation with date range:", {
+    console.log("Dashboard stats calculation with new profitability method:", {
       dateRange,
       totalProduction,
       totalSales,
       currentInventory,
-      averageProfitability: parseFloat(averageProfitability.toFixed(2))
+      productionEfficiencies,
+      averageProfitability: parseFloat(averageProfitability.toFixed(4))
     });
 
-  }, [productionBatches, sales, dateRange, products]);
+  }, [productionBatches, sales, dateRange, products, materials]);
 
   // Helper functions
   const generateId = () => {
