@@ -102,7 +102,6 @@ export interface Loss {
 export interface Product {
   id: string;
   name: string;
-  code: string;
   description?: string;
   unitOfMeasure: string;
   weightFactor?: number;

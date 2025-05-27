@@ -14,7 +14,6 @@ export const fetchProducts = async (): Promise<Product[]> => {
     ...product,
     id: product.id,
     name: product.name,
-    code: product.code,
     description: product.description,
     unitOfMeasure: product.unit_of_measure,
     weightFactor: product.weight_factor || 1, // Default to 1 if not set
@@ -32,7 +31,6 @@ export const createProduct = async (
     .from("products")
     .insert({
       name: product.name,
-      code: product.code,
       description: product.description,
       unit_of_measure: product.unitOfMeasure,
       weight_factor: product.weightFactor || 1 // Default to 1 if not set
@@ -46,7 +44,6 @@ export const createProduct = async (
     ...data,
     id: data.id,
     name: data.name,
-    code: data.code,
     description: data.description,
     unitOfMeasure: data.unit_of_measure,
     weightFactor: data.weight_factor || 1,
@@ -64,7 +61,6 @@ export const updateProduct = async (
   const updates: any = {};
   
   if (product.name) updates.name = product.name;
-  if (product.code !== undefined) updates.code = product.code;
   if (product.description !== undefined) updates.description = product.description;
   if (product.unitOfMeasure) updates.unit_of_measure = product.unitOfMeasure;
   if (product.weightFactor !== undefined) updates.weight_factor = product.weightFactor;
