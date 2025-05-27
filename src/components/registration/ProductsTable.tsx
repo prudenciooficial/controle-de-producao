@@ -33,7 +33,6 @@ const ProductsTable = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [newProduct, setNewProduct] = useState<Omit<Product, "id" | "createdAt" | "updatedAt">>({
     name: "",
-    code: "",
     unitOfMeasure: "kg"
   });
   
@@ -48,7 +47,6 @@ const ProductsTable = () => {
     await addProduct(newProduct);
     setNewProduct({
       name: "",
-      code: "",
       unitOfMeasure: "kg"
     });
     setShowAddDialog(false);
