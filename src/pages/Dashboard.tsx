@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -790,7 +791,7 @@ const Dashboard = () => {
         </Card>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <Card className="animate-scale-in" style={{ animationDelay: "0.5s" }}>
           <CardHeader>
             <CardTitle className="flex items-center">
