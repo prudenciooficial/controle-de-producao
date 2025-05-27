@@ -795,53 +795,8 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Package className="mr-2 h-5 w-5" />
-              Estoque de Produtos Acabados
+              Estoque de Matérias-Primas
             </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Quantidade</TableHead>
-                  <TableHead>Un.</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {productTotals.length > 0 ? (
-                  productTotals.map((product) => (
-                    <TableRow key={product.name}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{formatNumberBR(product.total)}</TableCell>
-                      <TableCell>{product.unitOfMeasure}</TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleViewDetails(product, "product")}
-                        >
-                          <Info className="h-4 w-4 mr-1" />
-                          Detalhes
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-4">
-                      Nenhum produto disponível em estoque.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        
-        <Card className="animate-scale-in" style={{ animationDelay: "0.6s" }}>
-          <CardHeader>
-            <CardTitle>Estoque de Matérias-Primas</CardTitle>
           </CardHeader>
           <CardContent>
             {materialTypes.length > 0 ? (
@@ -889,6 +844,54 @@ const Dashboard = () => {
                 Nenhum material disponível em estoque.
               </div>
             )}
+          </CardContent>
+        </Card>
+        
+        <Card className="animate-scale-in" style={{ animationDelay: "0.6s" }}>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Package className="mr-2 h-5 w-5" />
+              Estoque de Produtos Acabados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Produto</TableHead>
+                  <TableHead>Quantidade</TableHead>
+                  <TableHead>Un.</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {productTotals.length > 0 ? (
+                  productTotals.map((product) => (
+                    <TableRow key={product.name}>
+                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell>{formatNumberBR(product.total)}</TableCell>
+                      <TableCell>{product.unitOfMeasure}</TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewDetails(product, "product")}
+                        >
+                          <Info className="h-4 w-4 mr-1" />
+                          Detalhes
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4">
+                      Nenhum produto disponível em estoque.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>
