@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ProductTraceability {
@@ -242,15 +241,7 @@ export const traceMaterialBatch = async (batchNumber: string): Promise<MaterialT
     })
   );
 
-  // Get sales of products that used this material
-  const allProducedItemIds = usedInProductions.flatMap(production => 
-    production.producedItems.map((_, index) => {
-      // We need to get the actual produced item IDs
-      return null; // This would need the actual IDs from the previous query
-    })
-  ).filter(Boolean);
-
-  // For now, let's get sales through a different approach
+  // Get sales of products that used this material - fixed query structure
   const relatedSales: MaterialTraceability['relatedSales'] = [];
   
   for (const production of usedInProductions) {
@@ -260,7 +251,7 @@ export const traceMaterialBatch = async (batchNumber: string): Promise<MaterialT
         id,
         batch_number,
         products:product_id (name),
-        sale_items:id (
+        sale_items (
           *,
           sales:sale_id (*)
         )

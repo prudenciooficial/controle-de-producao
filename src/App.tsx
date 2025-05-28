@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -51,6 +50,7 @@ const AppContent = () => {
             <Route path="/estoque" element={<Inventory />} />
             <Route path="/perdas" element={<Losses />} />
             <Route path="/perdas/historico" element={<LossesHistory />} />
+            <Route path="/rastreabilidade" element={<Traceability />} />
             <Route path="/cadastro" element={<Registration />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
