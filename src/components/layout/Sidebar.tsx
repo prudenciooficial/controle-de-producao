@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Settings, X } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -52,6 +52,10 @@ export function Sidebar({
     name: "Perdas",
     path: "/perdas",
     icon: PackageX
+  }, {
+    name: "Rastreabilidade",
+    path: "/rastreabilidade",
+    icon: Search
   }, {
     name: "Cadastro",
     path: "/cadastro",

@@ -18,6 +18,7 @@ import OrdersHistory from "./pages/OrdersHistory";
 import Inventory from "./pages/Inventory";
 import Losses from "./pages/Losses";
 import LossesHistory from "./pages/LossesHistory";
+import Traceability from "./pages/Traceability";
 import Registration from "./pages/Registration";
 import NotFound from "./pages/NotFound";
 import { useIsMobile } from "./hooks/use-mobile";
