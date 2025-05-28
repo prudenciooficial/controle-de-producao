@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
@@ -398,148 +397,134 @@ const ProductionHistory = () => {
       {/* Enhanced Details Dialog with Mobile Responsiveness */}
       <Dialog open={showDetailsDialog} onOpenChange={handleDetailsDialogClose}>
         {selectedBatch && (
-          <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[90vh] p-4' : 'max-w-4xl max-h-[85vh]'} overflow-y-auto`}>
-            <DialogHeader className="space-y-2">
-              <DialogTitle className={`${isMobile ? 'text-lg' : 'text-xl'} leading-tight`}>
+          <DialogContent className="w-[95vw] max-w-none sm:max-w-2xl overflow-y-auto max-h-[90vh] p-4 sm:p-6">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-xl sm:text-2xl">
                 Detalhes da Produção - Lote {selectedBatch.batchNumber}
               </DialogTitle>
-              <DialogDescription className={isMobile ? 'text-sm' : ''}>
+              <DialogDescription>
                 Data: {new Date(selectedBatch.productionDate).toLocaleDateString()}
               </DialogDescription>
             </DialogHeader>
             
-            <div className={`grid gap-${isMobile ? '4' : '6'}`}>
-              <div>
-                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
-                  Informações Gerais
-                </h3>
-                <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
+            <div className="space-y-4 text-sm sm:text-base">
+              {/* Informações Gerais */}
+              <section>
+                <h3 className="text-md sm:text-lg font-semibold mb-2">Informações Gerais</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 p-3 bg-muted/50 rounded-md">
                   <div>
-                    <p className="text-sm font-medium">Dia da Mexida:</p>
-                    <p className="text-sm">{selectedBatch.mixDay}</p>
+                    <p className="font-medium text-muted-foreground">Dia da Mexida</p>
+                    <p>{selectedBatch.mixDay}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium">Qtd. de Mexidas:</p>
-                    <p className="text-sm">{selectedBatch.mixCount}</p>
+                    <p className="font-medium text-muted-foreground">Qtd. de Mexidas</p>
+                    <p>{selectedBatch.mixCount}</p>
                   </div>
+                  {selectedBatch.notes && (
+                    <div className="sm:col-span-2">
+                      <p className="font-medium text-muted-foreground">Observações</p>
+                      <p className="whitespace-pre-wrap text-xs sm:text-sm bg-white dark:bg-zinc-800 p-2 rounded">{selectedBatch.notes}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-              
-              {/* Production Metrics with Mobile Layout */}
-              <div>
-                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
-                  Métricas de Produção
-                </h3>
-                <div className={`bg-muted p-${isMobile ? '3' : '4'} rounded-md`}>
-                  {(() => {
-                    const metrics = calculateProductionMetrics(selectedBatch);
-                    return (
-                      <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-${isMobile ? '3' : '4'}`}>
-                        <div>
-                          <p className="text-sm font-medium">Fécula utilizada:</p>
-                          <p className="text-sm">{metrics.feculaUtilizada} kg</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Kg's previstos:</p>
-                          <p className="text-sm">{metrics.kgPrevistos} kg</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Kg's produzidos:</p>
-                          <p className="text-sm">{metrics.kgProduzidos} kg</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Diferença:</p>
-                          <p className={`text-sm ${parseFloat(metrics.diferenca) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {metrics.diferenca} kg
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Média da produção:</p>
-                          <p className="text-sm">{metrics.mediaProducao}</p>
-                        </div>
+              </section>
+
+              {/* Métricas de Produção */}
+              <section>
+                <h3 className="text-md sm:text-lg font-semibold mb-2">Métricas de Produção</h3>
+                {(() => {
+                  const metrics = calculateProductionMetrics(selectedBatch);
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 p-3 bg-muted/50 rounded-md">
+                      <div>
+                        <p className="font-medium text-muted-foreground">Fécula utilizada</p>
+                        <p>{metrics.feculaUtilizada} kg</p>
                       </div>
-                    );
-                  })()}
-                </div>
-              </div>
-              
-              {/* Products Table with Mobile Scrolling */}
-              <div>
-                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
-                  Produtos Produzidos
-                </h3>
-                <div className="overflow-x-auto">
-                  <Table stickyHeader={isMobile}>
-                    <TableHeader sticky={isMobile}>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Kg's previstos</p>
+                        <p>{metrics.kgPrevistos} kg</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Kg's produzidos</p>
+                        <p>{metrics.kgProduzidos} kg</p>
+                      </div>
+                      <div className={metrics.diferenca && parseFloat(metrics.diferenca) < 0 ? "text-destructive" : "text-success"}>
+                        <p className="font-medium text-muted-foreground">Diferença</p>
+                        <p>{metrics.diferenca} kg</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-muted-foreground">Média da produção</p>
+                        <p>{metrics.mediaProducao}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </section>
+
+              {/* Produtos Produzidos */}
+              <section>
+                <h3 className="text-md sm:text-lg font-semibold mb-2">Produtos Produzidos</h3>
+                <div className="overflow-x-auto shadow-sm rounded-md">
+                  <Table className="min-w-full">
+                    <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="min-w-[120px]">Produto</TableHead>
-                        <TableHead className="min-w-[100px]">Lote</TableHead>
-                        <TableHead className="min-w-[100px]">Un. Produzidas</TableHead>
-                        <TableHead className="min-w-[120px]">Quantidade (kg)</TableHead>
-                        <TableHead className="min-w-[120px]">Estoque Atual (un.)</TableHead>
+                        <TableHead className="px-3 py-2 whitespace-nowrap">Produto</TableHead>
+                        <TableHead className="px-3 py-2 whitespace-nowrap">Lote</TableHead>
+                        <TableHead className="px-3 py-2 whitespace-nowrap text-right">Un. Produzidas</TableHead>
+                        <TableHead className="px-3 py-2 whitespace-nowrap text-right">Quantidade (kg)</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
-                      {selectedBatch.producedItems.map((item) => {
-                        const product = products.find(p => p.id === item.productId);
-                        const weightFactor = product?.weightFactor || 1;
-                        const quantityInKg = item.quantity * weightFactor;
-                        
+                    <TableBody className="bg-white dark:bg-zinc-800">
+                      {selectedBatch.producedItems.map((item, index) => {
+                        const productDetails = products.find(p => p.id === item.productId);
+                        const itemWeightInKg = item.quantity * (productDetails?.weightFactor || 1);
                         return (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.productName}</TableCell>
-                            <TableCell>{item.batchNumber}</TableCell>
-                            <TableCell>{item.quantity}</TableCell>
-                            <TableCell>{quantityInKg.toFixed(2)} kg</TableCell>
-                            <TableCell>{item.remainingQuantity}</TableCell>
+                          <TableRow key={index} className="border-b dark:border-zinc-700">
+                            <TableCell className="px-3 py-2 whitespace-nowrap">{item.productName}</TableCell>
+                            <TableCell className="px-3 py-2 whitespace-nowrap">{item.batchNumber}</TableCell>
+                            <TableCell className="px-3 py-2 whitespace-nowrap text-right">{item.quantity}</TableCell>
+                            <TableCell className="px-3 py-2 whitespace-nowrap text-right">{itemWeightInKg.toFixed(2)}</TableCell>
                           </TableRow>
                         );
                       })}
                     </TableBody>
                   </Table>
                 </div>
-              </div>
-              
-              {/* Materials Table with Mobile Scrolling */}
-              <div>
-                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
-                  Insumos Utilizados
-                </h3>
-                <div className="overflow-x-auto">
-                  <Table stickyHeader={isMobile}>
-                    <TableHeader sticky={isMobile}>
+              </section>
+
+              {/* Insumos Utilizados */}
+              <section>
+                <h3 className="text-md sm:text-lg font-semibold mb-2">Insumos Utilizados</h3>
+                <div className="overflow-x-auto shadow-sm rounded-md">
+                  <Table className="min-w-full">
+                    <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="min-w-[120px]">Insumo</TableHead>
-                        <TableHead className="min-w-[80px]">Tipo</TableHead>
-                        <TableHead className="min-w-[100px]">Lote</TableHead>
-                        <TableHead className="min-w-[100px]">Quantidade</TableHead>
-                        <TableHead className="min-w-[60px]">Un.</TableHead>
+                        <TableHead className="px-3 py-2 whitespace-nowrap">Insumo</TableHead>
+                        <TableHead className="px-3 py-2 whitespace-nowrap">Tipo</TableHead>
+                        <TableHead className="px-3 py-2 whitespace-nowrap">Lote</TableHead>
+                        <TableHead className="px-3 py-2 whitespace-nowrap text-right">Quantidade</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
-                      {selectedBatch.usedMaterials.map((material) => (
-                        <TableRow key={material.id}>
-                          <TableCell className="font-medium">{material.materialName}</TableCell>
-                          <TableCell>{material.materialType}</TableCell>
-                          <TableCell>{material.batchNumber}</TableCell>
-                          <TableCell>{material.quantity}</TableCell>
-                          <TableCell>{material.unitOfMeasure}</TableCell>
+                    <TableBody className="bg-white dark:bg-zinc-800">
+                      {selectedBatch.usedMaterials.map((material, index) => (
+                        <TableRow key={index} className="border-b dark:border-zinc-700">
+                          <TableCell className="px-3 py-2 whitespace-nowrap">{material.materialName}</TableCell>
+                          <TableCell className="px-3 py-2 whitespace-nowrap">{material.materialType}</TableCell>
+                          <TableCell className="px-3 py-2 whitespace-nowrap">{material.batchNumber}</TableCell>
+                          <TableCell className="px-3 py-2 whitespace-nowrap text-right">{material.quantity}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
-              </div>
-              
-              {selectedBatch.notes && (
-                <div>
-                  <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-2`}>
-                    Observações
-                  </h3>
-                  <p className="text-sm bg-muted p-3 rounded-md">{selectedBatch.notes}</p>
-                </div>
-              )}
+              </section>
             </div>
+            
+            <DialogFooter className="mt-6 pt-4 border-t dark:border-zinc-700">
+              <DialogClose asChild>
+                <Button variant="outline">Fechar</Button>
+              </DialogClose>
+            </DialogFooter>
           </DialogContent>
         )}
       </Dialog>

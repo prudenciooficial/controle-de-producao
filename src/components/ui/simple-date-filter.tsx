@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon } from "lucide-react";
@@ -60,14 +59,14 @@ export function SimpleDateFilter({
   };
 
   return (
-    <div className={cn("flex flex-col space-y-4", className)}>
-      <h3 className="text-sm font-medium text-gray-700">Filtro por Período</h3>
+    <div className={cn("flex flex-col space-y-2 w-full", className)}>
+      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Filtro por Período</h3>
       
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
         <Button 
           variant="outline" 
           size="sm"
-          className="text-xs font-medium" 
+          className="text-xs font-medium w-full" 
           onClick={setCurrentMonth}
         >
           Mês Atual
@@ -76,7 +75,7 @@ export function SimpleDateFilter({
         <Button 
           variant="outline" 
           size="sm"
-          className="text-xs font-medium" 
+          className="text-xs font-medium w-full" 
           onClick={setLast3Months}
         >
           Últimos 3 Meses
@@ -85,7 +84,7 @@ export function SimpleDateFilter({
         <Button 
           variant="outline" 
           size="sm"
-          className="text-xs font-medium" 
+          className="text-xs font-medium w-full" 
           onClick={setLast6Months}
         >
           Últimos 6 Meses
@@ -94,7 +93,7 @@ export function SimpleDateFilter({
         <Button 
           variant="outline" 
           size="sm"
-          className="text-xs font-medium" 
+          className="text-xs font-medium w-full" 
           onClick={setLastYear}
         >
           Últimos 12 Meses
@@ -105,7 +104,7 @@ export function SimpleDateFilter({
             <Button
               variant="outline"
               size="sm"
-              className="text-xs font-medium justify-start text-left"
+              className="text-xs font-medium w-full justify-start text-left"
             >
               <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
               <span className="truncate">

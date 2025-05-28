@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -12,6 +11,7 @@ import { ptBR } from "date-fns/locale";
 import { formatMonthYear, formatDayMonth, isWithinOneMonth, formatNumberBR } from "@/components/helpers/dateFormatUtils";
 import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { StatsSection } from "@/components/ui/StatsSection";
 
 // Helper function to calculate percentage change
 const getPercentChange = (current: number, previous: number) => {
@@ -610,288 +610,213 @@ const Dashboard = () => {
     );
   }
   
-  // Helper for rendering the trend indicator
-  const renderTrendIndicator = (percentChange: number) => {
-    if (percentChange === 0) return null;
-    
-    const isPositive = percentChange > 0;
-    const Icon = isPositive ? TrendingUp : TrendingDown;
-    
-    return (
-      <div className={`flex items-center ${isPositive ? 'text-success' : 'text-destructive'}`}>
-        <Icon className="h-4 w-4 mr-1" />
-        <span>{Math.abs(percentChange).toFixed(1)}%</span>
-      </div>
-    );
-  };
-  
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-4">Período</h2>
-        <SimpleDateFilter 
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          className="max-w-full"
-        />
-      </div>
-      
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card className="animate-scale-in">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Produção Total</CardTitle>
-            <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumberBR(dashboardStats.totalProduction)} kg</div>
-            <div className="flex justify-between items-center mt-1">
-              <p className="text-xs text-muted-foreground">
-                {dateRange?.from ? `No período selecionado` : 'Todos os produtos produzidos'}
-              </p>
-              {renderTrendIndicator(percentChanges.production)}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="animate-scale-in" style={{ animationDelay: "0.1s" }}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Vendas Totais</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumberBR(dashboardStats.totalSales)} kg</div>
-            <div className="flex justify-between items-center mt-1">
-              <p className="text-xs text-muted-foreground">
-                {dateRange?.from ? `No período selecionado` : 'Total de produtos vendidos'}
-              </p>
-              {renderTrendIndicator(percentChanges.sales)}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="animate-scale-in" style={{ animationDelay: "0.2s" }}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Estoque Atual</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumberBR(dashboardStats.currentInventory)} kg</div>
-            <div className="flex justify-between items-center mt-1">
-              <p className="text-xs text-muted-foreground">Produtos disponíveis em estoque</p>
-              {renderTrendIndicator(percentChanges.inventory)}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="animate-scale-in" style={{ animationDelay: "0.3s" }}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Rentabilidade Média</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.averageProfitability}%</div>
-            <div className="flex justify-between items-center mt-1">
-              <p className="text-xs text-muted-foreground">
-                {dateRange?.from ? `No período selecionado` : 'Eficiência de produção'}
-              </p>
-              {renderTrendIndicator(percentChanges.profitability)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div className="grid gap-6 md:grid-cols-2 mb-6">
-        <Card className="col-span-2 animate-scale-in" style={{ animationDelay: "0.4s" }}>
-          <CardHeader>
-            <CardTitle>Produção x Vendas (kg)</CardTitle>
-            {dateRange?.from && (
-              <p className="text-sm text-muted-foreground">
-                Período: {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} 
-                {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}` : ''}
-              </p>
-            )}
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey={showDailyChart ? "day" : "month"} 
-                  tick={{ fontSize: 12 }}
-                />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend formatter={(value) => {
-                  return value === "production" ? "Produção" : "Vendas";
-                }}/>
-                <Line 
-                  type="monotone" 
-                  dataKey="production" 
-                  stroke="#3b82f6" 
-                  name="Produção" 
-                  strokeWidth={2} 
-                  activeDot={{ r: 8 }} 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="sales" 
-                  stroke="#10b981" 
-                  name="Vendas" 
-                  strokeWidth={2} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* New Losses Chart */}
-      <div className="grid gap-6 md:grid-cols-2 mb-6">
-        <Card className="col-span-2 animate-scale-in" style={{ animationDelay: "0.45s" }}>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <AlertTriangle className="mr-2 h-5 w-5 text-red-500" />
-              Perdas (kg)
-            </CardTitle>
-            {dateRange?.from && (
-              <p className="text-sm text-muted-foreground">
-                Período: {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} 
-                {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}` : ''}
-              </p>
-            )}
-          </CardHeader>
-          <CardContent className="h-80">
-            {lossesChartData.length > 0 ? (
+      <div className="flex flex-col gap-6 p-2 sm:p-4 md:p-6">
+        <div className="w-full sm:w-auto">
+          <SimpleDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+        </div>
+
+        {/* Seção de estatísticas */}
+        {dashboardStats && percentChanges && (
+          <StatsSection stats={dashboardStats} changes={percentChanges} />
+        )}
+
+        {/* Gráficos */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card className="col-span-2 animate-scale-in" style={{ animationDelay: "0.4s" }}>
+            <CardHeader>
+              <CardTitle>Produção x Vendas (kg)</CardTitle>
+              {dateRange?.from && (
+                <p className="text-sm text-muted-foreground">
+                  Período: {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} 
+                  {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}` : ''}
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lossesChartData}>
+                <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey={showDailyChart ? "day" : "month"} 
                     tick={{ fontSize: 12 }}
                   />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip content={<LossesTooltip />} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend formatter={(value) => {
+                    return value === "production" ? "Produção" : "Vendas";
+                  }}/>
                   <Line 
                     type="monotone" 
-                    dataKey="losses" 
-                    stroke="#ea384c" 
-                    name="Perdas" 
+                    dataKey="production" 
+                    stroke="#3b82f6" 
+                    name="Produção" 
                     strokeWidth={2} 
                     activeDot={{ r: 8 }} 
                   />
+                  <Line 
+                    type="monotone" 
+                    dataKey="sales" 
+                    stroke="#10b981" 
+                    name="Vendas" 
+                    strokeWidth={2} 
+                  />
                 </LineChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="flex flex-col h-full items-center justify-center text-muted-foreground">
-                <AlertTriangle className="h-10 w-10 mb-2 text-muted-foreground" />
-                <p>Nenhum dado de perdas disponível para o período selecionado.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-        <Card className="animate-scale-in" style={{ animationDelay: "0.5s" }}>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Package className="mr-2 h-5 w-5" />
-              Estoque de Produtos Acabados
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Quantidade</TableHead>
-                  <TableHead>Un.</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {productTotals.length > 0 ? (
-                  productTotals.map((product) => (
-                    <TableRow key={product.name}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{formatNumberBR(product.total)}</TableCell>
-                      <TableCell>{product.unitOfMeasure}</TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleViewDetails(product, "product")}
-                        >
-                          <Info className="h-4 w-4 mr-1" />
-                          Detalhes
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-4">
-                      Nenhum produto disponível em estoque.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+          
+          <Card className="col-span-2 animate-scale-in" style={{ animationDelay: "0.45s" }}>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <AlertTriangle className="mr-2 h-5 w-5 text-red-500" />
+                Perdas (kg)
+              </CardTitle>
+              {dateRange?.from && (
+                <p className="text-sm text-muted-foreground">
+                  Período: {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} 
+                  {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}` : ''}
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="h-80">
+              {lossesChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={lossesChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey={showDailyChart ? "day" : "month"} 
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip content={<LossesTooltip />} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="losses" 
+                      stroke="#ea384c" 
+                      name="Perdas" 
+                      strokeWidth={2} 
+                      activeDot={{ r: 8 }} 
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col h-full items-center justify-center text-muted-foreground">
+                  <AlertTriangle className="h-10 w-10 mb-2 text-muted-foreground" />
+                  <p>Nenhum dado de perdas disponível para o período selecionado.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
         
-        <Card className="animate-scale-in" style={{ animationDelay: "0.6s" }}>
-          <CardHeader>
-            <CardTitle>Estoque de Matérias-Primas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {materialTypes.length > 0 ? (
-              <div className="space-y-6">
-                {materialTypes.map((typeGroup) => (
-                  <div key={typeGroup.type} className="space-y-2">
-                    <h3 className="text-lg font-medium flex items-center">
-                      {getMaterialTypeIcon(typeGroup.type)}
-                      <span className="ml-2">{typeGroup.type}</span>
-                    </h3>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Insumo</TableHead>
-                          <TableHead>Quantidade</TableHead>
-                          <TableHead>Un.</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+          <Card className="animate-scale-in" style={{ animationDelay: "0.5s" }}>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Package className="mr-2 h-5 w-5" />
+                Estoque de Produtos Acabados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]">Produto</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead className="w-[80px]">Un.</TableHead>
+                      <TableHead className="w-[100px] text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {productTotals.length > 0 ? (
+                      productTotals.map((product) => (
+                        <TableRow key={product.name}>
+                          <TableCell className="font-medium">{product.name}</TableCell>
+                          <TableCell>{formatNumberBR(product.total)}</TableCell>
+                          <TableCell>{product.unitOfMeasure}</TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewDetails(product, "product")}
+                            >
+                              <Info className="h-4 w-4 mr-1" />
+                              Detalhes
+                            </Button>
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {typeGroup.materials.map((material) => (
-                          <TableRow key={material.name}>
-                            <TableCell className="font-medium">{material.name}</TableCell>
-                            <TableCell>{formatNumberBR(material.total)}</TableCell>
-                            <TableCell>{material.unitOfMeasure}</TableCell>
-                            <TableCell className="text-right">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleViewDetails(material, "material")}
-                              >
-                                <Info className="h-4 w-4 mr-1" />
-                                Detalhes
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ))}
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-4">
+                          Nenhum produto disponível em estoque.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-            ) : (
-              <div className="text-center py-4">
-                Nenhum material disponível em estoque.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+          
+          <Card className="animate-scale-in" style={{ animationDelay: "0.6s" }}>
+            <CardHeader>
+              <CardTitle>Estoque de Matérias-Primas</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {materialTypes.length > 0 ? (
+                <div className="space-y-6">
+                  {materialTypes.map((typeGroup) => (
+                    <div key={typeGroup.type} className="space-y-2">
+                      <h3 className="text-lg font-medium flex items-center px-6 pt-2">
+                        {getMaterialTypeIcon(typeGroup.type)}
+                        <span className="ml-2">{typeGroup.type}</span>
+                      </h3>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[200px]">Insumo</TableHead>
+                              <TableHead>Quantidade</TableHead>
+                              <TableHead className="w-[80px]">Un.</TableHead>
+                              <TableHead className="w-[100px] text-right">Ações</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {typeGroup.materials.map((material) => (
+                              <TableRow key={material.name}>
+                                <TableCell className="font-medium">{material.name}</TableCell>
+                                <TableCell>{formatNumberBR(material.total)}</TableCell>
+                                <TableCell>{material.unitOfMeasure}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleViewDetails(material, "material")}
+                                  >
+                                    <Info className="h-4 w-4 mr-1" />
+                                    Detalhes
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  Nenhum material disponível em estoque.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
       
       <InventoryDetailsDialog
