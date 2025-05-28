@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,10 +34,9 @@ const Traceability = () => {
     setTimeout(() => window.print(), 100);
   };
 
-  const handleTrace = async (batchToTraceParam?: string) => {
+  const handleTraceCallback = useCallback(async (batchToTraceParam?: string) => {
     const currentBatchToTrace = batchToTraceParam || searchInput.trim();
     if (!currentBatchToTrace) {
-      toast({ variant: "destructive", title: "Entrada Inválida", description: "Por favor, insira um número de lote para rastrear." });
       return;
     }
     setIsLoading(true);
@@ -47,6 +46,8 @@ const Traceability = () => {
       const batchInfo = await findRelatedBatches(currentBatchToTrace);
       if (!batchInfo.exists) {
         toast({ variant: "destructive", title: "Lote Não Encontrado", description: `O lote "${currentBatchToTrace}" não foi encontrado no sistema.` });
+        setProductTrace(null);
+        setMaterialTrace(null);
         setIsLoading(false); 
         return;
       }
@@ -56,15 +57,44 @@ const Traceability = () => {
       if (batchInfo.type === 'product') {
         const result = await traceProductBatch(currentBatchToTrace);
         if (result) setProductTrace(result);
+        else setProductTrace(null);
       } else {
         const result = await traceMaterialBatch(currentBatchToTrace);
         if (result) setMaterialTrace(result);
+        else setMaterialTrace(null);
       }
     } catch (error) {
       console.error("Erro na rastreabilidade:", error);
       toast({ variant: "destructive", title: "Erro na Rastreabilidade", description: "Ocorreu um erro ao buscar os dados. Verifique o console para mais detalhes." });
+      setProductTrace(null);
+      setMaterialTrace(null);
     } finally {
       setIsLoading(false);
+    }
+  }, [searchInput, toast, searchHistory, setSearchHistory, setIsLoading, setProductTrace, setMaterialTrace]);
+
+  useEffect(() => {
+    if (searchInput.trim() === "") {
+      setProductTrace(null);
+      setMaterialTrace(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const timerId = setTimeout(() => {
+      if (searchInput.trim()) {
+        handleTraceCallback(searchInput.trim());
+      }
+    }, 750);
+
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [searchInput, handleTraceCallback]);
+
+  const handleButtonClick = () => {
+    if (searchInput.trim()) {
+      handleTraceCallback(searchInput.trim());
     }
   };
 
@@ -139,7 +169,7 @@ const Traceability = () => {
                   <TableCell>{material.materialName}</TableCell>
                   <TableCell><Badge variant="outline">{material.materialType}</Badge></TableCell>
                   <TableCell>
-                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTrace(material.batchNumber)}>{material.batchNumber}</Button>
+                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceCallback(material.batchNumber)}>{material.batchNumber}</Button>
                     <span className="print-only">{material.batchNumber}</span>
                   </TableCell>
                   <TableCell>{material.quantity} {material.unitOfMeasure}</TableCell>
@@ -241,7 +271,7 @@ const Traceability = () => {
             {trace.usedInProductions.length > 0 ? trace.usedInProductions.map((prod, index) => (
               <div key={index} className="mb-4 p-2 border rounded">
                 <p className="font-semibold">Lote Produção: 
-                  <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTrace(prod.productionBatchNumber)}>{prod.productionBatchNumber}</Button>
+                  <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceCallback(prod.productionBatchNumber)}>{prod.productionBatchNumber}</Button>
                   <span className="print-only">{prod.productionBatchNumber}</span> ({formatDate(prod.productionDate)}) - Qtd. Usada: {prod.quantityUsed}
                 </p>
                 {renderAccordionContent(
@@ -269,7 +299,7 @@ const Traceability = () => {
                 <TableRow key={sale.invoiceNumber + index}>
                   <TableCell>{sale.productName}</TableCell>
                   <TableCell>
-                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTrace(sale.productBatchNumber)}>{sale.productBatchNumber}</Button>
+                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceCallback(sale.productBatchNumber)}>{sale.productBatchNumber}</Button>
                     <span className="print-only">{sale.productBatchNumber}</span>
                   </TableCell>
                   <TableCell>{formatDate(sale.saleDate)}</TableCell>
@@ -301,13 +331,8 @@ const Traceability = () => {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="flex-grow"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleTrace(searchInput);
-              }
-            }}
           />
-          <Button onClick={() => handleTrace(searchInput)} disabled={isLoading} className="w-full sm:w-auto">
+          <Button onClick={handleButtonClick} disabled={isLoading || !searchInput.trim()} className="w-full sm:w-auto">
             {isLoading ? (
               <><Loader className="mr-2 h-4 w-4 animate-spin" /> Rastreando...</>
             ) : (
@@ -322,7 +347,7 @@ const Traceability = () => {
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Buscas recentes:</h3>
           <div className="flex flex-wrap gap-2">
             {searchHistory.map((term, index) => (
-              <Button key={index} variant="outline" size="sm" onClick={() => { setSearchInput(term); handleTrace(term); }}>
+              <Button key={index} variant="outline" size="sm" onClick={() => { setSearchInput(term); handleTraceCallback(term); }}>
                 {term}
               </Button>
             ))}
