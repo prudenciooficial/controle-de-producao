@@ -320,81 +320,105 @@ export const traceMaterialBatch = async (batchNumber: string): Promise<MaterialT
 };
 
 export const getSupplierFromMaterialBatch = async (materialBatchId: string): Promise<{ name: string; invoiceNumber: string; orderDate: Date } | undefined> => {
-  console.log(`[getSupplierFromMaterialBatch] Buscando fornecedor para o lote de material ID: ${materialBatchId}`);
-  
+  console.log(`[GSFMB] Iniciando busca de fornecedor para materialBatchId: ${materialBatchId}`);
+
   if (!materialBatchId) {
-    console.warn('[getSupplierFromMaterialBatch] ID do lote de material não fornecido.');
+    console.warn('[GSFMB] materialBatchId não fornecido.');
     return undefined;
   }
 
-  // 1. Buscar o order_id diretamente da tabela material_batches
-  const { data: matBatchData, error: matBatchErr } = await supabase
+  // Passo 1: Buscar o batch_number textual do material_batch usando o materialBatchId (UUID)
+  const { data: matBatchDetails, error: matBatchErr } = await supabase
     .from("material_batches")
-    .select("order_id") // Selecionar order_id
+    .select("batch_number") // Selecionar o batch_number textual
     .eq("id", materialBatchId)
     .single();
 
-  if (matBatchErr || !matBatchData) {
-    console.error(`[getSupplierFromMaterialBatch] Lote de material ID ${materialBatchId} não encontrado ou erro:`, matBatchErr);
+  if (matBatchErr || !matBatchDetails) {
+    console.error(`[GSFMB] Erro ao buscar detalhes do lote de material (ID: ${materialBatchId}):`, matBatchErr);
     return undefined;
   }
 
-  // Usando type casting (as any) temporariamente devido a possíveis tipos desatualizados
-  const orderId = (matBatchData as any).order_id;
+  const textualBatchNumber = (matBatchDetails as any).batch_number; // Usando (as any) temporariamente
 
-  if (!orderId) {
-    console.warn(`[getSupplierFromMaterialBatch] Lote de material ID ${materialBatchId} não possui order_id associado. matBatchData:`, matBatchData);
+  if (!textualBatchNumber) {
+    console.warn(`[GSFMB] Lote de material (ID: ${materialBatchId}) não possui um batch_number textual associado. matBatchDetails:`, matBatchDetails);
     return undefined;
   }
-  console.log(`[getSupplierFromMaterialBatch] Lote de material ${materialBatchId} associado ao order_id: ${orderId}`);
+  console.log(`[GSFMB] Lote de material (ID: ${materialBatchId}) tem batch_number textual: ${textualBatchNumber}`);
 
-  // 2. Buscar o pedido (order) usando o order_id obtido
+  // Passo 2: Usar o batch_number textual para encontrar o order_item correspondente
+  const { data: orderItem, error: orderItemErr } = await supabase
+    .from("order_items")
+    .select("order_id") // Precisamos do order_id para o próximo passo
+    .eq("batch_number", textualBatchNumber) // Ligação via batch_number textual
+    .maybeSingle(); // Usar maybeSingle pois não sabemos se é único ou pode não existir
+
+  if (orderItemErr) {
+    console.error(`[GSFMB] Erro ao buscar order_item com batch_number ${textualBatchNumber}:`, orderItemErr);
+    return undefined;
+  }
+
+  if (!orderItem) {
+    console.warn(`[GSFMB] Nenhum order_item encontrado com batch_number: ${textualBatchNumber}`);
+    return undefined;
+  }
+  
+  const orderIdFromOrderItem = (orderItem as any).order_id; // Usando (as any) temporariamente
+
+  if (!orderIdFromOrderItem) {
+    console.warn(`[GSFMB] order_item encontrado para batch_number ${textualBatchNumber}, mas não possui order_id. OrderItem:`, orderItem);
+    return undefined;
+  }
+  console.log(`[GSFMB] order_item para batch_number ${textualBatchNumber} tem order_id: ${orderIdFromOrderItem}`);
+
+  // Passo 3: Usar o order_id para encontrar o pedido na tabela orders
   const { data: orderData, error: orderErr } = await supabase
     .from("orders")
-    .select(`
-      date, 
-      invoice_number,
-      supplier_id, 
-      suppliers:supplier_id (name)
-    `)
-    .eq("id", orderId) // Usar a variável orderId
+    .select('date, invoice_number, supplier_id, suppliers:supplier_id (name)')
+    .eq("id", orderIdFromOrderItem)
     .single();
 
   if (orderErr || !orderData) {
-    console.error(`[getSupplierFromMaterialBatch] Pedido não encontrado para order_id ${orderId}:`, orderErr);
+    console.error(`[GSFMB] Erro ao buscar pedido com ID ${orderIdFromOrderItem}:`, orderErr);
     return undefined;
   }
 
-  // Verificar se o supplier foi carregado corretamente (supabase aninha os dados)
-  if (!orderData.suppliers) {
-    console.error(`[getSupplierFromMaterialBatch] Fornecedor não encontrado para o pedido ${orderId} (supplier_id: ${orderData.supplier_id}). Verifique a relação e os dados do fornecedor.`);
-    // Tentar buscar o fornecedor separadamente se a junção falhou ou não retornou o esperado
+  // Passo 4: Verificar e extrair dados do fornecedor
+  const supplierName = orderData.suppliers ? (orderData.suppliers as any).name : null; // (as any) para suppliers.name
+  const invoiceNumberFromOrder = (orderData as any).invoice_number;
+  const dateFromOrder = (orderData as any).date;
+
+  if (!supplierName) {
+    console.warn(`[GSFMB] Fornecedor não encontrado (ou nome do fornecedor ausente) para o pedido ${orderIdFromOrderItem}. Detalhes do pedido:`, orderData);
+     // Fallback se a junção aninhada não funcionar como esperado mas supplier_id existir
     if (orderData.supplier_id) {
-      const { data: supplierData, error: supplierErr } = await supabase
-        .from('suppliers')
-        .select('name')
-        .eq('id', orderData.supplier_id)
-        .single();
-      if (supplierErr || !supplierData) {
-         console.error(`[getSupplierFromMaterialBatch] Falha ao buscar fornecedor separadamente com ID: ${orderData.supplier_id}`);
-         return undefined;
-      }
-      console.log(`[getSupplierFromMaterialBatch] Fornecedor buscado separadamente:`, supplierData);
-      return {
-        name: supplierData.name,
-        invoiceNumber: orderData.invoice_number,
-        orderDate: new Date(orderData.date),
-      };
+        console.log(`[GSFMB] Tentando buscar fornecedor separadamente com supplier_id: ${orderData.supplier_id}`);
+        const { data: directSupplier, error: directSupplierErr } = await supabase
+            .from('suppliers')
+            .select('name')
+            .eq('id', orderData.supplier_id)
+            .single();
+        if (directSupplierErr || !directSupplier) {
+            console.error(`[GSFMB] Falha ao buscar fornecedor diretamente com ID: ${orderData.supplier_id}`, directSupplierErr);
+            return undefined; // Ou retornar com nome do fornecedor como '-' 
+        }
+        console.log(`[GSFMB] Fornecedor encontrado diretamente: ${directSupplier.name}`);
+        return {
+            name: (directSupplier as any).name,
+            invoiceNumber: invoiceNumberFromOrder,
+            orderDate: new Date(dateFromOrder),
+        };
     }
-    return undefined; // Se não há supplier_id, não podemos prosseguir
+    return undefined; // Se não encontrou o nome do fornecedor nem pelo fallback
   }
   
-  console.log(`[getSupplierFromMaterialBatch] Informações do pedido e fornecedor encontradas:`, orderData);
+  console.log(`[GSFMB] Informações completas encontradas para materialBatchId ${materialBatchId}: Fornecedor: ${supplierName}, NF: ${invoiceNumberFromOrder}, Data: ${dateFromOrder}`);
 
   return {
-    name: orderData.suppliers.name,
-    invoiceNumber: orderData.invoice_number,
-    orderDate: new Date(orderData.date),
+    name: supplierName,
+    invoiceNumber: invoiceNumberFromOrder,
+    orderDate: new Date(dateFromOrder),
   };
 };
 
