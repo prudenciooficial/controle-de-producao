@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -41,14 +40,12 @@
 
     --radius: 0.75rem;
 
-    --sidebar-background: 220 70% 20%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 221 70% 25%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 221 70% 25%;
-    --sidebar-ring: 221 83% 53%;
+    /* Sidebar Light Theme */
+    --sidebar-background: 230 55% 40%; /* Azul mais suave */
+    --sidebar-foreground: 0 0% 100%; /* Branco */
+    --sidebar-border: 230 55% 45%; /* Um pouco mais claro que o background */
+    --sidebar-accent: 0 0% 100% / 0.1; /* Branco com 10% de opacidade para hover */
+    --sidebar-accent-foreground: 0 0% 100%; /* Branco */
   }
 
   .dark {
@@ -86,14 +83,12 @@
     --input: 217 33% 17%;
     --ring: 213 27% 84%;
 
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 216 34% 17%;
-    --sidebar-ring: 224 76% 48%;
+    /* Sidebar Dark Theme */
+    --sidebar-background: 222 47% 11%; 
+    --sidebar-foreground: 210 40% 98%; 
+    --sidebar-border: 216 34% 17%;    
+    --sidebar-accent: 210 40% 98% / 0.1; 
+    --sidebar-accent-foreground: 210 40% 98%; 
   }
 }
 
@@ -196,4 +191,104 @@ h4, .h4 {
 /* Enhanced card transitions */
 .card {
   @apply transition-all duration-200 hover:shadow-card;
+}
+
+/* Estilos de Impressão */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    font-size: 10pt;
+    color: #000 !important;
+    background-color: #fff !important;
+  }
+
+  header, nav, aside, footer, .no-print, 
+  .no-print * {
+    display: none !important;
+  }
+
+  .print-only {
+    display: inline !important; 
+  }
+  
+  .printable-content {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .printable-content .card,
+  .printable-content .border,
+  .printable-content .rounded {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  .printable-content .card-header, 
+  .printable-content .card-content {
+    padding: 0.5rem !important;
+  }
+   .printable-content .card-title {
+    font-size: 1.1rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .printable-content .accordion-trigger-print {
+    display: none !important;
+  }
+  .printable-content .accordion-content-print {
+    display: block !important;
+    border-bottom: none !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  .printable-content table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  .printable-content th,
+  .printable-content td {
+    border: 1px solid #ddd !important;
+    padding: 4px !important;
+    text-align: left !important;
+    font-size: 9pt !important;
+  }
+  .printable-content th {
+    background-color: #f2f2f2 !important;
+  }
+
+  .printable-content .card,
+  .printable-content .accordion-item,
+  .printable-content table,
+  .printable-content tr {
+    page-break-inside: avoid !important;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .printable-content .badge {
+    border: 1px solid #ccc !important;
+    padding: 0.1em 0.4em !important;
+    font-size: 0.8em !important;
+    background-color: #fff !important;
+    color: #333 !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+}
+
+/* Estilo para ocultar .print-only por padrão (fora da impressão) */
+.print-only {
+  display: none;
 }
