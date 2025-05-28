@@ -34,14 +34,12 @@ const Traceability = () => {
     setTimeout(() => window.print(), 100);
   };
 
-  const handleTraceCallback = useCallback(async (batchToTraceParam?: string) => {
+  const fetchTraceData = useCallback(async (batchToTraceParam?: string) => {
     const currentBatchToTrace = batchToTraceParam || searchInput.trim();
     if (!currentBatchToTrace) {
       return;
     }
     setIsLoading(true);
-    setProductTrace(null);
-    setMaterialTrace(null);
     try {
       const batchInfo = await findRelatedBatches(currentBatchToTrace);
       if (!batchInfo.exists) {
@@ -58,10 +56,12 @@ const Traceability = () => {
         const result = await traceProductBatch(currentBatchToTrace);
         if (result) setProductTrace(result);
         else setProductTrace(null);
+        setMaterialTrace(null);
       } else {
         const result = await traceMaterialBatch(currentBatchToTrace);
         if (result) setMaterialTrace(result);
         else setMaterialTrace(null);
+        setProductTrace(null);
       }
     } catch (error) {
       console.error("Erro na rastreabilidade:", error);
@@ -73,6 +73,14 @@ const Traceability = () => {
     }
   }, [searchInput, toast, searchHistory, setSearchHistory, setIsLoading, setProductTrace, setMaterialTrace]);
 
+  const handleTraceInvoked = (batchToTrace?: string) => {
+    setProductTrace(null);
+    setMaterialTrace(null);
+    setTimeout(() => {
+      fetchTraceData(batchToTrace);
+    }, 0);
+  };
+
   useEffect(() => {
     if (searchInput.trim() === "") {
       setProductTrace(null);
@@ -83,18 +91,18 @@ const Traceability = () => {
 
     const timerId = setTimeout(() => {
       if (searchInput.trim()) {
-        handleTraceCallback(searchInput.trim());
+        handleTraceInvoked(searchInput.trim());
       }
     }, 750);
 
     return () => {
       clearTimeout(timerId);
     };
-  }, [searchInput, handleTraceCallback]);
+  }, [searchInput, fetchTraceData]);
 
   const handleButtonClick = () => {
     if (searchInput.trim()) {
-      handleTraceCallback(searchInput.trim());
+      handleTraceInvoked(searchInput.trim());
     }
   };
 
@@ -169,7 +177,7 @@ const Traceability = () => {
                   <TableCell>{material.materialName}</TableCell>
                   <TableCell><Badge variant="outline">{material.materialType}</Badge></TableCell>
                   <TableCell>
-                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceCallback(material.batchNumber)}>{material.batchNumber}</Button>
+                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceInvoked(material.batchNumber)}>{material.batchNumber}</Button>
                     <span className="print-only">{material.batchNumber}</span>
                   </TableCell>
                   <TableCell>{material.quantity} {material.unitOfMeasure}</TableCell>
@@ -271,7 +279,7 @@ const Traceability = () => {
             {trace.usedInProductions.length > 0 ? trace.usedInProductions.map((prod, index) => (
               <div key={index} className="mb-4 p-2 border rounded">
                 <p className="font-semibold">Lote Produção: 
-                  <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceCallback(prod.productionBatchNumber)}>{prod.productionBatchNumber}</Button>
+                  <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceInvoked(prod.productionBatchNumber)}>{prod.productionBatchNumber}</Button>
                   <span className="print-only">{prod.productionBatchNumber}</span> ({formatDate(prod.productionDate)}) - Qtd. Usada: {prod.quantityUsed}
                 </p>
                 {renderAccordionContent(
@@ -299,7 +307,7 @@ const Traceability = () => {
                 <TableRow key={sale.invoiceNumber + index}>
                   <TableCell>{sale.productName}</TableCell>
                   <TableCell>
-                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceCallback(sale.productBatchNumber)}>{sale.productBatchNumber}</Button>
+                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceInvoked(sale.productBatchNumber)}>{sale.productBatchNumber}</Button>
                     <span className="print-only">{sale.productBatchNumber}</span>
                   </TableCell>
                   <TableCell>{formatDate(sale.saleDate)}</TableCell>
@@ -347,7 +355,7 @@ const Traceability = () => {
           <h3 className="text-sm font-medium text-muted-foreground mb-2">Buscas recentes:</h3>
           <div className="flex flex-wrap gap-2">
             {searchHistory.map((term, index) => (
-              <Button key={index} variant="outline" size="sm" onClick={() => { setSearchInput(term); handleTraceCallback(term); }}>
+              <Button key={index} variant="outline" size="sm" onClick={() => { setSearchInput(term); handleTraceInvoked(term); }}>
                 {term}
               </Button>
             ))}
