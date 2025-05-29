@@ -100,9 +100,11 @@ const printStyles = `
   
   body.print-page-body .card-print-item,
   body.print-page-body .card-print-clean {
-    border: 1px solid #999 !important; /* Borda visível para cards no papel */
-    background-color: white !important; /* Cards podem ter fundo branco sobre o papel timbrado */
-     box-shadow: none !important;
+    /* border: 1px solid #999 !important; */
+    border: none !important; /* Remove bordas dos cards */
+    margin-bottom: 8px !important; /* Adiciona espaço entre seções */
+    page-break-inside: avoid !important;
+    background-color: transparent !important; /* Fundo transparente para cards na impressão */
   }
   
   body.print-page-body .card-print-item > *,
@@ -132,7 +134,7 @@ const printStyles = `
       background-repeat: no-repeat !important;
       background-position: center top !important; /* Alinha papel timbrado no topo */
       background-color: white !important; /* Fundo branco para todas as páginas */
-      width: 210mm !important;
+      /* width: 210mm !important; */ /* REMOVIDA ESTA LINHA */
       min-height: 297mm !important; /* Altura mínima, mas pode crescer com o conteúdo */
       height: auto !important; /* Altura definida pelo conteúdo */
       /* display: flex !important; // Removido */
@@ -171,9 +173,11 @@ const printStyles = `
     
     .card-print-item,
     .card-print-clean {
-      border: 1px solid #999 !important;
+      /* border: 1px solid #999 !important; */
+      border: none !important; /* Remove bordas dos cards */
+      margin-bottom: 8px !important; /* Adiciona espaço entre seções */
       page-break-inside: avoid !important;
-      background-color: white !important; /* Garante fundo branco para cards na impressão */
+      background-color: transparent !important; /* Fundo transparente para cards na impressão */
     }
     
     .card-print-item [class*="text-gray-"],
@@ -185,10 +189,22 @@ const printStyles = `
     .table-print-tight td {
       padding: 2px 4px !important;
       font-size: 0.8em !important;
-      border: 1px solid #aaa !important;
+      /* border: 1px solid #aaa !important; */
+      border: none !important; /* Remove todas as bordas padrão */
+      border-bottom: 1px solid #ddd !important; /* Adiciona apenas linha inferior */
     }
     .table-print-tight th {
       font-weight: bold !important;
+      border-bottom-width: 1.5px !important; /* Linha do cabeçalho mais espessa */
+      border-bottom-color: #bbb !important;
+    }
+    .table-print-tight tr:last-child td {
+      border-bottom: none !important; /* Remove borda da última linha da tabela */
+    }
+    .table-print-tight {
+      border-collapse: collapse !important;
+      border: none !important; /* Remove borda da tabela em si */
+      width: 100% !important;
     }
 
     .badge,
@@ -432,7 +448,7 @@ const PrintableTraceabilityPage = () => {
         <CardHeader className="p-2"><CardTitle className="text-sm font-semibold flex items-center gap-1"><Truck className="h-4 w-4" />Rastreabilidade Reversa ({trace.reverseTraceability.length})</CardTitle></CardHeader>
         <CardContent className="p-0 accordion-content-print">
           {trace.reverseTraceability.length > 0 ? trace.reverseTraceability.map((reverseProd, pIndex) => (
-            <div key={pIndex} className="mb-2 p-1 border rounded card-print-item text-xs">
+            <div key={pIndex} className="mb-2 p-1 text-xs">
               <p className="font-semibold">Produção: Lote {reverseProd.productionBatchNumber} ({formatDate(reverseProd.productionDate)})</p>
               {renderAccordionContent(
                 reverseProd.producedItems,

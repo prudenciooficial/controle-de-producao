@@ -117,7 +117,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
               transition={{ duration: 0.2, ease: "easeInOut" }}
               className="whitespace-nowrap"
             >
-              {item.name}
+            {item.name}
             </motion.span>
           </MotionLink>
         );

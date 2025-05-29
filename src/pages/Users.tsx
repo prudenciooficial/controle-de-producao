@@ -53,7 +53,7 @@ export default function Users() {
       if (!session) {
         throw new Error("Sessão não encontrada, não é possível buscar usuários.");
       }
-
+      
       const { data, error } = await supabase.functions.invoke('get-users-admin', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -164,7 +164,7 @@ export default function Users() {
           'Authorization': `Bearer ${session.access_token}`,
         }
       });
-
+      
       if (invokeError) {
         console.error('Error invoking delete-user-admin:', invokeError);
         throw invokeError;
@@ -327,37 +327,37 @@ export default function Users() {
         </Card>
 
         {showUserDialog && (
-          <UserDialog
-            open={showUserDialog}
+        <UserDialog
+          open={showUserDialog}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
                 setShowUserDialog(false);
                 setSelectedUser(null);
-                fetchUsers();
+            fetchUsers();
               } else {
                 setShowUserDialog(true);
               }
-            }}
+          }}
             user={selectedUser}
             onUserUpdated={fetchUsers}
-          />
+        />
         )}
 
         {showPermissionsDialog && selectedUser && (
-          <UserPermissionsDialog
-            open={showPermissionsDialog}
+        <UserPermissionsDialog
+          open={showPermissionsDialog}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
                 setShowPermissionsDialog(false);
                 setSelectedUser(null);
-                fetchUsers();
+            fetchUsers();
               } else {
                 setShowPermissionsDialog(true);
               }
-            }}
+          }}
             user={selectedUser}
             onPermissionsUpdated={fetchUsers}
-          />
+        />
         )}
       </div>
     </ProtectedRoute>

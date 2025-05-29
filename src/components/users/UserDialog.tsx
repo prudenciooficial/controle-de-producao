@@ -101,8 +101,8 @@ export function UserDialog({ open, onOpenChange, user, onUserUpdated }: UserDial
       } else {
         const { error: invokeError } = await supabase.functions.invoke('create-user-admin', {
           body: {
-            email: formData.email,
-            password: formData.password,
+          email: formData.email,
+          password: formData.password,
             fullName: formData.fullName,
             username: formData.username,
             role: formData.role,
@@ -125,7 +125,7 @@ export function UserDialog({ open, onOpenChange, user, onUserUpdated }: UserDial
           console.error('Error invoking create-user-admin function:', invokeError);
           throw new Error(detailedError);
         }
-        
+
         toast({
           title: "Usuário criado",
           description: "Novo usuário foi criado com sucesso.",
@@ -216,20 +216,20 @@ export function UserDialog({ open, onOpenChange, user, onUserUpdated }: UserDial
                 disabled={!!user}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Senha
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                className="col-span-3"
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="password" className="text-right">
+                  Senha
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  className="col-span-3"
                 placeholder={user ? "Deixe em branco para não alterar" : ""}
                 required={!user}
-              />
-            </div>
+                />
+              </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="role" className="text-right">
                 Papel
