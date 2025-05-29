@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useLayoutEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { traceProductBatch, traceMaterialBatch, findRelatedBatches, ProductTraceability, MaterialTraceability } from '@/services/traceabilityService';
 import { useToast } from '@/hooks/use-toast';
@@ -12,76 +12,214 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 // Estilos para a página de impressão
 const printStyles = `
-  html {
+  /* Força um tema claro e reseta algumas propriedades globais para o preview */
+  html.print-preview-active {
+    background-color: #E0E0E0 !important; /* Fundo cinza FORA do papel */
     display: flex;
     justify-content: center;
-    align-items: flex-start; 
+    align-items: flex-start;
     min-height: 100vh;
-    background-color: #E0E0E0; /* Um cinza claro para o fundo fora do "papel" */
-    padding: 20px 0; 
+    padding: 20px 0;
     box-sizing: border-box;
+    color-scheme: light !important; /* Força tema claro */
+    -webkit-font-smoothing: antialiased; /* Melhora renderização de fontes */
+    -moz-osx-font-smoothing: grayscale;
   }
-  body {
+
+  /* Estiliza o BODY para simular a folha A4 com papel timbrado */
+  body.print-page-body {
     background-image: url('/images/papeltimbrado.jpg') !important;
     background-size: contain !important;
     background-repeat: no-repeat !important;
     background-position: center center !important;
+    background-color: white !important; /* Fundo branco do papel */
+    color: black !important; /* Texto preto padrão */
+    width: 210mm;
+    height: 297mm; /* Altura fixa para o preview em tela */
+    overflow-y: auto; /* Adiciona scroll vertical se conteúdo interno exceder 297mm */
+    margin: 0 auto !important; /* Centraliza o "papel" */
+    padding: 0;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    position: relative;
+    box-sizing: border-box; /* Adicionado para consistência de dimensionamento */
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    margin: 0 !important; /* Removido auto, pois html é flex */
-    padding: 0;
-    width: 210mm; 
-    height: 297mm;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2); /* Sombra para destacar o "papel" na tela */
-    position: relative; /* Para contexto de posicionamento se necessário */
+    /* Reset de variáveis de tema que podem estar afetando */
+    --background: white !important;
+    --foreground: black !important;
+    --card: white !important;
+    --card-foreground: black !important;
+    --popover: white !important;
+    --popover-foreground: black !important;
+    --primary: black !important;
+    --primary-foreground: white !important;
+    --secondary: #f0f0f0 !important;
+    --secondary-foreground: black !important;
+    --muted: #f0f0f0 !important;
+    --muted-foreground: #555 !important;
+    --accent: #f0f0f0 !important;
+    --accent-foreground: black !important;
+    --destructive: #ff0000 !important;
+    --destructive-foreground: white !important;
+    --border: #ccc !important;
+    --input: #ccc !important;
+    --ring: #999 !important;
   }
-  @media print {
-    html, body {
-      background-color: transparent !important; /* Remove o fundo cinza e sombra na impressão */
-      padding: 0 !important;
-      margin: 0 !important;
-      box-shadow: none !important;
-      display: block !important; /* Reset flex para impressão */
-    }
-    body {
-        /* Mantém as dimensões e background para impressão */
-        width: 210mm !important; 
-        height: 297mm !important;
-        background-image: url('/images/papeltimbrado.jpg') !important;
-        background-size: contain !important;
-        background-repeat: no-repeat !important;
-        background-position: center center !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-    .printable-content-area {
-       /* Os paddings já estão corretos para o conteúdo */
-    }
-  }
-  .printable-content-area {
-    padding-top: 6.5cm;
-    padding-bottom: 5.5cm;
+
+  /* Área de conteúdo principal DENTRO do "papel" */
+  body.print-page-body .printable-content-area {
+    background-color: transparent !important; /* ESSENCIAL: para o papel timbrado do body aparecer */
+    color: black !important;
+    padding-top: 6.5cm; /* Ajustar conforme o design do papel timbrado */
+    padding-bottom: 5.5cm; /* Ajustar conforme o design do papel timbrado */
     padding-left: 2cm;
     padding-right: 2cm;
     width: 100%;
-    height: 100%; /* Faz com que a área de conteúdo ocupe toda a altura do body A4 */
+    height: 100%;
     box-sizing: border-box;
-    overflow: auto; /* Adiciona rolagem se o conteúdo exceder a página, para visualização */
+    overflow: auto; /* Permite scroll no preview se conteúdo for grande */
   }
-  table, tr, td, th, .card-print-item {
-    page-break-inside: avoid !important;
+
+  /* Garante que elementos DENTRO da área imprimível tenham cores corretas */
+  body.print-page-body .printable-content-area *,
+  body.print-page-body .printable-content-area ::before,
+  body.print-page-body .printable-content-area ::after {
+    color: inherit !important; /* Herda cor do pai (que é preto) */
+    background-color: transparent !important;
+    border-color: #555 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    /* Resetar variáveis de tema também para elementos internos se necessário */
+    --background: transparent !important;
+    --foreground: inherit !important;
+    --card: transparent !important;
+    --card-foreground: inherit !important;
+     /* Manter bordas de cards e tabelas visíveis se desejado */
+    --border: #ccc !important;
   }
-  thead {
-    display: table-header-group !important;
+  
+  body.print-page-body .card-print-item,
+  body.print-page-body .card-print-clean {
+    border: 1px solid #999 !important; /* Borda visível para cards no papel */
+    background-color: white !important; /* Cards podem ter fundo branco sobre o papel timbrado */
+     box-shadow: none !important;
   }
+  
+  body.print-page-body .card-print-item > *,
+  body.print-page-body .card-print-clean > * {
+     background-color: transparent !important; /* Conteúdo do card transparente sobre o fundo branco do card */
+  }
+
+
+  @media print {
+    html,
+    body {
+      color: black !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    html {
+      background-color: white !important; /* Garante que a "tela" fora do body seja branca */
+    }
+
+    body { /* O body na impressão é o próprio papel A4 */
+      background-image: url('/images/papeltimbrado.jpg') !important;
+      background-size: contain !important;
+      background-repeat: no-repeat !important;
+      background-position: center top !important; /* Alinha papel timbrado no topo */
+      background-color: white !important; /* Fundo branco para todas as páginas */
+      width: 210mm !important;
+      min-height: 297mm !important; /* Altura mínima, mas pode crescer com o conteúdo */
+      height: auto !important; /* Altura definida pelo conteúdo */
+      /* display: flex !important; // Removido */
+      /* flex-direction: column !important; // Removido */
+      box-sizing: border-box !important;
+      /* overflow: hidden !important; // Removido, conteúdo precisa fluir */
+      page-break-before: auto;
+      page-break-after: auto;
+    }
+
+    .printable-content-area {
+      background-color: transparent !important; /* Para o papel timbrado do body ser visível */
+      color: black !important;
+      padding-top: 6.5cm;    /* Margens internas do papel timbrado */
+      padding-bottom: 5.5cm;
+      padding-left: 2cm;
+      padding-right: 2cm;
+      width: 100% !important;
+      height: auto !important; /* Altura determinada pelo fluxo do conteúdo */
+      min-height: calc(297mm - 6.5cm - 5.5cm); /* Garante espaço mínimo útil na primeira página */
+      box-sizing: border-box !important;
+      overflow: visible !important; /* Permite que o conteúdo interno flua e quebre páginas */
+      /* flex-grow: 1 !important; // Removido */
+    }
+
+    .printable-content-area *,
+    .printable-content-area > * {
+      color: black !important;
+      background-color: transparent !important;
+      border-color: #555 !important;
+      text-shadow: none !important;
+      box-shadow: none !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    .card-print-item,
+    .card-print-clean {
+      border: 1px solid #999 !important;
+      page-break-inside: avoid !important;
+      background-color: white !important; /* Garante fundo branco para cards na impressão */
+    }
+    
+    .card-print-item [class*="text-gray-"],
+    .card-print-clean [class*="text-gray-"] {
+      color: #111 !important; 
+    }
+
+    .table-print-tight th,
+    .table-print-tight td {
+      padding: 2px 4px !important;
+      font-size: 0.8em !important;
+      border: 1px solid #aaa !important;
+    }
+    .table-print-tight th {
+      font-weight: bold !important;
+    }
+
+    .badge,
+    span[class*="badge"] {
+      border: 1px solid #333 !important;
+      color: black !important;
+      background-color: white !important; /* Badge com fundo branco e borda preta */
+      padding: 1px 3px !important;
+      font-weight: normal !important;
+      display: inline-block !important;
+    }
+
+    .lucide { color: black !important; }
+    .text-green-600, .lucide.text-green-600 { color: #004000 !important; }
+    .text-red-600, .lucide.text-red-600 { color: #500000 !important; }
+
+    thead { display: table-header-group !important; }
+    table, tr, td, th, .card-print-item { page-break-inside: avoid !important; }
+  }
+
+  /* Estilos gerais para o conteúdo na visualização e impressão (se não sobrescrito em @media print) */
+  .printable-content-area { /* Já definido acima para preview, mas pode ter regras comuns */
+    /* ... */
+  }
+  
   .table-print-tight td,
   .table-print-tight th {
     padding: 3px 5px !important; 
     font-size: 0.85em !important; 
   }
-  .card-print-clean {
-    border: 1px solid #eee !important; 
-    box-shadow: none !important;
+  .card-print-clean { /* Já estilizado para body.print-page-body e @media print */
     margin-bottom: 10px; 
   }
   .accordion-content-print {
@@ -96,6 +234,41 @@ const PrintableTraceabilityPage = () => {
   const [productTrace, setProductTrace] = useState<ProductTraceability | null>(null);
   const [materialTrace, setMaterialTrace] = useState<MaterialTraceability | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useLayoutEffect(() => { // Usar useLayoutEffect para manipulação de DOM síncrona antes da pintura
+    const originalHtmlClass = document.documentElement.className;
+    const originalBodyClass = document.body.className;
+    const originalHtmlStyle = document.documentElement.getAttribute('style');
+    const originalBodyStyle = document.body.getAttribute('style');
+
+    document.documentElement.className = 'print-preview-active'; // Sobrescreve todas as classes do html
+    document.body.className = 'print-page-body'; // Sobrescreve todas as classes do body
+    
+    // Forçar reset de estilos inline que podem ter sido definidos pelo ThemeProvider ou outros
+    document.documentElement.setAttribute('style', ''); 
+    document.body.setAttribute('style', '');
+    
+    // Aplicar color-scheme diretamente para garantir
+    document.documentElement.style.colorScheme = 'light';
+
+
+    return () => {
+      document.documentElement.className = originalHtmlClass;
+      document.body.className = originalBodyClass;
+      
+      if (originalHtmlStyle) {
+        document.documentElement.setAttribute('style', originalHtmlStyle);
+      } else {
+        document.documentElement.removeAttribute('style');
+      }
+      if (originalBodyStyle) {
+        document.body.setAttribute('style', originalBodyStyle);
+      } else {
+        document.body.removeAttribute('style');
+      }
+      document.documentElement.style.removeProperty('color-scheme');
+    };
+  }, []);
 
   // Funções de renderização e busca de dados (serão adaptadas de Traceability.tsx)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -352,7 +525,7 @@ const PrintableTraceabilityPage = () => {
   }
 
   if (error) {
-    return <div style={{ padding: '20px', fontFamily: 'sans-serif', color: 'red' }}>Erro: {error}</div>;
+    return <div style={{ padding: '20px', fontFamily: 'sans-serif', color: 'red', backgroundColor: 'white' }}>Erro: {error}</div>;
   }
 
   return (
