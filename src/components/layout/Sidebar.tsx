@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users } from "lucide-react";
@@ -24,14 +23,14 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
 
   const allMenuItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard, module: "dashboard" },
-    { name: "Produção", path: "/producao", icon: Factory, module: "producao" },
-    { name: "Vendas", path: "/vendas", icon: ShoppingCart, module: "vendas" },
-    { name: "Pedidos", path: "/pedidos", icon: Truck, module: "pedidos" },
-    { name: "Estoque", path: "/estoque", icon: Package, module: "estoque" },
-    { name: "Perdas", path: "/perdas", icon: PackageX, module: "perdas" },
+    { name: "Produção", path: "/producao", icon: Factory, module: "production" },
+    { name: "Vendas", path: "/vendas", icon: ShoppingCart, module: "sales" },
+    { name: "Pedidos", path: "/pedidos", icon: Truck, module: "orders" },
+    { name: "Estoque", path: "/estoque", icon: Package, module: "inventory" },
+    { name: "Perdas", path: "/perdas", icon: PackageX, module: "losses" },
     { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search, module: "rastreabilidade" },
-    { name: "Cadastro", path: "/cadastro", icon: Settings, module: "cadastro" },
-    { name: "Usuários", path: "/usuarios", icon: Users, module: "usuarios" },
+    { name: "Cadastro", path: "/cadastro", icon: Settings, module: "general_settings" },
+    { name: "Usuários", path: "/usuarios", icon: Users, module: "user_management" },
   ];
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
   }, [isMobile]);
 
   useEffect(() => {
-    const checkPermissions = async () => {
+    const checkPermissions = () => {
       const filteredItems = [];
       
       for (const item of allMenuItems) {
@@ -53,7 +52,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         
         // Check if user has view permission for the module
         try {
-          const hasAccess = await hasPermission(item.module, 'view');
+          const hasAccess = hasPermission(item.module, 'read');
           if (hasAccess) {
             filteredItems.push(item);
           }
@@ -66,7 +65,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     };
 
     checkPermissions();
-  }, [hasRole, hasPermission]);
+  }, [hasRole, hasPermission, allMenuItems]);
 
   const sidebarHeaderVariants = {
     expanded: { opacity: 1, x: 0 },

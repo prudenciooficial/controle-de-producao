@@ -4,6 +4,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -38,6 +39,7 @@ const Sales = () => {
   const { getAvailableProducts, addSale } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   
   const availableProducts = getAvailableProducts();
   
@@ -63,6 +65,15 @@ const Sales = () => {
   };
   
   const onSubmit = (data: SalesFormValues) => {
+    if (!hasPermission('sales', 'create')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para registrar novas vendas.",
+      });
+      return;
+    }
+
     try {
       // Prepare sale items with additional data
       const saleItems = data.items.map((item) => {

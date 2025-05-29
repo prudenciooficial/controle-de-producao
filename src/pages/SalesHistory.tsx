@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -32,6 +32,7 @@ const SalesHistory = () => {
   const { sales, products, getAvailableProducts, deleteSale, updateSale } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -107,12 +108,32 @@ const SalesHistory = () => {
   }, [newItem.productId, getAvailableProducts]);
   
   const handleDelete = (id: string) => {
+    if (!hasPermission('sales', 'delete')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para excluir registros de vendas.",
+      });
+      setShowDeleteDialog(false);
+      return;
+    }
     deleteSale(id);
     setShowDeleteDialog(false);
-    };
+    toast({ title: "Registro Excluído", description: "O registro de venda foi excluído com sucesso." });
+  };
   
   const handleEdit = async () => {
     if (!selectedSale || !editForm) return;
+
+    if (!hasPermission('sales', 'update')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para atualizar registros de vendas.",
+      });
+      setShowEditDialog(false);
+      return;
+    }
     
     try {
       setIsSubmitting(true);
@@ -125,6 +146,7 @@ const SalesHistory = () => {
       
       await updateSale(selectedSale.id, updatedSale);
       setShowEditDialog(false);
+      toast({ title: "Registro Atualizado", description: "O registro de venda foi atualizado com sucesso." });
     } catch (error) {
       console.error("Erro ao atualizar venda:", error);
       toast({
@@ -303,28 +325,32 @@ const SalesHistory = () => {
                             Detalhes
                           </DropdownMenuItem>
                           
-                          <DropdownMenuItem
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              setSelectedSale(sale);
-                              setShowEditDialog(true);
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
+                          {hasPermission('sales', 'update') && (
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                setSelectedSale(sale);
+                                setShowEditDialog(true);
+                              }}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                          )}
                           
-                          <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                            className="text-destructive"
-                            onClick={() => {
-                              setSelectedSale(sale);
-                              setShowDeleteDialog(true);
-                            }}
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
+                          {hasPermission('sales', 'delete') && (
+                            <DropdownMenuItem
+                              onSelect={(e) => e.preventDefault()}
+                              className="text-destructive"
+                              onClick={() => {
+                                setSelectedSale(sale);
+                                setShowDeleteDialog(true);
+                              }}
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

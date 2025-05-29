@@ -1,28 +1,25 @@
-
 import { Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
+// A importação de Button não é necessária se ele não for usado.
+// import { Button } from "@/components/ui/button"; 
 import { useTheme } from "./ThemeProvider";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Toggle } from "../ui/toggle";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(theme === "dark" ? "light" : "dark"); // Ciclo simples light/dark
   };
 
   return (
     <div className="flex items-center">
       <Toggle 
         aria-label="Alternar tema"
-        pressed={theme === "dark"}
-        onPressedChange={toggleTheme}
+        // A propriedade 'pressed' é mais adequada para um estado binário.
+        // Se o tema atual for 'dark', o botão (que mostra o ícone do sol para mudar para claro) pode ser considerado 'não pressionado'
+        // Se o tema atual for 'light', o botão (que mostra o ícone da lua para mudar para escuro) pode ser considerado 'pressionado' se associarmos 'pressionado' com a intenção de ir para escuro.
+        // Para maior clareza, vamos deixar o visual ser controlado apenas pelos ícones Sun/Moon e sua rotação/escala baseada na classe .dark
+        onClick={toggleTheme}
         variant="default"
         size="sm"
         className="h-9 w-9 rounded-full bg-background border shadow-sm"
@@ -31,26 +28,6 @@ export function ThemeToggle() {
         <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-sky-400" />
         <span className="sr-only">Alternar tema</span>
       </Toggle>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 ml-1">
-            <span className="sr-only">Opções de tema</span>
-            <span className="text-xs">•••</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="rounded-lg border shadow-md">
-          <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
-            Claro
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
-            Escuro
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
-            Sistema
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   );
 }

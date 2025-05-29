@@ -10,11 +10,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserDialog } from '@/components/users/UserDialog';
 import { UserPermissionsDialog } from '@/components/users/UserPermissionsDialog';
-import { User } from '@supabase/supabase-js';
 
 interface UserData {
   id: string;
-  email: string;
+  email?: string;
   user_metadata: {
     full_name?: string;
     username?: string;
@@ -22,10 +21,20 @@ interface UserData {
   };
   created_at: string;
   banned_until?: string;
+  aud?: string;
+  confirmed_at?: string;
+  email_confirmed_at?: string;
+  phone?: string;
+  last_sign_in_at?: string;
+  app_metadata?: {
+    provider?: string;
+    providers?: string[];
+  };
+  identities?: any[];
 }
 
 export default function Users() {
-  const { hasRole } = useAuth();
+  const { hasRole, getSession } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,31 +49,32 @@ export default function Users() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      
-      const { data: authUsers, error } = await supabase.auth.admin.listUsers();
-
-      if (error) {
-        console.error('Error fetching users:', error);
-        return;
+      const session = await getSession();
+      if (!session) {
+        throw new Error("Sessão não encontrada, não é possível buscar usuários.");
       }
 
-      // Transform Supabase User type to our UserData type
-      const transformedUsers: UserData[] = authUsers.users.map((user: User) => ({
-        id: user.id,
-        email: user.email || '', // Handle optional email
-        user_metadata: user.user_metadata || {},
-        created_at: user.created_at,
-        banned_until: undefined, // Remove reference to non-existent property
-      }));
+      const { data, error } = await supabase.functions.invoke('get-users-admin', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        }
+      });
 
-      setUsers(transformedUsers);
+      if (error) {
+        console.error('Error fetching users via function:', error);
+        throw error;
+      }
+      
+      setUsers(data || []);
+
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível carregar os usuários.",
+        title: "Erro ao Carregar Usuários",
+        description: error.message || "Não foi possível carregar a lista de usuários.",
       });
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -81,20 +91,40 @@ export default function Users() {
   };
 
   const handleToggleStatus = async (user: UserData) => {
+    if (!hasRole('admin')) {
+      toast({ variant: "destructive", title: "Acesso Negado", description: "Você não tem permissão para alterar status de usuários." });
+      return;
+    }
     try {
-      const isBanned = !!user.banned_until;
-      
-      const { error } = await supabase.auth.admin.updateUserById(user.id, {
-        ban_duration: isBanned ? 'none' : '24h'
+      setLoading(true);
+      const session = await getSession();
+      if (!session) {
+        throw new Error("Sessão não encontrada.");
+      }
+
+      const isCurrentlyBanned = user.banned_until && new Date(user.banned_until) > new Date();
+      const updatePayload = {
+        userId: user.id,
+        updateData: {
+          ban_duration: isCurrentlyBanned ? 'none' : `${100 * 365 * 24}h`,
+        }
+      };
+
+      const { error: invokeError } = await supabase.functions.invoke('update-user-admin', {
+        body: updatePayload,
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        }
       });
 
-      if (error) {
-        throw error;
+      if (invokeError) {
+        console.error('Error invoking update-user-admin:', invokeError);
+        throw invokeError;
       }
 
       toast({
         title: "Status atualizado",
-        description: `Usuário ${isBanned ? 'ativado' : 'desativado'} com sucesso.`,
+        description: `Usuário ${isCurrentlyBanned ? 'ativado' : 'desativado'} com sucesso.`,
       });
 
       fetchUsers();
@@ -102,22 +132,42 @@ export default function Users() {
       console.error('Error updating user status:', error);
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível alterar o status do usuário.",
+        title: "Erro ao Atualizar Status",
+        description: error.message || "Não foi possível alterar o status do usuário.",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteUser = async (user: UserData) => {
+    if (!hasRole('admin')) {
+      toast({ variant: "destructive", title: "Acesso Negado", description: "Você não tem permissão para excluir usuários." });
+      return;
+    }
     if (!confirm('Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.')) {
       return;
     }
 
     try {
-      const { error } = await supabase.auth.admin.deleteUser(user.id);
-      
-      if (error) {
-        throw error;
+      setLoading(true);
+      const session = await getSession();
+      if (!session) {
+        throw new Error("Sessão não encontrada.");
+      }
+
+      const deletePayload = { userId: user.id };
+
+      const { error: invokeError } = await supabase.functions.invoke('delete-user-admin', {
+        body: deletePayload,
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        }
+      });
+
+      if (invokeError) {
+        console.error('Error invoking delete-user-admin:', invokeError);
+        throw invokeError;
       }
 
       toast({
@@ -130,13 +180,15 @@ export default function Users() {
       console.error('Error deleting user:', error);
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível excluir o usuário.",
+        title: "Erro ao Excluir Usuário",
+        description: error.message || "Não foi possível excluir o usuário.",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getRoleBadgeVariant = (role: string) => {
+  const getRoleBadgeVariant = (role?: string) => {
     switch (role) {
       case 'admin':
         return 'destructive';
@@ -145,11 +197,11 @@ export default function Users() {
       case 'viewer':
         return 'secondary';
       default:
-        return 'secondary';
+        return 'outline';
     }
   };
 
-  const getRoleLabel = (role: string) => {
+  const getRoleLabel = (role?: string) => {
     switch (role) {
       case 'admin':
         return 'Administrador';
@@ -158,9 +210,11 @@ export default function Users() {
       case 'viewer':
         return 'Visualizador';
       default:
-        return role || 'Visualizador';
+        return role || 'Não Definido';
     }
   };
+
+  const isActionDisabled = !hasRole('admin');
 
   return (
     <ProtectedRoute requiredRole="admin">
@@ -172,7 +226,7 @@ export default function Users() {
               Gerencie usuários e suas permissões no sistema
             </p>
           </div>
-          <Button onClick={() => setShowUserDialog(true)}>
+          <Button onClick={() => setShowUserDialog(true)} disabled={isActionDisabled}>
             <UserPlus className="mr-2 h-4 w-4" />
             Novo Usuário
           </Button>
@@ -188,6 +242,8 @@ export default function Users() {
           <CardContent>
             {loading ? (
               <div className="text-center py-8">Carregando usuários...</div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-8">Nenhum usuário encontrado.</div>
             ) : (
               <Table>
                 <TableHeader>
@@ -205,18 +261,18 @@ export default function Users() {
                   {users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
-                        {user.user_metadata?.full_name || user.email}
+                        {user.user_metadata?.full_name || user.email || 'N/A'}
                       </TableCell>
-                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.email || 'N/A'}</TableCell>
                       <TableCell>{user.user_metadata?.username || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.user_metadata?.role || 'viewer')}>
-                          {getRoleLabel(user.user_metadata?.role || 'viewer')}
+                        <Badge variant={getRoleBadgeVariant(user.user_metadata?.role)}>
+                          {getRoleLabel(user.user_metadata?.role)}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.banned_until ? 'secondary' : 'default'}>
-                          {user.banned_until ? 'Inativo' : 'Ativo'}
+                        <Badge variant={user.banned_until && new Date(user.banned_until) > new Date() ? 'secondary' : 'default'}>
+                          {user.banned_until && new Date(user.banned_until) > new Date() ? 'Inativo' : 'Ativo'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -228,6 +284,7 @@ export default function Users() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditUser(user)}
+                            disabled={isActionDisabled}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -235,6 +292,7 @@ export default function Users() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleManagePermissions(user)}
+                            disabled={isActionDisabled}
                           >
                             Permissões
                           </Button>
@@ -242,17 +300,19 @@ export default function Users() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleToggleStatus(user)}
+                            disabled={isActionDisabled}
                           >
-                            {user.banned_until ? (
+                            {user.banned_until && new Date(user.banned_until) > new Date() ? (
                               <CheckCircle className="h-4 w-4" />
                             ) : (
                               <Ban className="h-4 w-4" />
                             )}
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="destructive"
                             size="sm"
                             onClick={() => handleDeleteUser(user)}
+                            disabled={isActionDisabled}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -266,25 +326,39 @@ export default function Users() {
           </CardContent>
         </Card>
 
-        <UserDialog
-          open={showUserDialog}
-          onOpenChange={setShowUserDialog}
-          user={selectedUser}
-          onUserUpdated={() => {
-            fetchUsers();
-            setSelectedUser(null);
-          }}
-        />
+        {showUserDialog && (
+          <UserDialog
+            open={showUserDialog}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setShowUserDialog(false);
+                setSelectedUser(null);
+                fetchUsers();
+              } else {
+                setShowUserDialog(true);
+              }
+            }}
+            user={selectedUser}
+            onUserUpdated={fetchUsers}
+          />
+        )}
 
-        <UserPermissionsDialog
-          open={showPermissionsDialog}
-          onOpenChange={setShowPermissionsDialog}
-          user={selectedUser}
-          onPermissionsUpdated={() => {
-            fetchUsers();
-            setSelectedUser(null);
-          }}
-        />
+        {showPermissionsDialog && selectedUser && (
+          <UserPermissionsDialog
+            open={showPermissionsDialog}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setShowPermissionsDialog(false);
+                setSelectedUser(null);
+                fetchUsers();
+              } else {
+                setShowPermissionsDialog(true);
+              }
+            }}
+            user={selectedUser}
+            onPermissionsUpdated={fetchUsers}
+          />
+        )}
       </div>
     </ProtectedRoute>
   );

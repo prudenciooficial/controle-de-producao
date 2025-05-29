@@ -1,7 +1,7 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -52,6 +52,7 @@ const LossesHistory = () => {
   const { losses, deleteLoss, updateLoss, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [selectedLoss, setSelectedLoss] = useState<Loss | null>(null);
@@ -82,9 +83,20 @@ const LossesHistory = () => {
   );
   
   const handleDelete = async (id: string) => {
+    if (!hasPermission('losses', 'delete')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para excluir registros de perdas.",
+      });
+      setShowDeleteDialog(false);
+      setSelectedLoss(null); 
+      return;
+    }
     try {
       setIsDeleting(true);
       await deleteLoss(id);
+      toast({ title: "Registro Excluído", description: "O registro de perda foi excluído com sucesso." });
     } catch (error) {
       console.error("Erro ao excluir perda:", error);
       toast({
@@ -101,12 +113,24 @@ const LossesHistory = () => {
   
   const handleEditSubmit = async (values: Partial<Loss>) => {
     if (!selectedLoss) return;
+
+    if (!hasPermission('losses', 'update')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para atualizar registros de perdas.",
+      });
+      setShowEditDialog(false);
+      setSelectedLoss(null);
+      return;
+    }
     
     try {
       setIsUpdating(true);
       await updateLoss(selectedLoss.id, values);
       setShowEditDialog(false);
       setSelectedLoss(null);
+      toast({ title: "Registro Atualizado", description: "O registro de perda foi atualizado com sucesso." });
     } catch (error) {
       console.error("Erro ao atualizar perda:", error);
       toast({
@@ -259,24 +283,28 @@ const LossesHistory = () => {
                                 Detalhes
                               </DropdownMenuItem>
                               
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  openEditDialog(loss);
-                                }}
-                              >
-                                <PencilIcon className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
+                              {hasPermission('losses', 'update') && (
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    openEditDialog(loss);
+                                  }}
+                                >
+                                  <PencilIcon className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                              )}
                               
-                              <DropdownMenuItem
-                                onSelect={(e) => e.preventDefault()}
-                                className="text-destructive"
-                                onClick={() => openDeleteDialog(loss)}
-                              >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
+                              {hasPermission('losses', 'delete') && (
+                                <DropdownMenuItem
+                                  onSelect={(e) => e.preventDefault()}
+                                  className="text-destructive"
+                                  onClick={() => openDeleteDialog(loss)}
+                                >
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

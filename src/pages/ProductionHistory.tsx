@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,8 @@ const ProductionHistory = () => {
     productionPredictionFactor: 1.5
   });
 
+  const { hasPermission } = useAuth();
+
   // Fetch global factors on component mount
   useEffect(() => {
     fetchGlobalFactors();
@@ -110,10 +113,19 @@ const ProductionHistory = () => {
   );
   
   const handleDelete = async (id: string) => {
+    if (!hasPermission('production', 'delete')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para excluir registros de produção.",
+      });
+      setShowDeleteDialog(false);
+      return;
+    }
     try {
       setIsDeleting(true);
       await deleteProductionBatch(id);
-      
+      toast({ title: "Registro Excluído", description: "O registro de produção foi excluído com sucesso." });
     } catch (error) {
       console.error("Erro ao excluir produção:", error);
       toast({
@@ -130,6 +142,16 @@ const ProductionHistory = () => {
   const handleEditSubmit = async () => {
     if (!selectedBatch || !editForm) return;
 
+    if (!hasPermission('production', 'update')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para atualizar registros de produção.",
+      });
+      setShowEditDialog(false);
+      return;
+    }
+
     try {
       setIsSaving(true);
       
@@ -141,7 +163,7 @@ const ProductionHistory = () => {
       };
       
       await updateProductionBatch(selectedBatch.id, updateData);
-      
+      toast({ title: "Registro Atualizado", description: "O registro de produção foi atualizado com sucesso." });
       setShowEditDialog(false);
     } catch (error) {
       console.error("Erro ao atualizar produção:", error);
@@ -354,27 +376,31 @@ const ProductionHistory = () => {
                                 }}
                               >
                                 <Eye className="mr-2 h-4 w-4" />
-                                Detalhes
+                                Ver Detalhes
                               </DropdownMenuItem>
 
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  openEditDialog(batch);
-                                }}
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
+                              {hasPermission('production', 'update') && (
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    openEditDialog(batch);
+                                  }}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                              )}
                               
-                              <DropdownMenuItem
-                                onSelect={(e) => e.preventDefault()}
-                                className="text-destructive"
-                                onClick={() => openDeleteDialog(batch)}
-                              >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
+                              {hasPermission('production', 'delete') && (
+                                <DropdownMenuItem
+                                  onSelect={(e) => e.preventDefault()}
+                                  className="text-destructive"
+                                  onClick={() => openDeleteDialog(batch)}
+                                >
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

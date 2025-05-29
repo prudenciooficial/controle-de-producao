@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -31,6 +32,7 @@ const Losses = () => {
   const { productionBatches, addLoss, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   
   const form = useForm<LossFormValues>({
     resolver: zodResolver(lossFormSchema),
@@ -50,6 +52,15 @@ const Losses = () => {
   };
   
   const onSubmit = async (data: LossFormValues) => {
+    if (!hasPermission('losses', 'create')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para registrar novas perdas.",
+      });
+      return;
+    }
+
     try {
       const batch = getBatchDetails(data.productionBatchId);
       

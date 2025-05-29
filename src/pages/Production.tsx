@@ -1,10 +1,10 @@
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +52,7 @@ const Production = () => {
   const { products, materialBatches, addProductionBatch } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const isMobile = useIsMobile();
   
   const today = getTodayDateString();
@@ -98,6 +99,15 @@ const Production = () => {
   };
   
   const onSubmit = (data: ProductionFormValues) => {
+    if (!hasPermission('production', 'create')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para registrar novas produções.",
+      });
+      return;
+    }
+
     try {
       // Prepare producedItems with additional data
       const producedItems = data.producedItems.map((item) => {

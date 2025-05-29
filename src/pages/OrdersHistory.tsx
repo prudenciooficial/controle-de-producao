@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -44,6 +45,7 @@ const OrdersHistory = () => {
   const { orders, materials, suppliers, deleteOrder, updateOrder } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -100,12 +102,32 @@ const OrdersHistory = () => {
   }, [newItem.materialId, materials]);
   
   const handleDelete = (id: string) => {
+    if (!hasPermission('orders', 'delete')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para excluir pedidos.",
+      });
+      setShowDeleteDialog(false);
+      return;
+    }
     deleteOrder(id);
     setShowDeleteDialog(false);
+    toast({ title: "Pedido excluído", description: "O pedido foi excluído com sucesso." });
   };
 
   const handleEdit = async () => {
     if (!selectedOrder || !editForm) return;
+    
+    if (!hasPermission('orders', 'update')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para atualizar pedidos.",
+      });
+      setShowEditDialog(false);
+      return;
+    }
     
     try {
       setIsSubmitting(true);
@@ -118,6 +140,7 @@ const OrdersHistory = () => {
       
       await updateOrder(selectedOrder.id, updatedOrder);
       setShowEditDialog(false);
+      toast({ title: "Pedido atualizado", description: "O pedido foi atualizado com sucesso." });
     } catch (error) {
       console.error("Erro ao atualizar pedido:", error);
       toast({
@@ -275,28 +298,32 @@ const OrdersHistory = () => {
                             Detalhes
                           </DropdownMenuItem>
                           
-                          <DropdownMenuItem
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              setSelectedOrder(order);
-                              setShowEditDialog(true);
-                            }}
-                          >
-                            <PencilIcon className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
+                          {hasPermission('orders', 'update') && (
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                setSelectedOrder(order);
+                                setShowEditDialog(true);
+                              }}
+                            >
+                              <PencilIcon className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                          )}
                           
-                          <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                            className="text-destructive"
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setShowDeleteDialog(true);
-                            }}
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
+                          {hasPermission('orders', 'delete') && (
+                            <DropdownMenuItem
+                              onSelect={(e) => e.preventDefault()}
+                              className="text-destructive"
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setShowDeleteDialog(true);
+                              }}
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

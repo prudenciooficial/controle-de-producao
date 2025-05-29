@@ -1,18 +1,8 @@
-
-import { Menu, LogOut, User } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Clock } from "./Clock";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -21,30 +11,7 @@ interface HeaderProps {
 export function Header({ toggleSidebar }: HeaderProps) {
   const { user, signOut } = useAuth();
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'Administrador';
-      case 'editor':
-        return 'Editor';
-      case 'viewer':
-        return 'Visualizador';
-      default:
-        return role;
-    }
-  };
-
-  const fullName = user?.user_metadata?.full_name || user?.email || '';
-  const userRole = user?.user_metadata?.role || 'viewer';
+  const displayName = user?.user_metadata?.full_name || user?.email || "Usuário";
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -66,37 +33,20 @@ export function Header({ toggleSidebar }: HeaderProps) {
           <ThemeToggle />
           
           {user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(fullName)}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {fullName}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {getRoleLabel(userRole)}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sair</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <>
+              <img 
+                src="/images/NossaGoma.jpg" 
+                alt="Nossa Goma Logo" 
+                className="h-8 w-8 rounded-full object-cover"
+              />
+              <span className="text-sm hidden sm:inline">
+                Bem vindo, {displayName}
+              </span>
+              <Button variant="ghost" size="sm" onClick={signOut}>
+                <LogOut className="mr-0 sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Sair</span>
+              </Button>
+            </>
           )}
         </div>
       </div>

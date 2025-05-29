@@ -4,6 +4,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -41,6 +42,7 @@ const Orders = () => {
   const { suppliers, materials, addOrder } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   
   const form = useForm<OrdersFormValues>({
     resolver: zodResolver(ordersFormSchema),
@@ -77,6 +79,15 @@ const Orders = () => {
   };
   
   const onSubmit = (data: OrdersFormValues) => {
+    if (!hasPermission('orders', 'create')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para registrar novos pedidos.",
+      });
+      return;
+    }
+
     try {
       const supplier = getSupplierDetails(data.supplierId);
       

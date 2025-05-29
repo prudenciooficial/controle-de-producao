@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,11 +30,10 @@ export function ProtectedRoute({
     }
 
     if (!loading && user && requiredModule && requiredPermission) {
-      hasPermission(requiredModule, requiredPermission).then(hasAccess => {
-        if (!hasAccess) {
-          navigate('/');
-        }
-      });
+      const hasAccess = hasPermission(requiredModule, requiredPermission);
+      if (!hasAccess) {
+        navigate('/');
+      }
     }
   }, [user, loading, requiredRole, requiredModule, requiredPermission, navigate, hasPermission, hasRole]);
 

@@ -4,6 +4,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { createDefaultAdmin } from '@/utils/createDefaultAdmin';
 
+// Estruturas de permissões para referência (devem ser consistentes com UserPermissionsDialog)
+interface ModuleActions {
+  create: boolean;
+  read: boolean;
+  update: boolean;
+  delete: boolean;
+}
+interface DetailedPermissions {
+  system_status: 'active' | 'inactive';
+  modules_access: { [moduleKey: string]: boolean };
+  module_actions: { [moduleKey: string]: ModuleActions };
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -11,8 +24,9 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string, username: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  hasPermission: (module: string, permission: string) => Promise<boolean>;
+  hasPermission: (moduleKey: string, actionKey: string) => boolean;
   hasRole: (role: string) => boolean;
+  getSession: () => Promise<Session | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,9 +48,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
       setLoading(false);
     });
 
@@ -132,34 +146,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const hasPermission = async (module: string, permission: string): Promise<boolean> => {
+  const hasPermission = (moduleKey: string, actionKey: string): boolean => {
     if (!user) return false;
-    
-    // Check user role first
-    const userRole = user.user_metadata?.role;
-    if (userRole === 'admin') return true;
-    
-    // Check specific permissions in user metadata
-    const userPermissions = user.user_metadata?.permissions;
-    if (userPermissions && userPermissions[module]) {
-      return userPermissions[module][permission] || false;
+
+    if (user.user_metadata?.role === 'admin') return true;
+
+    const detailedPermissions = user.user_metadata?.permissions as DetailedPermissions | undefined;
+    if (!detailedPermissions || detailedPermissions.system_status !== 'active') {
+      return false;
+    }
+
+    if (detailedPermissions.modules_access?.[moduleKey] !== true) {
+      return false;
+    }
+
+    const moduleSpecificActions = detailedPermissions.module_actions?.[moduleKey];
+
+    if (actionKey === 'read') { 
+      if (!moduleSpecificActions) return true; 
+      return moduleSpecificActions.read === true;
     }
     
-    // Default permissions based on role
-    if (userRole === 'editor') {
-      return permission !== 'delete';
-    } else if (userRole === 'viewer') {
-      return permission === 'view';
+    if (!moduleSpecificActions || moduleSpecificActions[actionKey as keyof ModuleActions] !== true) {
+      return false;
     }
-    
-    return false;
+
+    return true;
   };
 
   const hasRole = (role: string): boolean => {
     return user?.user_metadata?.role === role;
   };
 
-  const value = {
+  const getSession = async (): Promise<Session | null> => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("Error getting session:", error);
+      return null;
+    }
+    return data.session;
+  };
+
+  const value: AuthContextType = {
     user,
     session,
     loading,
@@ -168,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     hasPermission,
     hasRole,
+    getSession,
   };
 
   return (
