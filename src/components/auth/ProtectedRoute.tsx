@@ -16,7 +16,7 @@ export function ProtectedRoute({
   requiredModule, 
   requiredPermission 
 }: ProtectedRouteProps) {
-  const { user, userRole, hasPermission, loading } = useAuth();
+  const { user, hasPermission, hasRole, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function ProtectedRoute({
       return;
     }
 
-    if (!loading && user && requiredRole && userRole?.role !== requiredRole) {
+    if (!loading && user && requiredRole && !hasRole(requiredRole)) {
       navigate('/');
       return;
     }
@@ -37,7 +37,7 @@ export function ProtectedRoute({
         }
       });
     }
-  }, [user, userRole, loading, requiredRole, requiredModule, requiredPermission, navigate, hasPermission]);
+  }, [user, loading, requiredRole, requiredModule, requiredPermission, navigate, hasPermission, hasRole]);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;

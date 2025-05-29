@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserDialog } from '@/components/users/UserDialog';
 import { UserPermissionsDialog } from '@/components/users/UserPermissionsDialog';
+import { User } from '@supabase/supabase-js';
 
 interface UserData {
   id: string;
@@ -48,7 +49,16 @@ export default function Users() {
         return;
       }
 
-      setUsers(authUsers.users);
+      // Transform Supabase User type to our UserData type
+      const transformedUsers: UserData[] = authUsers.users.map((user: User) => ({
+        id: user.id,
+        email: user.email || '', // Handle optional email
+        user_metadata: user.user_metadata || {},
+        created_at: user.created_at,
+        banned_until: user.banned_until || undefined,
+      }));
+
+      setUsers(transformedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({

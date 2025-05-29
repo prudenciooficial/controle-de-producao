@@ -19,7 +19,7 @@ interface HeaderProps {
 }
 
 export function Header({ toggleSidebar }: HeaderProps) {
-  const { user, profile, userRole, signOut } = useAuth();
+  const { user, signOut } = useAuth();
 
   const getInitials = (name: string) => {
     return name
@@ -43,6 +43,9 @@ export function Header({ toggleSidebar }: HeaderProps) {
     }
   };
 
+  const fullName = user?.user_metadata?.full_name || user?.email || '';
+  const userRole = user?.user_metadata?.role || 'viewer';
+
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
@@ -62,13 +65,13 @@ export function Header({ toggleSidebar }: HeaderProps) {
           <Clock />
           <ThemeToggle />
           
-          {user && profile && (
+          {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(profile.full_name)}
+                      {getInitials(fullName)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -77,13 +80,13 @@ export function Header({ toggleSidebar }: HeaderProps) {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {profile.full_name}
+                      {fullName}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {userRole && getRoleLabel(userRole.role)}
+                      {getRoleLabel(userRole)}
                     </p>
                   </div>
                 </DropdownMenuLabel>
