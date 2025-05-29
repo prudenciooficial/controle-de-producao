@@ -4,24 +4,9 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface Profile {
-  id: string;
-  full_name: string;
-  username: string;
-  status: 'active' | 'inactive';
-  created_at: string;
-  updated_at: string;
-}
-
-interface UserRole {
-  role: 'admin' | 'editor' | 'viewer';
-}
-
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  profile: Profile | null;
-  userRole: UserRole | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string, username: string) => Promise<{ error: any }>;
@@ -35,8 +20,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -46,18 +29,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Defer profile fetching to avoid recursion
-          setTimeout(() => {
-            fetchUserProfile(session.user.id);
-            fetchUserRole(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setUserRole(null);
-        }
-        
         setLoading(false);
       }
     );
@@ -66,57 +37,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        setTimeout(() => {
-          fetchUserProfile(session.user.id);
-          fetchUserRole(session.user.id);
-        }, 0);
-      }
-      
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      setProfile(data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    }
-  };
-
-  const fetchUserRole = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user role:', error);
-        return;
-      }
-
-      setUserRole(data);
-    } catch (error) {
-      console.error('Error fetching user role:', error);
-    }
-  };
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -158,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             full_name: fullName,
             username: username,
+            role: 'viewer', // Default role
           },
         },
       });
@@ -190,8 +116,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
-      setProfile(null);
-      setUserRole(null);
       toast({
         title: "Logout realizado",
         description: "Você foi desconectado do sistema.",
@@ -206,34 +130,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasPermission = async (module: string, permission: string): Promise<boolean> => {
     if (!user) return false;
     
-    try {
-      const { data, error } = await supabase.rpc('has_permission', {
-        _user_id: user.id,
-        _module: module,
-        _permission: permission
-      });
-
-      if (error) {
-        console.error('Error checking permission:', error);
-        return false;
-      }
-
-      return data || false;
-    } catch (error) {
-      console.error('Error checking permission:', error);
-      return false;
+    // Check user role first
+    const userRole = user.user_metadata?.role;
+    if (userRole === 'admin') return true;
+    
+    // Check specific permissions in user metadata
+    const userPermissions = user.user_metadata?.permissions;
+    if (userPermissions && userPermissions[module]) {
+      return userPermissions[module][permission] || false;
     }
+    
+    // Default permissions based on role
+    if (userRole === 'editor') {
+      return permission !== 'delete';
+    } else if (userRole === 'viewer') {
+      return permission === 'view';
+    }
+    
+    return false;
   };
 
   const hasRole = (role: string): boolean => {
-    return userRole?.role === role;
+    return user?.user_metadata?.role === role;
   };
 
   const value = {
     user,
     session,
-    profile,
-    userRole,
     loading,
     signIn,
     signUp,

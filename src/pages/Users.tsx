@@ -15,13 +15,13 @@ import { UserPermissionsDialog } from '@/components/users/UserPermissionsDialog'
 interface UserData {
   id: string;
   email: string;
-  profile: {
-    full_name: string;
-    username: string;
-    status: 'active' | 'inactive';
-    created_at: string;
+  user_metadata: {
+    full_name?: string;
+    username?: string;
+    role?: 'admin' | 'editor' | 'viewer';
   };
-  role: 'admin' | 'editor' | 'viewer';
+  created_at: string;
+  banned_until?: string;
 }
 
 export default function Users() {
@@ -41,54 +41,14 @@ export default function Users() {
     try {
       setLoading(true);
       
-      // Fetch profiles with roles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          full_name,
-          username,
-          status,
-          created_at
-        `);
+      const { data: authUsers, error } = await supabase.auth.admin.listUsers();
 
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
+      if (error) {
+        console.error('Error fetching users:', error);
         return;
       }
 
-      // Fetch auth users
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-
-      if (authError) {
-        console.error('Error fetching auth users:', authError);
-        return;
-      }
-
-      // Fetch user roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      if (rolesError) {
-        console.error('Error fetching user roles:', rolesError);
-        return;
-      }
-
-      // Combine the data
-      const combinedUsers = profiles?.map(profile => {
-        const authUser = authUsers.users.find(u => u.id === profile.id);
-        const userRole = userRoles?.find(r => r.user_id === profile.id);
-        
-        return {
-          id: profile.id,
-          email: authUser?.email || '',
-          profile,
-          role: userRole?.role || 'viewer' as 'admin' | 'editor' | 'viewer'
-        };
-      }) || [];
-
-      setUsers(combinedUsers);
+      setUsers(authUsers.users);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -113,12 +73,11 @@ export default function Users() {
 
   const handleToggleStatus = async (user: UserData) => {
     try {
-      const newStatus = user.profile.status === 'active' ? 'inactive' : 'active';
+      const isBanned = !!user.banned_until;
       
-      const { error } = await supabase
-        .from('profiles')
-        .update({ status: newStatus })
-        .eq('id', user.id);
+      const { error } = await supabase.auth.admin.updateUserById(user.id, {
+        ban_duration: isBanned ? 'none' : '24h'
+      });
 
       if (error) {
         throw error;
@@ -126,7 +85,7 @@ export default function Users() {
 
       toast({
         title: "Status atualizado",
-        description: `Usuário ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso.`,
+        description: `Usuário ${isBanned ? 'ativado' : 'desativado'} com sucesso.`,
       });
 
       fetchUsers();
@@ -146,11 +105,10 @@ export default function Users() {
     }
 
     try {
-      // Delete from Supabase Auth
-      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
+      const { error } = await supabase.auth.admin.deleteUser(user.id);
       
-      if (authError) {
-        throw authError;
+      if (error) {
+        throw error;
       }
 
       toast({
@@ -191,7 +149,7 @@ export default function Users() {
       case 'viewer':
         return 'Visualizador';
       default:
-        return role;
+        return role || 'Visualizador';
     }
   };
 
@@ -238,22 +196,22 @@ export default function Users() {
                   {users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
-                        {user.profile.full_name}
+                        {user.user_metadata?.full_name || user.email}
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.profile.username}</TableCell>
+                      <TableCell>{user.user_metadata?.username || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)}>
-                          {getRoleLabel(user.role)}
+                        <Badge variant={getRoleBadgeVariant(user.user_metadata?.role || 'viewer')}>
+                          {getRoleLabel(user.user_metadata?.role || 'viewer')}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.profile.status === 'active' ? 'default' : 'secondary'}>
-                          {user.profile.status === 'active' ? 'Ativo' : 'Inativo'}
+                        <Badge variant={user.banned_until ? 'secondary' : 'default'}>
+                          {user.banned_until ? 'Inativo' : 'Ativo'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(user.profile.created_at).toLocaleDateString('pt-BR')}
+                        {new Date(user.created_at).toLocaleDateString('pt-BR')}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -276,10 +234,10 @@ export default function Users() {
                             size="sm"
                             onClick={() => handleToggleStatus(user)}
                           >
-                            {user.profile.status === 'active' ? (
-                              <Ban className="h-4 w-4" />
-                            ) : (
+                            {user.banned_until ? (
                               <CheckCircle className="h-4 w-4" />
+                            ) : (
+                              <Ban className="h-4 w-4" />
                             )}
                           </Button>
                           <Button

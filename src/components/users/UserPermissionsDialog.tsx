@@ -39,36 +39,27 @@ export function UserPermissionsDialog({ open, onOpenChange, user, onPermissionsU
 
   useEffect(() => {
     if (user && open) {
-      fetchUserPermissions();
-    }
-  }, [user, open]);
-
-  const fetchUserPermissions = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('user_permissions')
-        .select('module, permission, granted')
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
+      // Initialize permissions based on user role
       const permissionsMap: Record<string, Record<string, boolean>> = {};
+      const userRole = user.user_metadata?.role || 'viewer';
       
       modules.forEach(module => {
         permissionsMap[module.key] = {};
         permissions.forEach(permission => {
-          const userPerm = data?.find(p => p.module === module.key && p.permission === permission.key);
-          permissionsMap[module.key][permission.key] = userPerm?.granted || false;
+          // Set default permissions based on role
+          if (userRole === 'admin') {
+            permissionsMap[module.key][permission.key] = true;
+          } else if (userRole === 'editor') {
+            permissionsMap[module.key][permission.key] = permission.key !== 'delete';
+          } else {
+            permissionsMap[module.key][permission.key] = permission.key === 'view';
+          }
         });
       });
 
       setUserPermissions(permissionsMap);
-    } catch (error) {
-      console.error('Error fetching user permissions:', error);
     }
-  };
+  }, [user, open]);
 
   const handlePermissionChange = (moduleKey: string, permissionKey: string, checked: boolean) => {
     setUserPermissions(prev => ({
@@ -87,35 +78,15 @@ export function UserPermissionsDialog({ open, onOpenChange, user, onPermissionsU
     setLoading(true);
 
     try {
-      // Delete existing permissions
-      await supabase
-        .from('user_permissions')
-        .delete()
-        .eq('user_id', user.id);
-
-      // Insert new permissions
-      const permissionsToInsert = [];
-      
-      for (const moduleKey of Object.keys(userPermissions)) {
-        for (const permissionKey of Object.keys(userPermissions[moduleKey])) {
-          if (userPermissions[moduleKey][permissionKey]) {
-            permissionsToInsert.push({
-              user_id: user.id,
-              module: moduleKey,
-              permission: permissionKey,
-              granted: true
-            });
-          }
+      // Update user metadata with permissions
+      const { error } = await supabase.auth.admin.updateUserById(user.id, {
+        user_metadata: {
+          ...user.user_metadata,
+          permissions: userPermissions
         }
-      }
+      });
 
-      if (permissionsToInsert.length > 0) {
-        const { error } = await supabase
-          .from('user_permissions')
-          .insert(permissionsToInsert);
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Permissões atualizadas",
@@ -142,7 +113,7 @@ export function UserPermissionsDialog({ open, onOpenChange, user, onPermissionsU
         <DialogHeader>
           <DialogTitle>Gerenciar Permissões</DialogTitle>
           <DialogDescription>
-            Configure as permissões de acesso para {user?.profile?.full_name}
+            Configure as permissões de acesso para {user?.user_metadata?.full_name || user?.email}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

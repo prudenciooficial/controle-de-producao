@@ -29,11 +29,11 @@ export function UserDialog({ open, onOpenChange, user, onUserUpdated }: UserDial
   useEffect(() => {
     if (user) {
       setFormData({
-        fullName: user.profile.full_name || '',
-        username: user.profile.username || '',
+        fullName: user.user_metadata?.full_name || '',
+        username: user.user_metadata?.username || '',
         email: user.email || '',
         password: '',
-        role: user.role || 'viewer'
+        role: user.user_metadata?.role || 'viewer'
       });
     } else {
       setFormData({
@@ -52,24 +52,16 @@ export function UserDialog({ open, onOpenChange, user, onUserUpdated }: UserDial
 
     try {
       if (user) {
-        // Update existing user
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
+        // Update existing user metadata
+        const { error } = await supabase.auth.admin.updateUserById(user.id, {
+          user_metadata: {
             full_name: formData.fullName,
             username: formData.username,
-          })
-          .eq('id', user.id);
+            role: formData.role,
+          }
+        });
 
-        if (profileError) throw profileError;
-
-        // Update user role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .update({ role: formData.role })
-          .eq('user_id', user.id);
-
-        if (roleError) throw roleError;
+        if (error) throw error;
 
         toast({
           title: "Usuário atualizado",
@@ -77,28 +69,18 @@ export function UserDialog({ open, onOpenChange, user, onUserUpdated }: UserDial
         });
       } else {
         // Create new user
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.admin.createUser({
           email: formData.email,
           password: formData.password,
-          options: {
-            data: {
-              full_name: formData.fullName,
-              username: formData.username,
-            },
+          user_metadata: {
+            full_name: formData.fullName,
+            username: formData.username,
+            role: formData.role,
           },
+          email_confirm: true,
         });
 
-        if (authError) throw authError;
-
-        if (authData.user) {
-          // Update role for new user
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .update({ role: formData.role })
-            .eq('user_id', authData.user.id);
-
-          if (roleError) throw roleError;
-        }
+        if (error) throw error;
 
         toast({
           title: "Usuário criado",
