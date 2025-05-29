@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { createDefaultAdmin } from '@/utils/createDefaultAdmin';
 
 interface AuthContextType {
   user: User | null;
@@ -39,6 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
     });
+
+    // Criar usuário admin padrão quando a aplicação inicializar
+    setTimeout(() => {
+      createDefaultAdmin();
+    }, 1000);
 
     return () => subscription.unsubscribe();
   }, []);
