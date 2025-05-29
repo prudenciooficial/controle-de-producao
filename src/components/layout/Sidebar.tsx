@@ -21,17 +21,17 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
   const [isDesktopSidebarExpanded, setIsDesktopSidebarExpanded] = useState(false);
   const [availableMenuItems, setAvailableMenuItems] = useState<any[]>([]);
 
-  const allMenuItems = [
+  const [allMenuItems] = useState([
     { name: "Dashboard", path: "/", icon: LayoutDashboard, module: "dashboard" },
     { name: "Produção", path: "/producao", icon: Factory, module: "production" },
     { name: "Vendas", path: "/vendas", icon: ShoppingCart, module: "sales" },
     { name: "Pedidos", path: "/pedidos", icon: Truck, module: "orders" },
     { name: "Estoque", path: "/estoque", icon: Package, module: "inventory" },
     { name: "Perdas", path: "/perdas", icon: PackageX, module: "losses" },
-    { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search, module: "rastreabilidade" },
+    { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search, module: "traceability" },
     { name: "Cadastro", path: "/cadastro", icon: Settings, module: "general_settings" },
     { name: "Usuários", path: "/usuarios", icon: Users, module: "user_management" },
-  ];
+  ]);
 
   useEffect(() => {
     if (isMobile) {
@@ -44,13 +44,11 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       const filteredItems = [];
       
       for (const item of allMenuItems) {
-        // Admins can access everything
         if (hasRole('admin')) {
           filteredItems.push(item);
           continue;
         }
         
-        // Check if user has view permission for the module
         try {
           const hasAccess = hasPermission(item.module, 'read');
           if (hasAccess) {
@@ -82,9 +80,14 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     collapsed: { opacity: 0, x: -5, display: "none" },
   };
 
+  const logoVariants = {
+    expanded: { opacity: 1, scale: 1, transition: { delay: 0.2 } },
+    collapsed: { opacity: 0.7, scale: 0.8, transition: { duration: 0.2 } },
+  };
+
   const sidebarContent = (isExpanded: boolean) => (
     <motion.nav 
-      className="space-y-1 px-2 py-6"
+      className="space-y-1 px-2 py-6 flex-grow"
       initial={false}
       animate={isExpanded ? "expanded" : "collapsed"}
     >
@@ -122,6 +125,24 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     </motion.nav>
   );
 
+  const sidebarLogo = (isExpanded: boolean) => (
+    <motion.div 
+      className="p-4 mt-auto flex items-center justify-center"
+      variants={logoVariants}
+      initial="collapsed"
+      animate={isExpanded ? "expanded" : "collapsed"}
+    >
+      <img 
+        src="/images/NossaGoma.png" 
+        alt="Nossa Goma Logo"
+        className={cn(
+          "transition-all duration-300 ease-in-out",
+          isExpanded ? "h-16 w-auto" : "h-10 w-auto"
+        )}
+      />
+    </motion.div>
+  );
+
   if (isMobile) {
     return (
       <Sheet
@@ -130,12 +151,13 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       >
         <SheetContent 
           side="left" 
-          className="w-64 p-0 bg-sidebar border-r-0 border-sidebar-border text-sidebar-foreground"
+          className="w-64 p-0 bg-sidebar border-r-0 border-sidebar-border text-sidebar-foreground flex flex-col"
         >
           <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
             <h1 className="text-xl font-bold">Sistema de Produção</h1>
           </div>
           {sidebarContent(true)}
+          {sidebarLogo(true)}
         </SheetContent>
       </Sheet>
     );
@@ -185,6 +207,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         </AnimatePresence>
       </div>
       {sidebarContent(isDesktopSidebarExpanded)}
+      {sidebarLogo(isDesktopSidebarExpanded)}
     </motion.div>
   );
 }

@@ -39,7 +39,7 @@ const AppContent = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full bg-background">
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route path="/print/traceability/:batchId" element={<PrintableTraceabilityPage />} />
@@ -48,7 +48,7 @@ const AppContent = () => {
             <Sidebar isMobileMenuOpen={sidebarOpen} onMobileMenuToggle={toggleSidebar} />
             <div className={cn("flex flex-col flex-1 transition-all duration-300 ease-in-out", isMobile ? "w-full" : "md:ml-20")}>
               <Header toggleSidebar={toggleSidebar} />
-              <main className="flex-1 p-4 sm:p-6">
+              <main className="flex-1 p-4 sm:p-6 bg-muted">
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/producao" element={<Production />} />

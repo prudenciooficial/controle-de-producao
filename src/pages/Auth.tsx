@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { Navigate, Link as RouterLink } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Mail, Lock, Eye, EyeOff, PackageSearch } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 export default function Auth() {
   const { user, signIn, loading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
 
   if (user) {
     return <Navigate to="/" replace />;
@@ -29,11 +32,15 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen w-full lg:grid lg:grid-cols-2">
+    <div className="min-h-screen w-full lg:grid lg:grid-cols-2 relative">
       {/* Painel Esquerdo (Visual) - Visível em telas grandes */}
       <div className="hidden lg:flex lg:flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-sky-100 dark:from-slate-900 dark:to-sky-800 p-12 border-r dark:border-slate-800">
         <div className="text-center">
-          <PackageSearch className="mx-auto h-24 w-24 text-primary mb-6" /> 
+          <img 
+            src="/images/NossaGoma.png"
+            alt="Nossa Goma Logo"
+            className="mx-auto h-28 w-auto mb-6"
+          />
           <h1 className="text-4xl font-bold tracking-tight text-foreground mb-3">
             Bem-vindo ao Sistema de Produção
           </h1>
@@ -46,6 +53,10 @@ export default function Auth() {
 
       {/* Painel Direito (Formulário) */}
       <div className="flex items-center justify-center p-6 sm:p-10 lg:p-12 bg-background lg:bg-transparent dark:lg:bg-transparent">
+        <div className="absolute top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
+        
         <Card className="w-full max-w-md shadow-xl border-border/40 dark:border-border/20 lg:border-none lg:shadow-none dark:lg:border-none">
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold tracking-tight">
@@ -75,12 +86,14 @@ export default function Auth() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="signin-password">Senha</Label>
-                  <RouterLink 
-                    to="#"
-                    className="text-xs text-primary hover:underline"
+                  <button 
+                    type="button"
+                    onClick={() => setIsForgotPasswordModalOpen(true)}
+                    className="text-xs text-primary hover:underline focus:outline-none"
+                    disabled={isSubmitting}
                   >
                     Esqueceu a senha?
-                  </RouterLink>
+                  </button>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -116,6 +129,23 @@ export default function Auth() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal Esqueceu a Senha */}
+      <Dialog open={isForgotPasswordModalOpen} onOpenChange={setIsForgotPasswordModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Redefinição de Senha</DialogTitle>
+            <DialogDescription className="pt-2">
+              Para redefinir sua senha, por favor, entre em contato com o administrador do sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-4">
+            <Button onClick={() => setIsForgotPasswordModalOpen(false)} variant="outline">
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

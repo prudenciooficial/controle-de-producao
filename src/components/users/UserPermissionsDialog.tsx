@@ -35,6 +35,7 @@ const ALL_MODULES = [
   { key: 'orders', label: 'Pedidos', has_actions: true },
   { key: 'inventory', label: 'Estoque', has_actions: true },
   { key: 'losses', label: 'Perdas', has_actions: false },
+  { key: 'traceability', label: 'Rastreabilidade', has_actions: false },
   { key: 'general_settings', label: 'Cadastros (Geral)', has_actions: false },
   { key: 'user_management', label: 'Gerenciamento de Usuários', has_actions: false },
 ];
