@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -55,7 +54,7 @@ export default function Users() {
         email: user.email || '', // Handle optional email
         user_metadata: user.user_metadata || {},
         created_at: user.created_at,
-        banned_until: user.banned_until || undefined,
+        banned_until: undefined, // Remove reference to non-existent property
       }));
 
       setUsers(transformedUsers);
