@@ -1,0 +1,76 @@
+@media print {
+  body {
+    background-image: url('/image/papeltimbrado.jpg') !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: center center !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0;
+    padding: 0;
+    width: 210mm; 
+    height: 297mm; 
+    overflow: hidden;
+  }
+
+  .printable-area {
+    padding-top: 3.5cm;  
+    padding-bottom: 2.5cm; 
+    padding-left: 1.5cm;   
+    padding-right: 1.5cm;  
+    width: 100%;
+    box-sizing: border-box; 
+    page-break-before: always; 
+  }
+  
+  .printable-area:first-child {
+    page-break-before: auto;
+  }
+
+  .no-print, 
+  .no-print * {
+    display: none !important;
+  }
+
+  .accordion-trigger-print {
+    /* Estilos se necessário para forçar visualização */
+  }
+  .accordion-content-print {
+    display: block !important; 
+  }
+
+  table,
+  tr,
+  td,
+  th,
+  .card-print-item {
+    page-break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important; 
+  }
+
+  .table-print-tight td,
+  .table-print-tight th {
+    padding: 4px 6px !important; 
+    font-size: 0.9em !important; 
+  }
+
+  .card-print-clean {
+    border: 1px solid #ccc !important; 
+    box-shadow: none !important;
+  }
+
+  .print-only {
+    display: initial !important; 
+  }
+  .print-hide-link a {
+    text-decoration: none !important;
+    color: inherit !important;
+    pointer-events: none !important;
+  }
+  .print-hide-link button {
+      display: none !important;
+  }
+} 

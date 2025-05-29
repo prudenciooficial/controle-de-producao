@@ -18,20 +18,27 @@ const Traceability = () => {
   const [materialTrace, setMaterialTrace] = useState<MaterialTraceability | null>(null);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const { toast } = useToast();
-  const [isPrinting, setIsPrinting] = useState(false);
 
   const accordionProductItems = ["materials", "sales", "related-products", "reverse-trace"];
   const accordionMaterialItems = ["productions", "related-sales-material"];
 
-  useEffect(() => {
-    const handleAfterPrint = () => setIsPrinting(false);
-    window.addEventListener('afterprint', handleAfterPrint);
-    return () => window.removeEventListener('afterprint', handleAfterPrint);
-  }, []);
-
   const handlePrint = () => {
-    setIsPrinting(true);
-    setTimeout(() => window.print(), 100);
+    let batchToPrint = null;
+    if (productTrace) {
+      batchToPrint = productTrace.productionDetails.batchNumber;
+    } else if (materialTrace) {
+      batchToPrint = materialTrace.materialDetails.batchNumber;
+    }
+
+    if (batchToPrint) {
+      window.open(`/print/traceability/${encodeURIComponent(batchToPrint)}`, '_blank');
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Nenhum Lote Carregado",
+        description: "Não há dados de rastreabilidade carregados para imprimir.",
+      });
+    }
   };
 
   const fetchTraceData = useCallback(async (batchToTraceParam?: string) => {
@@ -98,7 +105,7 @@ const Traceability = () => {
     return () => {
       clearTimeout(timerId);
     };
-  }, [searchInput, fetchTraceData]);
+  }, [searchInput]);
 
   const handleButtonClick = () => {
     if (searchInput.trim()) {
@@ -121,13 +128,8 @@ const Traceability = () => {
     className: "w-full",
   };
 
-  const productAccordionProps = isPrinting
-      ? { ...commonAccordionProps, type: "multiple" as const, value: accordionProductItems } 
-      : { ...commonAccordionProps, type: "single" as const, value: undefined };
-
-  const materialAccordionProps = isPrinting
-      ? { ...commonAccordionProps, type: "multiple" as const, value: accordionMaterialItems }
-      : { ...commonAccordionProps, type: "single" as const, value: undefined };
+  const productAccordionProps = { ...commonAccordionProps, type: "single" as const, defaultValue: accordionProductItems[0] };
+  const materialAccordionProps = { ...commonAccordionProps, type: "single" as const, defaultValue: accordionMaterialItems[0] };
 
   const renderAccordionContent = (items: any[], headers: string[], renderRow: (item: any, index: number) => JSX.Element) => {
     if (!items || items.length === 0) {
@@ -150,8 +152,8 @@ const Traceability = () => {
   };
 
   const renderProductTraceability = (trace: ProductTraceability) => (
-    <div className="space-y-6 printable-content">
-      <div className="flex justify-between items-center no-print mb-4">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Resultado da Rastreabilidade do Produto</h2>
         <Button onClick={handlePrint} variant="outline"><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
       </div>
@@ -167,8 +169,8 @@ const Traceability = () => {
       </Card>
       <Accordion {...productAccordionProps}>
         <AccordionItem value="materials">
-          <AccordionTrigger className="accordion-trigger-print text-base"><div className="flex items-center gap-2"><Package className="h-4 w-4" />Insumos Utilizados ({trace.usedMaterials.length})</div></AccordionTrigger>
-          <AccordionContent className="accordion-content-print">
+          <AccordionTrigger className="text-base"><div className="flex items-center gap-2"><Package className="h-4 w-4" />Insumos Utilizados ({trace.usedMaterials.length})</div></AccordionTrigger>
+          <AccordionContent>
             {renderAccordionContent(
               trace.usedMaterials,
               ["Material", "Tipo", "Lote", "Qtd", "Fornecedor", "NF", "Entrada", "Validade", "Laudo"],
@@ -177,8 +179,7 @@ const Traceability = () => {
                   <TableCell>{material.materialName}</TableCell>
                   <TableCell><Badge variant="outline">{material.materialType}</Badge></TableCell>
                   <TableCell>
-                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceInvoked(material.batchNumber)}>{material.batchNumber}</Button>
-                    <span className="print-only">{material.batchNumber}</span>
+                    <Button variant="link" className="p-0 h-auto text-xs sm:text-sm" onClick={() => handleTraceInvoked(material.batchNumber)}>{material.batchNumber}</Button>
                   </TableCell>
                   <TableCell>{material.quantity} {material.unitOfMeasure}</TableCell>
                   <TableCell>{material.supplier?.name || "-"}</TableCell>
@@ -192,8 +193,8 @@ const Traceability = () => {
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="sales">
-          <AccordionTrigger className="accordion-trigger-print text-base"><div className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" />Vendas ({trace.sales.length})</div></AccordionTrigger>
-          <AccordionContent className="accordion-content-print">
+          <AccordionTrigger className="text-base"><div className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" />Vendas ({trace.sales.length})</div></AccordionTrigger>
+          <AccordionContent>
             {renderAccordionContent(
               trace.sales,
               ["Data", "Cliente", "NF", "Qtd", "Un."],
@@ -210,8 +211,8 @@ const Traceability = () => {
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="related-products">
-          <AccordionTrigger className="accordion-trigger-print text-base"><div className="flex items-center gap-2"><Package className="h-4 w-4" />Outros Produtos no Lote ({trace.relatedProducts.length})</div></AccordionTrigger>
-          <AccordionContent className="accordion-content-print">
+          <AccordionTrigger className="text-base"><div className="flex items-center gap-2"><Package className="h-4 w-4" />Outros Produtos no Lote ({trace.relatedProducts.length})</div></AccordionTrigger>
+          <AccordionContent>
             {renderAccordionContent(
               trace.relatedProducts,
               ["Produto", "Lote do Item", "Qtd", "Un."],
@@ -227,8 +228,8 @@ const Traceability = () => {
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="reverse-trace">
-          <AccordionTrigger className="accordion-trigger-print text-base"><div className="flex items-center gap-2"><Truck className="h-4 w-4" />Rastreabilidade Reversa ({trace.reverseTraceability.length})</div></AccordionTrigger>
-          <AccordionContent className="accordion-content-print">
+          <AccordionTrigger className="text-base"><div className="flex items-center gap-2"><Truck className="h-4 w-4" />Rastreabilidade Reversa ({trace.reverseTraceability.length})</div></AccordionTrigger>
+          <AccordionContent>
             {trace.reverseTraceability.length > 0 ? trace.reverseTraceability.map((reverseProd, pIndex) => (
               <div key={pIndex} className="mb-4 p-2 border rounded">
                 <p className="font-semibold">Produção: Lote {reverseProd.productionBatchNumber} ({formatDate(reverseProd.productionDate)})</p>
@@ -252,13 +253,13 @@ const Traceability = () => {
   );
 
   const renderMaterialTraceability = (trace: MaterialTraceability) => (
-    <div className="space-y-6 printable-content">
-       <div className="flex justify-between items-center no-print mb-4">
-        <h2 className="text-xl font-semibold">Resultado da Rastreabilidade do Material</h2>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Resultado da Rastreabilidade do Insumo</h2>
         <Button onClick={handlePrint} variant="outline"><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
       </div>
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Package className="h-5 w-5" />Detalhes do Lote de Material</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Package className="h-5 w-5" />Detalhes do Insumo</CardTitle></CardHeader>
         <CardContent><div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div><p><strong>Material:</strong> {trace.materialDetails.materialName}</p></div>
             <div><p><strong>Tipo:</strong> <Badge variant="outline">{trace.materialDetails.materialType}</Badge></p></div>
@@ -274,18 +275,17 @@ const Traceability = () => {
       </Card>
       <Accordion {...materialAccordionProps}>
         <AccordionItem value="productions">
-          <AccordionTrigger className="accordion-trigger-print text-base"><div className="flex items-center gap-2"><Factory className="h-4 w-4" />Utilizado nas Produções ({trace.usedInProductions.length})</div></AccordionTrigger>
-          <AccordionContent className="accordion-content-print">
+          <AccordionTrigger className="text-base"><div className="flex items-center gap-2"><Factory className="h-4 w-4" />Lotes de Produção que Utilizaram ({trace.usedInProductions.length})</div></AccordionTrigger>
+          <AccordionContent>
             {trace.usedInProductions.length > 0 ? trace.usedInProductions.map((prod, index) => (
               <div key={index} className="mb-4 p-2 border rounded">
                 <p className="font-semibold">Lote Produção: 
-                  <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceInvoked(prod.productionBatchNumber)}>{prod.productionBatchNumber}</Button>
-                  <span className="print-only">{prod.productionBatchNumber}</span> ({formatDate(prod.productionDate)}) - Qtd. Usada: {prod.quantityUsed}
+                  <Button variant="link" className="p-0 h-auto text-xs sm:text-sm" onClick={() => handleTraceInvoked(prod.productionBatchNumber)}>{prod.productionBatchNumber}</Button> ({formatDate(prod.productionDate)}) - Qtd. Usada: {prod.quantityUsed} {trace.materialDetails.unitOfMeasure}
                 </p>
                 {renderAccordionContent(
                   prod.producedItems,
                   ["Produto", "Lote do Item", "Qtd"],
-                   (item, iIndex) => (
+                  (item, iIndex) => (
                     <TableRow key={item.batchNumber || iIndex}>
                       <TableCell>{item.productName}</TableCell>
                       <TableCell>{item.batchNumber}</TableCell>
@@ -298,22 +298,21 @@ const Traceability = () => {
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="related-sales-material">
-          <AccordionTrigger className="accordion-trigger-print text-base"><div className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" />Vendas de Produtos Relacionados ({trace.relatedSales.length})</div></AccordionTrigger>
-          <AccordionContent className="accordion-content-print">
+          <AccordionTrigger className="text-base"><div className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" />Vendas Relacionadas (via Produção) ({trace.relatedSales.length})</div></AccordionTrigger>
+          <AccordionContent>
             {renderAccordionContent(
               trace.relatedSales,
-              ["Produto", "Lote Produto", "Data Venda", "Cliente", "NF", "Qtd"],
+              ["Produto", "Lote Produto", "Data Venda", "Cliente", "NF Venda", "Qtd. Vendida"],
               (sale, index) => (
                 <TableRow key={sale.invoiceNumber + index}>
                   <TableCell>{sale.productName}</TableCell>
                   <TableCell>
-                    <Button variant="link" className="p-0 h-auto no-print text-xs sm:text-sm" onClick={() => handleTraceInvoked(sale.productBatchNumber)}>{sale.productBatchNumber}</Button>
-                    <span className="print-only">{sale.productBatchNumber}</span>
+                    <Button variant="link" className="p-0 h-auto text-xs sm:text-sm" onClick={() => handleTraceInvoked(sale.productBatchNumber)}>{sale.productBatchNumber}</Button>
                   </TableCell>
                   <TableCell>{formatDate(sale.saleDate)}</TableCell>
                   <TableCell>{sale.customerName}</TableCell>
-                  <TableCell>{sale.invoiceNumber}</TableCell>
-                  <TableCell>{sale.quantity}</TableCell>
+                  <TableCell>{sale.saleInvoice}</TableCell>
+                  <TableCell>{sale.quantitySold}</TableCell>
                 </TableRow>
               )
             )}
@@ -323,66 +322,61 @@ const Traceability = () => {
     </div>
   );
 
- return (
-    <div className="container mx-auto py-6 px-4 animate-fade-in">
-      <Card className="mb-6 no-print">
+  return (
+    <div className="container mx-auto p-4">
+      <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Rastrear Lote
-          </CardTitle>
+          <CardTitle className="text-2xl flex items-center"><Search className="mr-2 h-6 w-6" />Rastreabilidade de Lotes</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-          <Input
-            type="text"
-            placeholder="Digite o número do lote (produto ou material)"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="flex-grow"
-          />
-          <Button onClick={handleButtonClick} disabled={isLoading || !searchInput.trim()} className="w-full sm:w-auto">
-            {isLoading ? (
-              <><Loader className="mr-2 h-4 w-4 animate-spin" /> Rastreando...</>
-            ) : (
-              <><Search className="mr-2 h-4 w-4" /> Rastrear</>
-            )}
-          </Button>
+        <CardContent>
+          <div className="flex space-x-2 mb-4">
+            <Input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleButtonClick()}
+              placeholder="Digite o lote do produto ou insumo"
+              className="flex-grow"
+            />
+            <Button onClick={handleButtonClick} disabled={isLoading || !searchInput.trim()}>
+              {isLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+              Buscar
+            </Button>
+          </div>
+          {searchHistory.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm text-muted-foreground mb-1">Buscas recentes:</p>
+              <div className="flex flex-wrap gap-2">
+                {searchHistory.map(batch => (
+                  <Button key={batch} variant="outline" size="sm" onClick={() => { setSearchInput(batch); handleTraceInvoked(batch); }}>{batch}</Button>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {searchHistory.length > 0 && (
-        <div className="mb-6 no-print">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Buscas recentes:</h3>
-          <div className="flex flex-wrap gap-2">
-            {searchHistory.map((term, index) => (
-              <Button key={index} variant="outline" size="sm" onClick={() => { setSearchInput(term); handleTraceInvoked(term); }}>
-                {term}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {isLoading && (
-        <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-          <Loader className="h-10 w-10 animate-spin mb-3" />
-          <p>Rastreando lote, por favor aguarde...</p>
+        <div className="flex items-center justify-center py-10">
+          <Loader className="h-8 w-8 animate-spin text-primary" />
+          <p className="ml-2">Carregando dados da rastreabilidade...</p>
         </div>
       )}
 
-      {!isLoading && productTrace && renderProductTraceability(productTrace)}
-      {!isLoading && materialTrace && renderMaterialTraceability(materialTrace)}
+      {!isLoading && !productTrace && !materialTrace && searchInput.trim() && (
+        <p className="text-center text-muted-foreground py-10">
+          Nenhum resultado encontrado para "{searchInput.trim()}" ou a busca ainda não foi realizada.
+        </p>
+      )}
       
-      {!isLoading && !productTrace && !materialTrace && searchInput && (
-         <div className="text-center py-10">
-            <p className="text-muted-foreground">Nenhum resultado encontrado para "{searchInput}". Verifique o lote e tente novamente.</p>
-         </div>
+      {!isLoading && !productTrace && !materialTrace && !searchInput.trim() && (
+         <p className="text-center text-muted-foreground py-10">
+          Digite um lote para iniciar a rastreabilidade.
+        </p>
       )}
-       {!isLoading && !productTrace && !materialTrace && !searchInput && (
-         <div className="text-center py-10">
-            <p className="text-muted-foreground">Digite um número de lote para iniciar a rastreabilidade.</p>
-         </div>
-      )}
+
+      {productTrace && renderProductTraceability(productTrace)}
+      {materialTrace && renderMaterialTraceability(materialTrace)}
     </div>
   );
 };

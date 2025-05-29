@@ -5,12 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Mail, Lock, Eye, EyeOff, PackageSearch } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export default function Auth() {
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, signIn, loading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -27,20 +25,6 @@ export default function Auth() {
     const password = formData.get('password') as string;
 
     await signIn(email, password);
-    setIsSubmitting(false);
-  };
-
-  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const fullName = formData.get('fullName') as string;
-    const username = formData.get('username') as string;
-
-    await signUp(email, password, fullName, username);
     setIsSubmitting(false);
   };
 
@@ -68,108 +52,67 @@ export default function Auth() {
               Sistema de Produção
             </CardTitle>
             <CardDescription className="pt-1">
-              Acesse sua conta ou crie uma nova para continuar.
+              Acesse sua conta para continuar.
             </CardDescription>
           </CardHeader>
           <CardContent className="pb-8 px-6 sm:px-8">
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="signin">Login</TabsTrigger>
-                <TabsTrigger value="signup">Cadastro</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        id="signin-email"
-                        name="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        required
-                        disabled={isSubmitting}
-                        className="pl-10 h-12 rounded-md"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="signin-password">Senha</Label>
-                      <RouterLink 
-                        to="#"
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Esqueceu a senha?
-                      </RouterLink>
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        id="signin-password"
-                        name="password"
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        required
-                        disabled={isSubmitting}
-                        className="pl-10 pr-10 h-12 rounded-md"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground h-7 w-7 flex items-center justify-center"
-                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                        disabled={isSubmitting}
-                      >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 active:scale-[0.98]" 
-                    disabled={isSubmitting || loading}
+            <form onSubmit={handleSignIn} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="signin-email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="signin-email"
+                    name="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    required
+                    disabled={isSubmitting}
+                    className="pl-10 h-12 rounded-md"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="signin-password">Senha</Label>
+                  <RouterLink 
+                    to="#"
+                    className="text-xs text-primary hover:underline"
                   >
-                    {isSubmitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                    Entrar
-                  </Button>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-fullname">Nome Completo</Label>
-                    <Input id="signup-fullname" name="fullName" type="text" required disabled={isSubmitting} className="h-11 rounded-md"/>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-username">Nome de Usuário</Label>
-                    <Input id="signup-username" name="username" type="text" required disabled={isSubmitting} className="h-11 rounded-md"/>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input id="signup-email" name="email" type="email" required disabled={isSubmitting} className="pl-10 h-11 rounded-md"/>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Senha</Label>
-                    <Input id="signup-password" name="password" type="password" required disabled={isSubmitting} className="h-11 rounded-md"/>
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 active:scale-[0.98]" 
-                    disabled={isSubmitting || loading}
+                    Esqueceu a senha?
+                  </RouterLink>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="signin-password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    required
+                    disabled={isSubmitting}
+                    className="pl-10 pr-10 h-12 rounded-md"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground h-7 w-7 flex items-center justify-center"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    disabled={isSubmitting}
                   >
-                    {isSubmitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                    Criar Conta
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 active:scale-[0.98]" 
+                disabled={isSubmitting || loading}
+              >
+                {isSubmitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                Entrar
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>

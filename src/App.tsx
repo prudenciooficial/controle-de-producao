@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +24,7 @@ import Registration from "./pages/Registration";
 import Users from "./pages/Users";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import PrintableTraceabilityPage from "./pages/print/PrintableTraceabilityPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import { cn } from "./lib/utils";
 
@@ -42,6 +42,7 @@ const AppContent = () => {
     <div className="flex min-h-screen w-full">
       <Routes>
         <Route path="/auth" element={<Auth />} />
+        <Route path="/print/traceability/:batchId" element={<PrintableTraceabilityPage />} />
         <Route path="/*" element={
           <ProtectedRoute>
             <Sidebar isMobileMenuOpen={sidebarOpen} onMobileMenuToggle={toggleSidebar} />
