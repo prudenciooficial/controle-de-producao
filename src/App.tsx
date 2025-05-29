@@ -35,10 +35,10 @@ const AppContent = () => {
 
   return (
     <div className="flex min-h-screen w-full">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className={cn("flex flex-col flex-1", isMobile ? "w-full" : "md:ml-64")}>
+      <Sidebar isMobileMenuOpen={sidebarOpen} onMobileMenuToggle={toggleSidebar} />
+      <div className={cn("flex flex-col flex-1 transition-all duration-300 ease-in-out", isMobile ? "w-full" : "md:ml-20")}>
         <Header toggleSidebar={toggleSidebar} />
-        <main className="flex-1">
+        <main className="flex-1 p-4 sm:p-6">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/producao" element={<Production />} />

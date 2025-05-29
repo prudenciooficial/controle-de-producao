@@ -724,10 +724,10 @@ const Dashboard = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[200px]">Produto</TableHead>
+                      <TableHead className="min-w-[180px]">Produto</TableHead>
                       <TableHead>Quantidade</TableHead>
-                      <TableHead className="w-[80px]">Un.</TableHead>
-                      <TableHead className="w-[100px] text-right">Ações</TableHead>
+                      <TableHead>Un.</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -779,10 +779,10 @@ const Dashboard = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="w-[200px]">Insumo</TableHead>
+                              <TableHead className="min-w-[180px]">Insumo</TableHead>
                               <TableHead>Quantidade</TableHead>
-                              <TableHead className="w-[80px]">Un.</TableHead>
-                              <TableHead className="w-[100px] text-right">Ações</TableHead>
+                              <TableHead>Un.</TableHead>
+                              <TableHead className="text-right">Ações</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>

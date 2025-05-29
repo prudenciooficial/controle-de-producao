@@ -1,6 +1,7 @@
-import { MoveDownLeft, MoveUpRight, DollarSign, Package, TrendingUp, TrendingDown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatNumberBR } from "@/components/helpers/dateFormatUtils"; // Assumindo que você tem essa função
+import { MoveDownLeft, MoveUpRight, DollarSign, Package, TrendingUp, TrendingDown, Factory, ShoppingCart } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { formatNumberBR } from "@/components/helpers/dateFormatUtils";
+import { cn } from "@/lib/utils";
 
 interface StatsSectionProps {
   stats: {
@@ -17,62 +18,88 @@ interface StatsSectionProps {
   };
 }
 
+// Definição de cores para os ícones (pode ser ajustado conforme a paleta do app)
+const iconColors = {
+  production: "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300",
+  sales: "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300",
+  inventory: "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300",
+  profitability: "bg-purple-100 text-purple-700 dark:bg-purple-800 dark:text-purple-300",
+};
+
 const StatsSection: React.FC<StatsSectionProps> = ({ stats, changes }) => {
   const statItems = [
     {
+      id: "production",
       title: "Produção Total",
       value: stats.totalProduction,
       change: changes.production,
-      icon: <TrendingUp className="w-4 h-4 text-success" />,
-      iconNegative: <TrendingDown className="w-4 h-4 text-destructive" />,
-      unit: "kg", // ou a unidade apropriada
+      metricIcon: Factory,
+      unit: "kg",
     },
     {
+      id: "sales",
       title: "Vendas Totais",
       value: stats.totalSales,
       change: changes.sales,
-      icon: <TrendingUp className="w-4 h-4 text-success" />,
-      iconNegative: <TrendingDown className="w-4 h-4 text-destructive" />,
-      unit: "kg", // ou a unidade apropriada
+      metricIcon: ShoppingCart,
+      unit: "kg",
     },
     {
+      id: "inventory",
       title: "Estoque Atual",
       value: stats.currentInventory,
       change: changes.inventory,
-      icon: <Package className="w-4 h-4 text-primary" />, // Ícone diferente para estoque
-      unit: "kg", // ou a unidade apropriada
+      metricIcon: Package,
+      unit: "kg",
     },
     {
+      id: "profitability",
       title: "Rentabilidade Média",
       value: stats.averageProfitability,
       change: changes.profitability,
-      icon: <DollarSign className="w-4 h-4 text-success" />,
-      iconNegative: <DollarSign className="w-4 h-4 text-destructive" />, // Pode ser o mesmo ou diferente
+      metricIcon: DollarSign,
       unit: "%",
     },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-      {statItems.map((item, index) => (
-        <Card key={index}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {item.title}
-            </CardTitle>
-            {item.change >= 0 ? item.icon : item.iconNegative || item.icon}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {item.unit === "%" ? `${formatNumberBR(item.value)}%` : `${formatNumberBR(item.value)} ${item.unit}`}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {item.change >= 0 ? "+" : ""}
-              {formatNumberBR(item.change)}% em relação ao mês anterior
-            </p>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+      {statItems.map((item) => {
+        const isPositiveChange = item.change >= 0;
+        const IconComponent = item.metricIcon;
+        // @ts-ignore
+        const iconColorClasses = iconColors[item.id] || "bg-gray-100 text-gray-600";
+
+        return (
+          <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow duration-200">
+            <CardContent className="p-5 flex flex-col">
+              <div className="flex items-start justify-between mb-3">
+                <div className={cn("p-3 rounded-lg", iconColorClasses)}>
+                  <IconComponent className="h-7 w-7" />
+                </div>
+              </div>
+
+              <h3 className="text-sm font-medium text-muted-foreground mb-0.5">{item.title}</h3>
+              <div className="text-3xl font-bold mb-1">
+                {item.unit === "%" ? `${formatNumberBR(item.value)}%` : `${formatNumberBR(item.value)} ${item.unit}`}
+              </div>
+
+              <div className="flex items-center text-xs">
+                {isPositiveChange ? (
+                  <MoveUpRight className="h-4 w-4 text-green-500 mr-1" />
+                ) : (
+                  <MoveDownLeft className="h-4 w-4 text-red-500 mr-1" />
+                )}
+                <span className={cn(isPositiveChange ? "text-green-600" : "text-red-600", "font-semibold")}>
+                  {isPositiveChange ? "+" : ""}
+                  {formatNumberBR(item.change)}%
+                </span>
+                <span className="text-muted-foreground ml-1.5">vs. mês anterior</span>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 };
