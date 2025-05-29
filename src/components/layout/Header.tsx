@@ -1,70 +1,101 @@
 
-import React from "react";
-import { useLocation } from "react-router-dom";
-import { Menu } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Menu, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { Clock } from "./Clock";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface HeaderProps {
-  title?: string;
-  toggleSidebar?: () => void;
+  toggleSidebar: () => void;
 }
 
-export function Header({ title, toggleSidebar }: HeaderProps) {
-  const location = useLocation();
-  const isMobile = useIsMobile();
-  
-  const getPageTitle = () => {
-    if (title) return title;
-    
-    switch (location.pathname) {
-      case "/":
-        return "Dashboard";
-      case "/producao":
-        return "Produção";
-      case "/producao/historico":
-        return "Histórico de Produção";
-      case "/vendas":
-        return "Vendas";
-      case "/vendas/historico":
-        return "Histórico de Vendas";
-      case "/pedidos":
-        return "Pedidos";
-      case "/pedidos/historico":
-        return "Histórico de Pedidos";
-      case "/estoque":
-        return "Estoque";
-      case "/perdas":
-        return "Perdas";
-      case "/perdas/historico":
-        return "Histórico de Perdas";
-      case "/cadastro":
-        return "Cadastro";
+export function Header({ toggleSidebar }: HeaderProps) {
+  const { user, profile, userRole, signOut } = useAuth();
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'Administrador';
+      case 'editor':
+        return 'Editor';
+      case 'viewer':
+        return 'Visualizador';
       default:
-        return "Sistema de Controle de Produção";
+        return role;
     }
   };
-  
+
   return (
-    <header className={cn(
-      "sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background/95 backdrop-blur-sm px-4 md:px-6",
-      isMobile ? "pr-4" : ""
-    )}>
-      <div className="flex items-center gap-2">
-        {isMobile && (
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={toggleSidebar}
+          >
             <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle Menu</span>
+            <span className="sr-only">Toggle menu</span>
           </Button>
-        )}
-        <h1 className="text-xl font-semibold tracking-tight">{getPageTitle()}</h1>
-      </div>
-      <div className="flex items-center gap-4">
-        <Clock />
-        <ThemeToggle />
+        </div>
+
+        <div className="flex items-center gap-4">
+          <Clock />
+          <ThemeToggle />
+          
+          {user && profile && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {getInitials(profile.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {profile.full_name}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {userRole && getRoleLabel(userRole.role)}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sair</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
     </header>
   );

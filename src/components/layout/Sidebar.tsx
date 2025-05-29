@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,7 +18,21 @@ const MotionLink = motion(Link);
 export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) {
   const location = useLocation();
   const isMobile = useIsMobile();
+  const { hasRole, hasPermission } = useAuth();
   const [isDesktopSidebarExpanded, setIsDesktopSidebarExpanded] = useState(false);
+  const [availableMenuItems, setAvailableMenuItems] = useState<any[]>([]);
+
+  const allMenuItems = [
+    { name: "Dashboard", path: "/", icon: LayoutDashboard, module: "dashboard" },
+    { name: "Produção", path: "/producao", icon: Factory, module: "producao" },
+    { name: "Vendas", path: "/vendas", icon: ShoppingCart, module: "vendas" },
+    { name: "Pedidos", path: "/pedidos", icon: Truck, module: "pedidos" },
+    { name: "Estoque", path: "/estoque", icon: Package, module: "estoque" },
+    { name: "Perdas", path: "/perdas", icon: PackageX, module: "perdas" },
+    { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search, module: "rastreabilidade" },
+    { name: "Cadastro", path: "/cadastro", icon: Settings, module: "cadastro" },
+    { name: "Usuários", path: "/usuarios", icon: Users, module: "usuarios" },
+  ];
 
   useEffect(() => {
     if (isMobile) {
@@ -24,16 +40,33 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     }
   }, [isMobile]);
 
-  const menuItems = [
-    { name: "Dashboard", path: "/", icon: LayoutDashboard },
-    { name: "Produção", path: "/producao", icon: Factory },
-    { name: "Vendas", path: "/vendas", icon: ShoppingCart },
-    { name: "Pedidos", path: "/pedidos", icon: Truck },
-    { name: "Estoque", path: "/estoque", icon: Package },
-    { name: "Perdas", path: "/perdas", icon: PackageX },
-    { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search },
-    { name: "Cadastro", path: "/cadastro", icon: Settings },
-  ];
+  useEffect(() => {
+    const checkPermissions = async () => {
+      const filteredItems = [];
+      
+      for (const item of allMenuItems) {
+        // Admins can access everything
+        if (hasRole('admin')) {
+          filteredItems.push(item);
+          continue;
+        }
+        
+        // Check if user has view permission for the module
+        try {
+          const hasAccess = await hasPermission(item.module, 'view');
+          if (hasAccess) {
+            filteredItems.push(item);
+          }
+        } catch (error) {
+          console.error(`Error checking permission for ${item.module}:`, error);
+        }
+      }
+      
+      setAvailableMenuItems(filteredItems);
+    };
+
+    checkPermissions();
+  }, [hasRole, hasPermission]);
 
   const sidebarHeaderVariants = {
     expanded: { opacity: 1, x: 0 },
@@ -56,7 +89,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       initial={false}
       animate={isExpanded ? "expanded" : "collapsed"}
     >
-      {menuItems.map((item) => {
+      {availableMenuItems.map((item) => {
         const isActive = location.pathname === item.path;
         return (
           <MotionLink
