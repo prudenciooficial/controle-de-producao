@@ -13,9 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { History, Plus, Trash } from "lucide-react";
+import { History, Plus, Trash, ClipboardList, Factory } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Combobox } from "@/components/ui/combobox";
 
 // Schema for form validation
 const ordersFormSchema = z.object({
@@ -38,11 +41,19 @@ const ordersFormSchema = z.object({
 
 type OrdersFormValues = z.infer<typeof ordersFormSchema>;
 
+// Definindo os passos/abas
+const ORDER_TABS = [
+  { id: "orderInfo", name: "Informações do Pedido", fields: ["date", "invoiceNumber", "supplierId", "notes"] as const, icon: ClipboardList },
+  { id: "orderItems", name: "Insumos Recebidos", fields: ["items"] as const, icon: Factory },
+];
+
 const Orders = () => {
   const { suppliers, materials, addOrder } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
+  const isMobile = useIsMobile();
+  const [activeTabId, setActiveTabId] = React.useState<string>(ORDER_TABS[0].id);
   
   const form = useForm<OrdersFormValues>({
     resolver: zodResolver(ordersFormSchema),
@@ -128,8 +139,6 @@ const Orders = () => {
       
       addOrder(order);
       
-      
-      
       // Reset form
       form.reset({
         date: getTodayDateString(),
@@ -146,6 +155,8 @@ const Orders = () => {
           }
         ],
       });
+
+      setActiveTabId(ORDER_TABS[0].id); // Reset para a primeira aba
     } catch (error) {
       console.error("Erro ao registrar pedido:", error);
       toast({
@@ -155,261 +166,221 @@ const Orders = () => {
       });
     }
   };
-  
+
+  const handleNext = async () => {
+    const currentTabIndex = ORDER_TABS.findIndex(tab => tab.id === activeTabId);
+    const currentTabFields = ORDER_TABS[currentTabIndex].fields;
+    // @ts-ignore
+    const isValid = await form.trigger(currentTabFields);
+    if (isValid && currentTabIndex < ORDER_TABS.length - 1) {
+      setActiveTabId(ORDER_TABS[currentTabIndex + 1].id);
+    }
+  };
+
+  const handlePrevious = () => {
+    const currentTabIndex = ORDER_TABS.findIndex(tab => tab.id === activeTabId);
+    if (currentTabIndex > 0) {
+      setActiveTabId(ORDER_TABS[currentTabIndex - 1].id);
+    }
+  };
+
+  const currentTabIndex = ORDER_TABS.findIndex(tab => tab.id === activeTabId);
+
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Pedidos</h1>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => navigate("/pedidos/historico")}>
-            <History className="mr-2 h-4 w-4" />
-            Histórico
-          </Button>
-        </div>
+        <h1 className="text-2xl font-bold">Registrar Novo Pedido/Compra</h1>
+        <Button variant="outline" onClick={() => navigate("/pedidos/historico")}>
+          <History className="mr-2 h-4 w-4" />
+          Histórico de Pedidos
+        </Button>
       </div>
-      
-      <Tabs defaultValue="novo-pedido" className="w-full">
-        <TabsContent value="novo-pedido">
-          <Card>
-            <CardHeader>
-              <CardTitle>Registrar Novo Pedido</CardTitle>
-              <CardDescription>
-                Registre os detalhes do pedido e os insumos recebidos.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  {/* Order details */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Tabs value={activeTabId} onValueChange={setActiveTabId} className="w-full">
+            <TabsList className={cn("grid w-full mb-6", isMobile ? "grid-cols-1 h-auto" : `grid-cols-${ORDER_TABS.length}`)}>
+              {ORDER_TABS.map((tab) => (
+                <TabsTrigger key={tab.id} value={tab.id} disabled={tab.id !== activeTabId} onClick={() => setActiveTabId(tab.id)}>
+                  <tab.icon className="mr-2 h-4 w-4" /> {tab.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {/* Aba de Informações do Pedido */}
+            <TabsContent value="orderInfo" forceMount className={cn(activeTabId !== "orderInfo" && "hidden")}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Detalhes do Pedido</CardTitle>
+                  <CardDescription>Forneça os detalhes básicos do pedido/compra.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6", isMobile && "grid-cols-1")}>
                     <FormField
                       control={form.control}
                       name="date"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Data de Entrada</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
+                          <FormControl><Input type="date" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
                     <FormField
                       control={form.control}
                       name="invoiceNumber"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Nota Fiscal</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
+                          <FormControl><Input placeholder="Número da NF" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
                     <FormField
                       control={form.control}
                       name="supplierId"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Fornecedor</FormLabel>
-                          <Select
+                           <Combobox
+                            options={suppliers.map(supplier => ({ value: supplier.id, label: supplier.name }))}
+                            value={field.value}
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o fornecedor" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {suppliers.map((supplier) => (
-                                <SelectItem key={supplier.id} value={supplier.id}>
-                                  {supplier.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            placeholder="Selecione um fornecedor"
+                            searchPlaceholder="Buscar fornecedor..."
+                            notFoundMessage="Nenhum fornecedor encontrado."
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  
-                  {/* Order items */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">Insumos</h3>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => append({ 
-                          materialId: "", 
-                          quantity: 0, 
-                          batchNumber: "", 
-                          expiryDate: undefined, 
-                          hasReport: false 
-                        })}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Insumo
-                      </Button>
-                    </div>
-                    
-                    {fields.map((field, index) => (
-                      <div
-                        key={field.id}
-                        className="grid grid-cols-1 gap-4 p-4 border rounded-md"
-                      >
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.materialId`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Insumo</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Selecione o insumo" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {materials.map((material) => (
-                                      <SelectItem key={material.id} value={material.id}>
-                                        {material.name} ({material.type})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.quantity`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Quantidade</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    {...field}
-                                    onChange={(e) => field.onChange(Number(e.target.value))}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.batchNumber`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Lote do Insumo</FormLabel>
-                                <FormControl>
-                                  <Input {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.expiryDate`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Data de Validade</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="date"
-                                    {...field}
-                                    value={field.value || ""}
-                                    onChange={(e) => field.onChange(e.target.value || undefined)}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.hasReport`}
-                            render={({ field }) => (
-                              <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-6">
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                                <div className="space-y-1 leading-none">
-                                  <FormLabel>Possui Laudo</FormLabel>
-                                </div>
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        
-                        {index > 0 && (
-                          <div className="flex justify-end">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive"
-                              onClick={() => remove(index)}
-                            >
-                              <Trash className="h-5 w-5" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Notes */}
                   <FormField
                     control={form.control}
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Observações</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Observações sobre o pedido"
-                            {...field}
-                          />
-                        </FormControl>
+                        <FormControl><Textarea placeholder="Observações sobre o pedido..." {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
-                  <Button type="submit" className="w-full">
-                    Registrar Pedido
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Aba de Insumos Recebidos */}
+            <TabsContent value="orderItems" forceMount className={cn(activeTabId !== "orderItems" && "hidden")}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Insumos do Pedido</CardTitle>
+                  <CardDescription>Liste os insumos recebidos, lotes e validades.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {fields.map((item, index) => (
+                    <Card key={item.id} className="p-4 relative bg-muted/30">
+                      <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => remove(index)}>
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                      <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end", isMobile && "grid-cols-1")}>
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.materialId`}
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Material</FormLabel>
+                              <Combobox
+                                options={materials.map(material => ({ value: material.id, label: `${material.name} (${material.unitOfMeasure})` }))}
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                placeholder="Selecione um material"
+                                searchPlaceholder="Buscar material..."
+                                notFoundMessage="Nenhum material encontrado."
+                              />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.quantity`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Quantidade Recebida</FormLabel>
+                              <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.batchNumber`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Lote do Insumo</FormLabel>
+                              <FormControl><Input placeholder="Lote do fabricante" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 items-center", isMobile && "grid-cols-1")}>
+                         <FormField
+                          control={form.control}
+                          name={`items.${index}.expiryDate`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Data de Validade (Opcional)</FormLabel>
+                              <FormControl><Input type="date" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.hasReport`}
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-2 pt-5">
+                              <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                              <FormLabel className="font-normal">Possui Laudo?</FormLabel>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </Card>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => append({ materialId: "", quantity: 0, batchNumber: "", expiryDate: undefined, hasReport: false })} className="mt-4 w-full">
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Insumo
                   </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          {/* Botões de Navegação e Submissão */}
+          <div className="flex justify-between mt-8">
+            {currentTabIndex > 0 && (
+              <Button type="button" variant="outline" onClick={handlePrevious} className="md:w-auto">
+                Voltar
+              </Button>
+            )}
+            {currentTabIndex < ORDER_TABS.length - 1 && (
+              <Button type="button" onClick={handleNext} className="ml-auto md:w-auto">
+                Avançar
+              </Button>
+            )}
+            {currentTabIndex === ORDER_TABS.length - 1 && (
+              <Button type="submit" disabled={form.formState.isSubmitting} className="ml-auto md:w-auto">
+                {form.formState.isSubmitting ? "Salvando..." : "Salvar Pedido"}
+              </Button>
+            )}
+          </div>
+        </form>
+      </Form>
     </div>
   );
 };

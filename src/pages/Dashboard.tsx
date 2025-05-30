@@ -612,6 +612,9 @@ const Dashboard = () => {
   
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+      </div>
       <div className="flex flex-col gap-6 p-2 sm:p-4 md:p-6">
         <div className="w-full sm:w-auto">
           <SimpleDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
@@ -715,16 +718,15 @@ const Dashboard = () => {
           <Card className="animate-scale-in" style={{ animationDelay: "0.5s" }}>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Package className="mr-2 h-5 w-5" />
                 Estoque de Produtos Acabados
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[180px]">Produto</TableHead>
+                      <TableHead>Produto</TableHead>
                       <TableHead>Quantidade</TableHead>
                       <TableHead>Un.</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
@@ -733,11 +735,11 @@ const Dashboard = () => {
                   <TableBody>
                     {productTotals.length > 0 ? (
                       productTotals.map((product) => (
-                        <TableRow key={product.name}>
-                          <TableCell className="font-medium">{product.name}</TableCell>
-                          <TableCell>{formatNumberBR(product.total)}</TableCell>
-                          <TableCell>{product.unitOfMeasure}</TableCell>
-                          <TableCell className="text-right">
+                        <TableRow key={product.name} className="hover:bg-muted/50">
+                          <TableCell className="font-medium align-middle">{product.name}</TableCell>
+                          <TableCell className="align-middle">{formatNumberBR(product.total)}</TableCell>
+                          <TableCell className="align-middle">{product.unitOfMeasure}</TableCell>
+                          <TableCell className="text-right align-middle">
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -766,12 +768,12 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle>Estoque de Matérias-Primas</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent>
               {materialTypes.length > 0 ? (
                 <div className="space-y-6">
                   {materialTypes.map((typeGroup) => (
                     <div key={typeGroup.type} className="space-y-2">
-                      <h3 className="text-lg font-medium flex items-center px-6 pt-2">
+                      <h3 className="text-lg font-medium flex items-center">
                         {getMaterialTypeIcon(typeGroup.type)}
                         <span className="ml-2">{typeGroup.type}</span>
                       </h3>
@@ -779,7 +781,7 @@ const Dashboard = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="min-w-[180px]">Insumo</TableHead>
+                              <TableHead>Insumo</TableHead>
                               <TableHead>Quantidade</TableHead>
                               <TableHead>Un.</TableHead>
                               <TableHead className="text-right">Ações</TableHead>
@@ -787,11 +789,11 @@ const Dashboard = () => {
                           </TableHeader>
                           <TableBody>
                             {typeGroup.materials.map((material) => (
-                              <TableRow key={material.name}>
-                                <TableCell className="font-medium">{material.name}</TableCell>
-                                <TableCell>{formatNumberBR(material.total)}</TableCell>
-                                <TableCell>{material.unitOfMeasure}</TableCell>
-                                <TableCell className="text-right">
+                              <TableRow key={material.name} className="hover:bg-muted/50">
+                                <TableCell className="font-medium align-middle">{material.name}</TableCell>
+                                <TableCell className="align-middle">{formatNumberBR(material.total)}</TableCell>
+                                <TableCell className="align-middle">{material.unitOfMeasure}</TableCell>
+                                <TableCell className="text-right align-middle">
                                   <Button 
                                     variant="outline" 
                                     size="sm"
