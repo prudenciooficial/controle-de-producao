@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback, useLayoutEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { traceProductBatch, traceMaterialBatch, findRelatedBatches, ProductTraceability, MaterialTraceability } from '@/services/traceabilityService';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader, Package, Truck, ShoppingCart, Factory, AlertTriangle, CheckCircle, Printer, ArrowLeft } from 'lucide-react';
+import { Loader, Package, Truck, ShoppingCart, Factory, AlertTriangle, CheckCircle, Printer, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -135,6 +135,12 @@ const printStyles = `
       display: none !important;
     }
 
+    /* Configurações de página para impressão */
+    @page {
+      size: A4;
+      margin: 0 !important; /* Remove margens da página para evitar conflitos */
+    }
+
     html,
     body {
       color: black !important;
@@ -143,6 +149,7 @@ const printStyles = `
       box-shadow: none !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+      font-size: 12pt !important;
     }
     
     html {
@@ -151,30 +158,37 @@ const printStyles = `
 
     body { /* O body na impressão é o próprio papel A4 */
       background-image: url('/images/papeltimbrado.jpg') !important;
-      background-size: contain !important;
+      background-size: cover !important; /* Mudado para cover para melhor ajuste */
       background-repeat: no-repeat !important;
       background-position: center top !important; /* Alinha papel timbrado no topo */
       background-color: white !important; /* Fundo branco para todas as páginas */
-      min-height: 297mm !important; /* Altura mínima, mas pode crescer com o conteúdo */
-      height: auto !important; /* Altura definida pelo conteúdo */
+      width: 210mm !important;
+      height: 297mm !important;
+      min-height: 297mm !important;
+      max-width: 210mm !important;
       box-sizing: border-box !important;
       page-break-before: auto;
       page-break-after: auto;
+      overflow: visible !important;
     }
 
     .printable-content-area {
       background-color: transparent !important; /* Para o papel timbrado do body ser visível */
       color: black !important;
-      padding-top: 6.5cm;    /* Margens internas do papel timbrado */
-      padding-bottom: 5.5cm;
-      padding-left: 2cm;
-      padding-right: 2cm;
+      padding-top: 7cm !important;    /* Margens internas ajustadas para diferentes configurações */
+      padding-bottom: 4cm !important;
+      padding-left: 1.5cm !important;
+      padding-right: 1.5cm !important;
       width: 100% !important;
       height: auto !important; /* Altura determinada pelo fluxo do conteúdo */
-      min-height: calc(297mm - 6.5cm - 5.5cm); /* Garante espaço mínimo útil na primeira página */
+      min-height: calc(297mm - 7cm - 4cm) !important; /* Garante espaço mínimo útil */
       box-sizing: border-box !important;
       overflow: visible !important; /* Permite que o conteúdo interno flua e quebre páginas */
       margin-top: 0 !important; /* Remove margem superior na impressão */
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      margin-bottom: 0 !important;
+      position: relative !important;
     }
 
     .printable-content-area *,
@@ -191,7 +205,7 @@ const printStyles = `
     .card-print-item,
     .card-print-clean {
       border: none !important; /* Remove bordas dos cards */
-      margin-bottom: 8px !important; /* Adiciona espaço entre seções */
+      margin-bottom: 12px !important; /* Adiciona espaço entre seções */
       page-break-inside: avoid !important;
       background-color: transparent !important; /* Fundo transparente para cards na impressão */
     }
@@ -203,8 +217,8 @@ const printStyles = `
 
     .table-print-tight th,
     .table-print-tight td {
-      padding: 2px 4px !important;
-      font-size: 0.8em !important;
+      padding: 3px 5px !important;
+      font-size: 10pt !important;
       border: none !important; /* Remove todas as bordas padrão */
       border-bottom: 1px solid #ddd !important; /* Adiciona apenas linha inferior */
     }
@@ -220,6 +234,7 @@ const printStyles = `
       border-collapse: collapse !important;
       border: none !important; /* Remove borda da tabela em si */
       width: 100% !important;
+      margin-bottom: 8px !important;
     }
 
     .badge,
@@ -227,9 +242,10 @@ const printStyles = `
       border: 1px solid #333 !important;
       color: black !important;
       background-color: white !important; /* Badge com fundo branco e borda preta */
-      padding: 1px 3px !important;
+      padding: 2px 4px !important;
       font-weight: normal !important;
       display: inline-block !important;
+      font-size: 9pt !important;
     }
 
     .lucide { color: black !important; }
@@ -238,6 +254,28 @@ const printStyles = `
 
     thead { display: table-header-group !important; }
     table, tr, td, th, .card-print-item { page-break-inside: avoid !important; }
+    
+    /* Instrução visual para o usuário */
+    .print-instruction {
+      display: block !important;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #fffacd;
+      border: 2px solid #ffa500;
+      padding: 10px;
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      color: #333;
+      z-index: 9999;
+    }
+  }
+
+  /* Instrução oculta na tela normal */
+  .print-instruction {
+    display: none;
   }
 
   /* Estilos gerais para o conteúdo na visualização e impressão (se não sobrescrito em @media print) */
@@ -256,7 +294,6 @@ const printStyles = `
 
 const PrintableTraceabilityPage = () => {
   const { batchId } = useParams<{ batchId: string }>();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [productTrace, setProductTrace] = useState<ProductTraceability | null>(null);
@@ -352,8 +389,8 @@ const PrintableTraceabilityPage = () => {
     window.print();
   };
 
-  const handleGoBack = () => {
-    navigate('/rastreabilidade');
+  const handleClosePage = () => {
+    window.close();
   };
 
   // Funções de renderização de conteúdo (adaptadas de Traceability.tsx)
@@ -556,11 +593,16 @@ const PrintableTraceabilityPage = () => {
     <>
       <style>{printStyles}</style>
       
+      {/* Instrução para o usuário sobre margens - aparece apenas na impressão */}
+      <div className="print-instruction">
+        ⚠️ Para melhor qualidade de impressão, configure as margens como "Nenhumas" nas opções de impressão do seu navegador
+      </div>
+      
       {/* Header com botões - visível apenas na tela */}
       <div className="print-header">
-        <Button onClick={handleGoBack} variant="outline" className="flex items-center gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Voltar
+        <Button onClick={handleClosePage} variant="outline" className="flex items-center gap-2">
+          <X className="h-4 w-4" />
+          Fechar página
         </Button>
         <h1 className="text-lg font-semibold">Relatório de Rastreabilidade - Lote {batchId}</h1>
         <Button onClick={handlePrint} className="flex items-center gap-2">
