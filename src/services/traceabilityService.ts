@@ -31,6 +31,7 @@ export interface ProductTraceability {
     invoiceNumber: string;
     quantity: number;
     unitOfMeasure: string;
+    productName?: string;
   }>;
   relatedProducts: Array<{
     id: string;
@@ -162,7 +163,7 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
       .select(`
         *,
         sales:sale_id (*),
-        produced_items:produced_item_id(products:product_id(unit_of_measure))
+        produced_items:produced_item_id(products:product_id(name, unit_of_measure))
       `)
       .in("produced_item_id", producedItemIds);
     
@@ -173,6 +174,7 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
       customerName: item.sales.customer_name,
       invoiceNumber: item.sales.invoice_number,
       quantity: item.quantity,
+      productName: item.produced_items?.products?.name || 'Produto Indisponível',
       // Tentar obter a unidade de medida do produto vendido, se não, usar a do sale_item (se existir)
       unitOfMeasure: item.produced_items?.products?.unit_of_measure || item.unit_of_measure || 'Unidade Indisponível',
     }));

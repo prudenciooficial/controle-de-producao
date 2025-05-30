@@ -197,9 +197,10 @@ const Traceability = () => {
           <AccordionContent>
             {renderAccordionContent(
               trace.sales,
-              ["Data", "Cliente", "NF", "Qtd", "Un."],
+              ["Produto", "Data", "Cliente", "NF", "Qtd", "Un."],
               (sale, index) => (
                 <TableRow key={sale.id || index}>
+                  <TableCell>{sale.productName || "-"}</TableCell>
                   <TableCell>{formatDate(sale.date)}</TableCell>
                   <TableCell>{sale.customerName}</TableCell>
                   <TableCell>{sale.invoiceNumber}</TableCell>

@@ -21,80 +21,88 @@ export function SimpleDateFilter({
 }: SimpleDateFilterProps) {
   const today = new Date();
 
-  const isCurrentMonth = (range: DateRange | undefined): boolean => {
-    if (!range?.from || !range?.to) return false;
+  const normalizedDateRange: DateRange | undefined = React.useMemo(() => {
+    if (dateRange?.from && dateRange?.to) {
+      return {
+        from: startOfDay(dateRange.from),
+        to: startOfDay(dateRange.to),
+      };
+    }
+    return undefined;
+  }, [dateRange]);
+
+  const isCurrentMonth = (rangeToCheck: DateRange | undefined): boolean => {
+    if (!rangeToCheck?.from || !rangeToCheck?.to) return false;
     const currentMonthStart = startOfMonth(today);
-    const currentMonthEnd = endOfMonth(today);
-    return isEqual(startOfDay(range.from), currentMonthStart) && isEqual(startOfDay(range.to), currentMonthEnd);
+    const currentMonthEnd = startOfDay(endOfMonth(today));
+    return isEqual(rangeToCheck.from, currentMonthStart) && isEqual(rangeToCheck.to, currentMonthEnd);
   };
 
-  const isLast3Months = (range: DateRange | undefined): boolean => {
-    if (!range?.from || !range?.to) return false;
+  const isLast3Months = (rangeToCheck: DateRange | undefined): boolean => {
+    if (!rangeToCheck?.from || !rangeToCheck?.to) return false;
     const threeMonthsAgoStart = startOfMonth(subMonths(today, 2));
-    const currentMonthEnd = endOfMonth(today);
-    return isEqual(startOfDay(range.from), threeMonthsAgoStart) && isEqual(startOfDay(range.to), currentMonthEnd);
+    const currentMonthEnd = startOfDay(endOfMonth(today));
+    return isEqual(rangeToCheck.from, threeMonthsAgoStart) && isEqual(rangeToCheck.to, currentMonthEnd);
   };
 
-  const isLast6Months = (range: DateRange | undefined): boolean => {
-    if (!range?.from || !range?.to) return false;
+  const isLast6Months = (rangeToCheck: DateRange | undefined): boolean => {
+    if (!rangeToCheck?.from || !rangeToCheck?.to) return false;
     const sixMonthsAgoStart = startOfMonth(subMonths(today, 5));
-    const currentMonthEnd = endOfMonth(today);
-    return isEqual(startOfDay(range.from), sixMonthsAgoStart) && isEqual(startOfDay(range.to), currentMonthEnd);
+    const currentMonthEnd = startOfDay(endOfMonth(today));
+    return isEqual(rangeToCheck.from, sixMonthsAgoStart) && isEqual(rangeToCheck.to, currentMonthEnd);
   };
 
-  const isLastYear = (range: DateRange | undefined): boolean => {
-    if (!range?.from || !range?.to) return false;
+  const isLastYear = (rangeToCheck: DateRange | undefined): boolean => {
+    if (!rangeToCheck?.from || !rangeToCheck?.to) return false;
     const oneYearAgoStart = startOfMonth(subMonths(today, 11));
-    const currentMonthEnd = endOfMonth(today);
-    return isEqual(startOfDay(range.from), oneYearAgoStart) && isEqual(startOfDay(range.to), currentMonthEnd);
+    const currentMonthEnd = startOfDay(endOfMonth(today));
+    return isEqual(rangeToCheck.from, oneYearAgoStart) && isEqual(rangeToCheck.to, currentMonthEnd);
   };
 
-  const актуальныйDateRangeFrom = dateRange?.from ? startOfDay(dateRange.from) : undefined;
-  const актуальныйDateRangeTo = dateRange?.to ? startOfDay(dateRange.to) : undefined;
+  const activeCurrentMonth = isCurrentMonth(normalizedDateRange);
+  const activeLast3Months = isLast3Months(normalizedDateRange);
+  const activeLast6Months = isLast6Months(normalizedDateRange);
+  const activeLastYear = isLastYear(normalizedDateRange);
 
   const isCustomDateActive = 
-    !!актуальныйDateRangeFrom && !!актуальныйDateRangeTo &&
-    !isCurrentMonth({ from: актуальныйDateRangeFrom, to: актуальныйDateRangeTo }) && 
-    !isLast3Months({ from: актуальныйDateRangeFrom, to: актуальныйDateRangeTo }) && 
-    !isLast6Months({ from: актуальныйDateRangeFrom, to: актуальныйDateRangeTo }) && 
-    !isLastYear({ from: актуальныйDateRangeFrom, to: актуальныйDateRangeTo });
+    !!normalizedDateRange &&
+    !activeCurrentMonth && 
+    !activeLast3Months && 
+    !activeLast6Months && 
+    !activeLastYear;
 
-  // Set current month
   const setCurrentMonth = () => {
-    const today = new Date();
+    const currentToday = new Date();
     onDateRangeChange({
-      from: startOfMonth(today),
-      to: endOfMonth(today)
+      from: startOfMonth(currentToday),
+      to: endOfMonth(currentToday)
     });
   };
 
-  // Set last 3 months (including current month)
   const setLast3Months = () => {
-    const today = new Date();
-    const threeMonthsAgo = subMonths(today, 2);
+    const currentToday = new Date();
+    const threeMonthsAgo = subMonths(currentToday, 2);
     onDateRangeChange({
       from: startOfMonth(threeMonthsAgo),
-      to: endOfMonth(today)
+      to: endOfMonth(currentToday)
     });
   };
 
-  // Set last 6 months (including current month)
   const setLast6Months = () => {
-    const today = new Date();
-    const sixMonthsAgo = subMonths(today, 5);
+    const currentToday = new Date();
+    const sixMonthsAgo = subMonths(currentToday, 5);
     onDateRangeChange({
       from: startOfMonth(sixMonthsAgo),
-      to: endOfMonth(today)
+      to: endOfMonth(currentToday)
     });
   };
 
-  // Set last year (including current month)
   const setLastYear = () => {
-    const today = new Date();
-    const oneYearAgo = subMonths(today, 11);
+    const currentToday = new Date();
+    const oneYearAgo = subMonths(currentToday, 11);
     onDateRangeChange({
       from: startOfMonth(oneYearAgo),
-      to: endOfMonth(today)
+      to: endOfMonth(currentToday)
     });
   };
 
@@ -104,7 +112,7 @@ export function SimpleDateFilter({
       
       <div className="flex flex-wrap gap-2">
         <Button 
-          variant={isCurrentMonth(dateRange) ? "default" : "outline"} 
+          variant={activeCurrentMonth ? "default" : "outline"} 
           size="sm"
           className="text-xs font-medium w-full sm:w-auto"
           onClick={setCurrentMonth}
@@ -113,7 +121,7 @@ export function SimpleDateFilter({
         </Button>
         
         <Button 
-          variant={isLast3Months(dateRange) ? "default" : "outline"}
+          variant={activeLast3Months ? "default" : "outline"}
           size="sm"
           className="text-xs font-medium w-full sm:w-auto"
           onClick={setLast3Months}
@@ -122,7 +130,7 @@ export function SimpleDateFilter({
         </Button>
         
         <Button 
-          variant={isLast6Months(dateRange) ? "default" : "outline"}
+          variant={activeLast6Months ? "default" : "outline"}
           size="sm"
           className="text-xs font-medium w-full sm:w-auto"
           onClick={setLast6Months}
@@ -131,7 +139,7 @@ export function SimpleDateFilter({
         </Button>
         
         <Button 
-          variant={isLastYear(dateRange) ? "default" : "outline"}
+          variant={activeLastYear ? "default" : "outline"}
           size="sm"
           className="text-xs font-medium w-full sm:w-auto"
           onClick={setLastYear}
