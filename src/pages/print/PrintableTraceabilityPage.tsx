@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useLayoutEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { traceProductBatch, traceMaterialBatch, findRelatedBatches, ProductTraceability, MaterialTraceability } from '@/services/traceabilityService';
@@ -265,7 +264,7 @@ const printStyles = `
   /* Instrução visível apenas na tela (removida da impressão) */
   .print-instruction {
     position: fixed;
-    top: 0;
+    bottom: 0;
     left: 0;
     right: 0;
     background: #fffacd;
