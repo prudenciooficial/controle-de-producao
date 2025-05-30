@@ -12,7 +12,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { History, Plus, Trash } from "lucide-react";
+import { Combobox } from "@/components/ui/combobox";
+import { History, Plus, Trash, Package, Factory, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -48,6 +49,13 @@ const productionFormSchema = z.object({
 
 type ProductionFormValues = z.infer<typeof productionFormSchema>;
 
+// Definindo os passos/abas
+const TABS = [
+  { id: "info", name: "Informações Gerais", fields: ["productionDate", "batchNumber", "mixDate", "mixCount", "notes"] as const, icon: ClipboardList },
+  { id: "products", name: "Produtos Acabados", fields: ["producedItems"] as const, icon: Package },
+  { id: "materials", name: "Insumos Utilizados", fields: ["usedMaterials"] as const, icon: Factory },
+];
+
 const Production = () => {
   const { products, materialBatches, addProductionBatch } = useData();
   const navigate = useNavigate();
@@ -56,6 +64,7 @@ const Production = () => {
   const isMobile = useIsMobile();
   
   const today = getTodayDateString();
+  const [activeTabId, setActiveTabId] = useState<string>(TABS[0].id);
   
   const form = useForm<ProductionFormValues>({
     resolver: zodResolver(productionFormSchema),
@@ -184,43 +193,66 @@ const Production = () => {
       });
     }
   };
+
+  const handleNext = async () => {
+    const currentTabIndex = TABS.findIndex(tab => tab.id === activeTabId);
+    const currentTabFields = TABS[currentTabIndex].fields;
+    
+    // Validar campos da aba atual
+    // @ts-ignore porque TABS[x].fields é um array de strings e trigger espera nomes de campos específicos
+    const isValid = await form.trigger(currentTabFields);
+
+    if (isValid && currentTabIndex < TABS.length - 1) {
+      setActiveTabId(TABS[currentTabIndex + 1].id);
+    }
+  };
+
+  const handlePrevious = () => {
+    const currentTabIndex = TABS.findIndex(tab => tab.id === activeTabId);
+    if (currentTabIndex > 0) {
+      setActiveTabId(TABS[currentTabIndex - 1].id);
+    }
+  };
+
+  const currentTabInfo = TABS.find(tab => tab.id === activeTabId) || TABS[0];
+  const currentTabIndex = TABS.findIndex(tab => tab.id === activeTabId);
   
   return (
     <div className="container mx-auto py-6 px-4 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Produção</h1>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => navigate("/producao/historico")}>
-            <History className="mr-2 h-4 w-4" />
-            Histórico
-          </Button>
-        </div>
+        <h1 className="text-2xl font-bold">Registrar Nova Produção</h1>
+        <Button variant="outline" onClick={() => navigate("/producao/historico")}>
+          <History className="mr-2 h-4 w-4" />
+          Histórico de Produção
+        </Button>
       </div>
-      
-      <Tabs defaultValue="nova-producao" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="nova-producao">Nova Produção</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="nova-producao">
-          <Card>
-            <CardHeader>
-              <CardTitle>Registrar Nova Produção</CardTitle>
-              <CardDescription>
-                Registre os detalhes da produção, produtos produzidos e insumos utilizados.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  {/* Production details */}
-                  <div className={cn("grid gap-6", isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4")}>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Tabs value={activeTabId} onValueChange={setActiveTabId} className="w-full">
+            <TabsList className={cn("grid w-full grid-cols-3 mb-6", isMobile && "grid-cols-1 h-auto")}>
+              {TABS.map((tab) => (
+                <TabsTrigger key={tab.id} value={tab.id} disabled={tab.id !== activeTabId} onClick={() => setActiveTabId(tab.id)}>
+                  <tab.icon className="mr-2 h-4 w-4" /> {tab.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {/* Aba de Informações Gerais */}
+            <TabsContent value="info" forceMount className={cn(activeTabId !== "info" && "hidden")} >
+              <Card>
+                <CardHeader>
+                  <CardTitle>Detalhes da Produção</CardTitle>
+                  <CardDescription>Forneça os detalhes básicos da produção.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className={cn("grid grid-cols-2 gap-6", isMobile && "grid-cols-1")}>
                     <FormField
                       control={form.control}
                       name="productionDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Data de Produção</FormLabel>
+                          <FormLabel>Data da Produção</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -228,7 +260,6 @@ const Production = () => {
                         </FormItem>
                       )}
                     />
-                    
                     <FormField
                       control={form.control}
                       name="batchNumber"
@@ -236,13 +267,14 @@ const Production = () => {
                         <FormItem>
                           <FormLabel>Lote de Produção</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input placeholder="Ex: PROD-2024-07-27" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+                  </div>
+                  <div className={cn("grid grid-cols-2 gap-6", isMobile && "grid-cols-1")}>
                     <FormField
                       control={form.control}
                       name="mixDate"
@@ -256,7 +288,6 @@ const Production = () => {
                         </FormItem>
                       )}
                     />
-                    
                     <FormField
                       control={form.control}
                       name="mixCount"
@@ -264,198 +295,13 @@ const Production = () => {
                         <FormItem>
                           <FormLabel>Quantidade de Mexidas</FormLabel>
                           <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
+                            <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  
-                  {/* Produced items */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">Produtos Produzidos</h3>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => appendProducedItem({ productId: "", quantity: 0 })}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Produto
-                      </Button>
-                    </div>
-                    
-                    {producedItemFields.map((field, index) => (
-                      <div
-                        key={field.id}
-                        className={cn("grid gap-4 p-4 border rounded-md", 
-                          isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}
-                      >
-                        <FormField
-                          control={form.control}
-                          name={`producedItems.${index}.productId`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Produto</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione o produto" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {products.map((product) => (
-                                    <SelectItem
-                                      key={product.id}
-                                      value={product.id}
-                                    >
-                                      {product.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div className="flex space-x-2">
-                          <FormField
-                            control={form.control}
-                            name={`producedItems.${index}.quantity`}
-                            render={({ field }) => (
-                              <FormItem className="flex-1">
-                                <FormLabel>Quantidade</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(Number(e.target.value))
-                                    }
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          {index > 0 && (
-                            <div className="flex items-end mb-2">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive"
-                                onClick={() => removeProducedItem(index)}
-                              >
-                                <Trash className="h-5 w-5" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Used materials */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">Insumos Utilizados</h3>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => appendUsedMaterial({ materialBatchId: "", quantity: 0 })}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Insumo
-                      </Button>
-                    </div>
-                    
-                    {usedMaterialFields.map((field, index) => (
-                      <div
-                        key={field.id}
-                        className={cn("grid gap-4 p-4 border rounded-md", 
-                          isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}
-                      >
-                        <FormField
-                          control={form.control}
-                          name={`usedMaterials.${index}.materialBatchId`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Insumo (Lote)</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione o insumo" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {availableMaterialBatches.map((batch) => (
-                                    <SelectItem key={batch.id} value={batch.id}>
-                                      {batch.materialName} - {batch.batchNumber} ({batch.remainingQuantity} {batch.unitOfMeasure})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div className="flex space-x-2">
-                          <FormField
-                            control={form.control}
-                            name={`usedMaterials.${index}.quantity`}
-                            render={({ field }) => (
-                              <FormItem className="flex-1">
-                                <FormLabel>Quantidade</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(Number(e.target.value))
-                                    }
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          {index > 0 && (
-                            <div className="flex items-end mb-2">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive"
-                                onClick={() => removeUsedMaterial(index)}
-                              >
-                                <Trash className="h-5 w-5" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Notes */}
                   <FormField
                     control={form.control}
                     name="notes"
@@ -463,25 +309,251 @@ const Production = () => {
                       <FormItem>
                         <FormLabel>Observações</FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder="Observações sobre a produção"
-                            {...field}
-                          />
+                          <Textarea placeholder="Alguma observação relevante sobre a produção..." {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
-                  <Button type="submit" className="w-full">
-                    Registrar Produção
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Aba de Produtos Acabados */}
+            <TabsContent value="products" forceMount className={cn(activeTabId !== "products" && "hidden")} >
+              <Card>
+                <CardHeader>
+                  <CardTitle>Produtos Acabados</CardTitle>
+                  <CardDescription>Liste os produtos que foram produzidos neste lote.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {producedItemFields.map((item, index) => (
+                    <Card key={item.id} className="p-4 relative bg-muted/30">
+                       <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeProducedItem(index)}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                      <div className={cn("grid grid-cols-2 gap-4 items-end", isMobile && "grid-cols-1")}>
+                        <FormField
+                          control={form.control}
+                          name={`producedItems.${index}.productId`}
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Produto</FormLabel>
+                              <Combobox
+                                options={products.map(product => ({
+                                  value: product.id,
+                                  label: `${product.name} (${product.unitOfMeasure})`
+                                }))}
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                placeholder="Selecione um produto"
+                                searchPlaceholder="Buscar produto..."
+                                notFoundMessage="Nenhum produto encontrado."
+                              />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`producedItems.${index}.quantity`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Quantidade Produzida</FormLabel>
+                              <FormControl>
+                                <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </Card>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => appendProducedItem({ productId: "", quantity: 0 })}
+                    className="mt-4 w-full"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Produto
                   </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+
+                  {/* Totalizador de Produção */}
+                  {(() => {
+                    const producedItemsValues = form.watch("producedItems");
+                    if (producedItemsValues && producedItemsValues.length > 0) {
+                      const totalWeightInKg = producedItemsValues.reduce((acc, item) => {
+                        const productDetails = getProductDetails(item.productId);
+                        const quantity = (typeof item.quantity === 'number' && item.quantity > 0) ? item.quantity : 0;
+                        
+                        let itemWeightInKg = 0;
+                        if (productDetails && typeof productDetails.weightFactor === 'number') {
+                          itemWeightInKg = quantity * productDetails.weightFactor;
+                        }
+                        return acc + itemWeightInKg;
+                      }, 0);
+
+                      if (totalWeightInKg > 0) {
+                        return (
+                          <div className="mt-4 pt-4 border-t">
+                            <p className="text-sm font-semibold text-right">
+                              Total Produzido: {totalWeightInKg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg
+                            </p>
+                          </div>
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Aba de Insumos Utilizados */}
+            <TabsContent value="materials" forceMount className={cn(activeTabId !== "materials" && "hidden")} >
+              <Card>
+                <CardHeader>
+                  <CardTitle>Insumos Utilizados</CardTitle>
+                  <CardDescription>Liste os insumos e seus respectivos lotes utilizados na produção.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {usedMaterialFields.map((item, index) => (
+                    <Card key={item.id} className="p-4 relative bg-muted/30">
+                       <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeUsedMaterial(index)}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                      <div className={cn("grid grid-cols-2 gap-4 items-end", isMobile && "grid-cols-1")}>
+                        <FormField
+                          control={form.control}
+                          name={`usedMaterials.${index}.materialBatchId`}
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Lote do Insumo</FormLabel>
+                              <Combobox
+                                options={availableMaterialBatches.map(batch => ({
+                                  value: batch.id,
+                                  label: `${batch.materialName} (Lote: ${batch.batchNumber}, Rest: ${batch.remainingQuantity} ${batch.unitOfMeasure})`
+                                }))}
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                placeholder="Selecione um lote de insumo"
+                                searchPlaceholder="Buscar lote..."
+                                notFoundMessage="Nenhum lote de insumo encontrado."
+                              />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`usedMaterials.${index}.quantity`}
+                          render={({ field }) => {
+                            const selectedMaterialBatchId = form.watch(`usedMaterials.${index}.materialBatchId`);
+                            const currentQuantity = form.watch(`usedMaterials.${index}.quantity`);
+
+                            React.useEffect(() => {
+                              if (selectedMaterialBatchId && typeof currentQuantity === 'number') {
+                                const materialBatch = getMaterialBatchDetails(selectedMaterialBatchId);
+                                if (materialBatch) {
+                                  if (currentQuantity > materialBatch.remainingQuantity) {
+                                    form.setError(`usedMaterials.${index}.quantity`, {
+                                      type: 'manual',
+                                      message: `Máx: ${materialBatch.remainingQuantity} ${materialBatch.unitOfMeasure}`,
+                                    });
+                                  } else if (currentQuantity <= 0 && materialBatch.remainingQuantity > 0) {
+                                    const errors = form.formState.errors.usedMaterials?.[index]?.quantity;
+                                    if (errors && errors.type === 'manual') {
+                                       form.clearErrors(`usedMaterials.${index}.quantity`);
+                                    }
+                                  } else {
+                                    const errors = form.formState.errors.usedMaterials?.[index]?.quantity;
+                                    if (errors && errors.type === 'manual') {
+                                       form.clearErrors(`usedMaterials.${index}.quantity`);
+                                    }
+                                  }
+                                } else {
+                                   form.clearErrors(`usedMaterials.${index}.quantity`);
+                                }
+                              } else if (!selectedMaterialBatchId) {
+                                form.clearErrors(`usedMaterials.${index}.quantity`);
+                              }
+                            }, [selectedMaterialBatchId, currentQuantity, index, form, getMaterialBatchDetails]);
+
+                            return (
+                              <FormItem>
+                                <FormLabel>Quantidade Utilizada</FormLabel>
+                                <FormControl>
+                                  <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            );
+                          }}
+                        />
+                      </div>
+                       {(() => {
+                        const watchedBatchId = form.watch(`usedMaterials.${index}.materialBatchId`);
+                        if (watchedBatchId) {
+                          const details = getMaterialBatchDetails(watchedBatchId);
+                          return (
+                            <FormDescription className="mt-2 text-xs">
+                              Lote selecionado: {details?.materialName} / {details?.batchNumber}
+                              {' - '}
+                              Disponível: {details?.remainingQuantity} {details?.unitOfMeasure}
+                            </FormDescription>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </Card>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => appendUsedMaterial({ materialBatchId: "", quantity: 0 })}
+                    className="mt-4 w-full"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Insumo
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex justify-between mt-8 p-0">
+            {currentTabIndex > 0 && (
+              <Button type="button" variant="outline" onClick={handlePrevious} className="md:w-auto">
+                Voltar
+              </Button>
+            )}
+            {currentTabIndex < TABS.length - 1 && (
+              <Button type="button" onClick={handleNext} className="ml-auto md:w-auto">
+                Avançar
+              </Button>
+            )}
+            {currentTabIndex === TABS.length - 1 && (
+              <Button type="submit" disabled={form.formState.isSubmitting} className="ml-auto md:w-auto">
+                {form.formState.isSubmitting ? "Salvando..." : "Salvar Produção"}
+              </Button>
+            )}
+          </div>
+        </form>
+      </Form>
     </div>
   );
 };
