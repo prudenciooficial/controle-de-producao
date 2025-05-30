@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useLayoutEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { traceProductBatch, traceMaterialBatch, findRelatedBatches, ProductTraceability, MaterialTraceability } from '@/services/traceabilityService';
@@ -135,6 +136,11 @@ const printStyles = `
       display: none !important;
     }
 
+    /* Oculta a instrução sobre margens durante a impressão */
+    .print-instruction {
+      display: none !important;
+    }
+
     /* Configurações de página para impressão */
     @page {
       size: A4;
@@ -254,28 +260,23 @@ const printStyles = `
 
     thead { display: table-header-group !important; }
     table, tr, td, th, .card-print-item { page-break-inside: avoid !important; }
-    
-    /* Instrução visual para o usuário */
-    .print-instruction {
-      display: block !important;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: #fffacd;
-      border: 2px solid #ffa500;
-      padding: 10px;
-      text-align: center;
-      font-size: 14pt;
-      font-weight: bold;
-      color: #333;
-      z-index: 9999;
-    }
   }
 
-  /* Instrução oculta na tela normal */
+  /* Instrução visível apenas na tela (removida da impressão) */
   .print-instruction {
-    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #fffacd;
+    border: 2px solid #ffa500;
+    padding: 10px;
+    text-align: center;
+    font-size: 14pt;
+    font-weight: bold;
+    color: #333;
+    z-index: 9999;
+    display: block;
   }
 
   /* Estilos gerais para o conteúdo na visualização e impressão (se não sobrescrito em @media print) */
