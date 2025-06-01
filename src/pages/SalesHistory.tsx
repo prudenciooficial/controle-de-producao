@@ -245,8 +245,8 @@ const SalesHistory = () => {
   };
   
   return (
-    <div className="container mx-auto py-6 px-4 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex justify-between items-center">
         <div className="flex items-center">
           <Button variant="ghost" onClick={() => navigate("/vendas")} className="mr-4">
             <ArrowLeft className="h-4 w-4 mr-2" />

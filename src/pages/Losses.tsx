@@ -109,8 +109,8 @@ const Losses = () => {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Registrar Nova Perda</h1>
         <Button variant="outline" onClick={() => navigate("/perdas/historico")}>
           <History className="mr-2 h-4 w-4" />

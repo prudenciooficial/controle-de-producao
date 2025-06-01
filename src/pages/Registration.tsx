@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +13,7 @@ const Registration = () => {
   const { isLoading } = useData();
 
   return (
-    <div className="container mx-auto py-6 px-4 animate-fade-in space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">Cadastros</h1>
       </div>

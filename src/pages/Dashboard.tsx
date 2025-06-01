@@ -601,7 +601,7 @@ const Dashboard = () => {
   // Loading state rendering
   if (isLoading.products || isLoading.materialBatches) {
     return (
-      <div className="container mx-auto py-6 px-4 flex justify-center items-center h-[80vh]">
+      <div className="space-y-6 animate-fade-in flex justify-center items-center h-[80vh]">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
           <h2 className="text-xl font-medium">Carregando dados do dashboard...</h2>
@@ -611,7 +611,7 @@ const Dashboard = () => {
   }
   
   return (
-    <div className="container mx-auto py-6 px-4 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
       </div>

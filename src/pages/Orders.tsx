@@ -276,18 +276,18 @@ const Orders = () => {
   };
 
   const handlePrevious = () => {
-    const currentTabIndex = ORDER_TABS.findIndex(tab => tab.id === activeTabId);
-    if (currentTabIndex > 0) {
-      setActiveTabId(ORDER_TABS[currentTabIndex - 1].id);
+    const currentIndex = ORDER_TABS.findIndex((tab) => tab.id === activeTabId);
+    if (currentIndex > 0) {
+      setActiveTabId(ORDER_TABS[currentIndex - 1].id);
     }
   };
 
   const currentTabIndex = ORDER_TABS.findIndex(tab => tab.id === activeTabId);
 
   return (
-    <div className="container mx-auto py-6 px-4 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Registrar Novo Pedido/Compra</h1>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Registrar Novo Pedido</h1>
         <Button variant="outline" onClick={() => navigate("/pedidos/historico")}>
           <History className="mr-2 h-4 w-4" />
           Histórico de Pedidos

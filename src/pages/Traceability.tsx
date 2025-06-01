@@ -324,7 +324,7 @@ const Traceability = () => {
   );
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="space-y-6 animate-fade-in p-4">
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-2xl flex items-center"><Search className="mr-2 h-6 w-6" />Rastreabilidade de Lotes</CardTitle>

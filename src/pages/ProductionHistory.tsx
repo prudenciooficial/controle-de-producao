@@ -79,7 +79,7 @@ const ProductionHistory = () => {
   const fetchGlobalFactors = async () => {
     try {
       const { data, error } = await supabase
-        .from("products")
+        .from("global_settings")
         .select("fecula_conversion_factor, production_prediction_factor")
         .limit(1)
         .single();
@@ -293,8 +293,8 @@ const ProductionHistory = () => {
   };
   
   return (
-    <div className="container mx-auto py-6 px-4 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex justify-between items-center">
         <div className="flex items-center">
           <Button variant="ghost" onClick={() => navigate("/producao")} className="mr-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
