@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -103,6 +104,15 @@ const Production = () => {
   const watchedUsedMaterials = form.watch("usedMaterials");
   const watchedMixCount = form.watch("mixCount");
 
+  // Helper functions - moved before useMemo to avoid hoisting issues
+  const getProductDetails = (productId: string) => {
+    return products.find((p) => p.id === productId);
+  };
+  
+  const getMaterialBatchDetails = (materialBatchId: string) => {
+    return materialBatches.find((m) => m.id === materialBatchId);
+  };
+
   // Get conservant materials from selected materials
   const conservantMaterials = React.useMemo(() => {
     return watchedUsedMaterials
@@ -139,16 +149,6 @@ const Production = () => {
     getConservantMaterials,
     showMixFields
   } = useConservantLogic(conservantMaterials, watchedMixCount, conservantUsageFactor);
-  
-  // Get product details
-  const getProductDetails = (productId: string) => {
-    return products.find((p) => p.id === productId);
-  };
-  
-  // Get material batch details
-  const getMaterialBatchDetails = (materialBatchId: string) => {
-    return materialBatches.find((m) => m.id === materialBatchId);
-  };
   
   const onSubmit = (data: ProductionFormValues) => {
     if (!hasPermission('production', 'create')) {
@@ -582,7 +582,7 @@ const Production = () => {
                               } else if (!selectedMaterialBatchId) {
                                 form.clearErrors(`usedMaterials.${index}.quantity`);
                               }
-                            }, [selectedMaterialBatchId, currentQuantity, index, form, getMaterialBatchDetails]);
+                            }, [selectedMaterialBatchId, currentQuantity, index, form]);
 
                             return (
                               <FormItem>
