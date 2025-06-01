@@ -35,6 +35,7 @@ export interface UsedMaterial {
   batchNumber: string;
   quantity: number;
   unitOfMeasure: string;
+  mixCountUsed?: number;  // Added for conservante tracking
   createdAt?: Date;  // Made optional with ?
   updatedAt?: Date;  // Made optional with ?
 }
@@ -107,6 +108,8 @@ export interface Product {
   weightFactor?: number;
   feculaConversionFactor?: number;
   productionPredictionFactor?: number;
+  conservantConversionFactor?: number;  // Added
+  conservantUsageFactor?: number;       // Added
   type?: string;
   notes?: string;
   createdAt: Date;

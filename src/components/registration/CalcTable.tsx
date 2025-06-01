@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 interface GlobalFactors {
   feculaConversionFactor: number;
   productionPredictionFactor: number;
+  conservantConversionFactor: number;
+  conservantUsageFactor: number;
 }
 
 const CalcTable = () => {
@@ -19,7 +21,9 @@ const CalcTable = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [factors, setFactors] = useState<GlobalFactors>({
     feculaConversionFactor: 25,
-    productionPredictionFactor: 1.5
+    productionPredictionFactor: 1.5,
+    conservantConversionFactor: 1,
+    conservantUsageFactor: 0.1
   });
 
   useEffect(() => {
@@ -32,7 +36,7 @@ const CalcTable = () => {
       // Get the first product to extract global factors
       const { data, error } = await supabase
         .from("products")
-        .select("fecula_conversion_factor, production_prediction_factor")
+        .select("fecula_conversion_factor, production_prediction_factor, conservant_conversion_factor, conservant_usage_factor")
         .limit(1)
         .single();
       
@@ -48,7 +52,9 @@ const CalcTable = () => {
       
       setFactors({
         feculaConversionFactor: data.fecula_conversion_factor || 25,
-        productionPredictionFactor: data.production_prediction_factor || 1.5
+        productionPredictionFactor: data.production_prediction_factor || 1.5,
+        conservantConversionFactor: data.conservant_conversion_factor || 1,
+        conservantUsageFactor: data.conservant_usage_factor || 0.1
       });
     } catch (error) {
       console.error("Error:", error);
@@ -66,7 +72,9 @@ const CalcTable = () => {
         .from("products")
         .update({
           fecula_conversion_factor: factors.feculaConversionFactor,
-          production_prediction_factor: factors.productionPredictionFactor
+          production_prediction_factor: factors.productionPredictionFactor,
+          conservant_conversion_factor: factors.conservantConversionFactor,
+          conservant_usage_factor: factors.conservantUsageFactor
         });
       
       if (error) {
@@ -136,6 +144,40 @@ const CalcTable = () => {
                 />
                 <p className="text-sm text-muted-foreground">
                   Fator para calcular a quantidade prevista de kg a serem produzidos.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="conservant-conversion">Fator de Conversão de Conservante</Label>
+                <Input
+                  id="conservant-conversion"
+                  type="number"
+                  step="0.01"
+                  value={factors.conservantConversionFactor}
+                  onChange={(e) => setFactors({
+                    ...factors,
+                    conservantConversionFactor: parseFloat(e.target.value) || 0
+                  })}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Fator para converter caixas de conservante em kg.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="conservant-usage">Fator de Uso do Conservante</Label>
+                <Input
+                  id="conservant-usage"
+                  type="number"
+                  step="0.01"
+                  value={factors.conservantUsageFactor}
+                  onChange={(e) => setFactors({
+                    ...factors,
+                    conservantUsageFactor: parseFloat(e.target.value) || 0
+                  })}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Quantidade de conservante em kg necessária por mexida.
                 </p>
               </div>
             </div>

@@ -320,6 +320,8 @@ export type Database = {
       }
       products: {
         Row: {
+          conservant_conversion_factor: number | null
+          conservant_usage_factor: number | null
           created_at: string
           description: string | null
           fecula_conversion_factor: number | null
@@ -331,6 +333,8 @@ export type Database = {
           weight_factor: number | null
         }
         Insert: {
+          conservant_conversion_factor?: number | null
+          conservant_usage_factor?: number | null
           created_at?: string
           description?: string | null
           fecula_conversion_factor?: number | null
@@ -342,6 +346,8 @@ export type Database = {
           weight_factor?: number | null
         }
         Update: {
+          conservant_conversion_factor?: number | null
+          conservant_usage_factor?: number | null
           created_at?: string
           description?: string | null
           fecula_conversion_factor?: number | null
@@ -477,6 +483,7 @@ export type Database = {
           created_at: string
           id: string
           material_batch_id: string
+          mix_count_used: number | null
           production_batch_id: string
           quantity: number
           unit_of_measure: string
@@ -486,6 +493,7 @@ export type Database = {
           created_at?: string
           id?: string
           material_batch_id: string
+          mix_count_used?: number | null
           production_batch_id: string
           quantity: number
           unit_of_measure: string
@@ -495,6 +503,7 @@ export type Database = {
           created_at?: string
           id?: string
           material_batch_id?: string
+          mix_count_used?: number | null
           production_batch_id?: string
           quantity?: number
           unit_of_measure?: string
