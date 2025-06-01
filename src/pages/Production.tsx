@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -21,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 // Schema for form validation
 const productionFormSchema = z.object({
@@ -68,6 +68,39 @@ const Production = () => {
   
   const today = getTodayDateString();
   const [activeTabId, setActiveTabId] = useState<string>(TABS[0].id);
+  const [globalConservantUsageFactor, setGlobalConservantUsageFactor] = useState<number | null>(null);
+  const [isLoadingFactor, setIsLoadingFactor] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    const fetchGlobalFactors = async () => {
+      setIsLoadingFactor(true);
+      try {
+        const { data, error } = await supabase
+          .from("global_settings")
+          .select("conservant_usage_factor")
+          .limit(1)
+          .single();
+
+        if (error) {
+          console.error("Error fetching conservant usage factor:", error);
+          toast({ variant: "destructive", title: "Erro ao buscar fator", description: "Não foi possível buscar o fator de uso de conservante." });
+          setGlobalConservantUsageFactor(0.1); // Fallback em caso de erro
+        } else if (data) {
+          setGlobalConservantUsageFactor(data.conservant_usage_factor);
+        } else {
+          setGlobalConservantUsageFactor(0.1); // Fallback se não encontrar dados
+          toast({ title: "Fator não encontrado", description: "Fator de uso de conservante não encontrado. Usando valor padrão (0.1)." });
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching factor:", err);
+        toast({ variant: "destructive", title: "Erro inesperado", description: "Ocorreu um erro ao buscar o fator de uso." });
+        setGlobalConservantUsageFactor(0.1); // Fallback
+      } finally {
+        setIsLoadingFactor(false);
+      }
+    };
+    fetchGlobalFactors();
+  }, [toast]);
   
   const form = useForm<ProductionFormValues>({
     resolver: zodResolver(productionFormSchema),
@@ -129,16 +162,9 @@ const Production = () => {
         materialType: batch!.materialType,
         batchNumber: batch!.batchNumber,
         quantity: batch!.remainingQuantity,
-        unitOfMeasure: batch!.unitOfMeasure,
+        unitOfMeasure: "kg",
       }));
   }, [watchedUsedMaterials, materialBatches]);
-
-  // Get conservant usage factor from products table
-  const conservantUsageFactor = React.useMemo(() => {
-    // Get the first product to use its conservant usage factor
-    const firstProduct = products[0];
-    return firstProduct?.conservantUsageFactor || 0.1;
-  }, [products]);
 
   // Use conservant logic hook
   const {
@@ -148,7 +174,7 @@ const Production = () => {
     updateMixCount,
     getConservantMaterials,
     showMixFields
-  } = useConservantLogic(conservantMaterials, watchedMixCount, conservantUsageFactor);
+  } = useConservantLogic(conservantMaterials, watchedMixCount, globalConservantUsageFactor !== null ? globalConservantUsageFactor : 0.1);
   
   const onSubmit = (data: ProductionFormValues) => {
     if (!hasPermission('production', 'create')) {

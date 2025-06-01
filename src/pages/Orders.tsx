@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Combobox } from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 // Schema for form validation
 const ordersFormSchema = z.object({
@@ -56,6 +57,52 @@ const Orders = () => {
   const isMobile = useIsMobile();
   const [activeTabId, setActiveTabId] = React.useState<string>(ORDER_TABS[0].id);
   const [conservantConversions, setConservantConversions] = React.useState<Array<{itemIndex: number, originalQty: number, convertedQty: number}>>([]);
+  const [conservantConversionFactor, setConservantConversionFactor] = React.useState<number | null>(null);
+  const [isLoadingFactor, setIsLoadingFactor] = React.useState<boolean>(true);
+  
+  React.useEffect(() => {
+    const fetchConservantFactor = async () => {
+      setIsLoadingFactor(true);
+      try {
+        const { data, error } = await supabase
+          .from("global_settings")
+          .select("conservant_conversion_factor")
+          .limit(1)
+          .single();
+
+        if (error) {
+          console.error("Error fetching conservant conversion factor:", error);
+          toast({
+            variant: "destructive",
+            title: "Erro ao buscar fator",
+            description: "Não foi possível buscar o fator de conversão de conservante.",
+          });
+          setConservantConversionFactor(1); // Fallback para 1 em caso de erro
+        } else if (data) {
+          setConservantConversionFactor(data.conservant_conversion_factor);
+        } else {
+          // Caso não haja erro mas não haja data (improvável com .single())
+           setConservantConversionFactor(1); // Fallback
+           toast({
+            title: "Fator não encontrado",
+            description: "Fator de conversão de conservante não encontrado. Usando valor padrão (1).",
+          });
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching factor:", err);
+        toast({
+          variant: "destructive",
+          title: "Erro inesperado",
+          description: "Ocorreu um erro ao buscar o fator de conversão.",
+        });
+        setConservantConversionFactor(1); // Fallback
+      } finally {
+        setIsLoadingFactor(false);
+      }
+    };
+
+    fetchConservantFactor();
+  }, [toast]);
   
   const form = useForm<OrdersFormValues>({
     resolver: zodResolver(ordersFormSchema),
@@ -96,8 +143,7 @@ const Orders = () => {
     const material = getMaterialDetails(materialId);
     
     if (material?.type === "Conservante") {
-      const conversionFactor = 1; // This would come from global settings, using 1 as default
-      const convertedQty = value * conversionFactor;
+      const convertedQty = value * (conservantConversionFactor || 1);
       
       setConservantConversions(prev => {
         const filtered = prev.filter(c => c.itemIndex !== itemIndex);
@@ -133,22 +179,39 @@ const Orders = () => {
       const hasConversions = conservantConversions.length > 0;
       
       // Prepare order items with additional data
-      const orderItems = data.items.map((item) => {
+      const orderItems = data.items.map((item, index) => {
         const material = getMaterialDetails(item.materialId);
         
         if (!material) {
           throw new Error(`Insumo não encontrado: ${item.materialId}`);
         }
+
+        let finalQuantity = item.quantity;
+        let finalUnitOfMeasure = material.unitOfMeasure;
+
+        if (material.type === "Conservante") {
+          const conversion = conservantConversions.find(c => c.itemIndex === index);
+          if (conversion) {
+            finalQuantity = conversion.convertedQty;
+            finalUnitOfMeasure = "kg"; // Unidade de medida para conservante é sempre KG no estoque
+          } else {
+            // Isso não deveria acontecer se handleQuantityChange estiver funcionando corretamente
+            // e o item for de fato um conservante com quantidade > 0.
+            // Poderia logar um aviso ou usar a quantidade original como fallback, 
+            // mas idealmente a conversão deve existir.
+            console.warn(`Conversão não encontrada para o conservante no índice ${index}. Usando quantidade original.`);
+          }
+        }
         
         return {
-          id: Math.random().toString(36).substring(2, 15),
+          id: Math.random().toString(36).substring(2, 15), // Considerar UUID mais robusto se necessário
           materialId: item.materialId,
           materialName: material.name,
           materialType: material.type,
-          quantity: item.quantity,
-          unitOfMeasure: material.unitOfMeasure,
+          quantity: finalQuantity,
+          unitOfMeasure: finalUnitOfMeasure,
           batchNumber: item.batchNumber,
-          expiryDate: item.expiryDate ? new Date(item.expiryDate) : undefined,
+          expiryDate: item.expiryDate ? parseDateString(item.expiryDate) : undefined, // Consistência na conversão da data
           hasReport: item.hasReport,
         };
       });
@@ -399,7 +462,7 @@ const Orders = () => {
                         />
                       </div>
                       <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 items-center", isMobile && "grid-cols-1")}>
-                         <FormField
+                        <FormField
                           control={form.control}
                           name={`items.${index}.expiryDate`}
                           render={({ field }) => (
@@ -439,13 +502,12 @@ const Orders = () => {
                 Voltar
               </Button>
             )}
-            {currentTabIndex < ORDER_TABS.length - 1 && (
+            {currentTabIndex < ORDER_TABS.length - 1 ? (
               <Button type="button" onClick={handleNext} className="ml-auto md:w-auto">
                 Avançar
               </Button>
-            )}
-            {currentTabIndex === ORDER_TABS.length - 1 && (
-              <Button type="submit" disabled={form.formState.isSubmitting} className="ml-auto md:w-auto">
+            ) : (
+              <Button type="submit" disabled={form.formState.isSubmitting || isLoadingFactor} className="ml-auto md:w-auto">
                 {form.formState.isSubmitting ? "Salvando..." : "Salvar Pedido"}
               </Button>
             )}

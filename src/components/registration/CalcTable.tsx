@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 
 interface GlobalFactors {
+  id: string | null;
   feculaConversionFactor: number;
   productionPredictionFactor: number;
   conservantConversionFactor: number;
@@ -20,6 +20,7 @@ const CalcTable = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [factors, setFactors] = useState<GlobalFactors>({
+    id: null,
     feculaConversionFactor: 25,
     productionPredictionFactor: 1.5,
     conservantConversionFactor: 1,
@@ -33,31 +34,54 @@ const CalcTable = () => {
   const fetchGlobalFactors = async () => {
     try {
       setIsLoading(true);
-      // Get the first product to extract global factors
+      // Buscar da tabela global_settings
       const { data, error } = await supabase
-        .from("products")
-        .select("fecula_conversion_factor, production_prediction_factor, conservant_conversion_factor, conservant_usage_factor")
-        .limit(1)
+        .from("global_settings")
+        .select("id, fecula_conversion_factor, production_prediction_factor, conservant_conversion_factor, conservant_usage_factor")
+        .limit(1) // Deve haver apenas um registro de configurações globais
         .single();
       
       if (error) {
         console.error("Error fetching global factors:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro",
-          description: "Falha ao carregar fatores de cálculo."
-        });
-        return;
+        // Se não encontrar configurações, pode ser a primeira execução. Mantém os padrões.
+        if (error.code === 'PGRST116') { // PGRST116: "Searched for a single row, but found no rows"
+          toast({
+            title: "Configurações Iniciais",
+            description: "Nenhuma configuração global encontrada. Usando valores padrão. Salve para criar o primeiro registro."
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Erro",
+            description: "Falha ao carregar fatores de cálculo."
+          });
+        }
+        // Não retorna, permite que o usuário salve e crie o registro se não existir.
       }
       
-      setFactors({
-        feculaConversionFactor: data.fecula_conversion_factor || 25,
-        productionPredictionFactor: data.production_prediction_factor || 1.5,
-        conservantConversionFactor: data.conservant_conversion_factor || 1,
-        conservantUsageFactor: data.conservant_usage_factor || 0.1
-      });
+      if (data) {
+        setFactors({
+          id: data.id,
+          feculaConversionFactor: data.fecula_conversion_factor || 25,
+          productionPredictionFactor: data.production_prediction_factor || 1.5,
+          conservantConversionFactor: data.conservant_conversion_factor || 1,
+          conservantUsageFactor: data.conservant_usage_factor || 0.1
+        });
+      } else if (!error) {
+        // Caso não haja dados mas também não haja erro (improvável com .single() a menos que a tabela esteja vazia e não retorne PGRST116)
+        // Considerar criar um registro aqui ou garantir que o save o faça.
+        toast({
+            title: "Atenção",
+            description: "Nenhum fator de cálculo global encontrado. Verifique as configurações ou salve para criar."
+        });
+      }
     } catch (error) {
       console.error("Error:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro Inesperado",
+        description: "Ocorreu um erro inesperado ao buscar os fatores."
+      });
     } finally {
       setIsLoading(false);
     }
@@ -66,16 +90,37 @@ const CalcTable = () => {
   const updateGlobalFactors = async () => {
     try {
       setIsSaving(true);
-      
-      // Update all products with the same global factors
-      const { error } = await supabase
-        .from("products")
-        .update({
-          fecula_conversion_factor: factors.feculaConversionFactor,
-          production_prediction_factor: factors.productionPredictionFactor,
-          conservant_conversion_factor: factors.conservantConversionFactor,
-          conservant_usage_factor: factors.conservantUsageFactor
-        });
+
+      const dataToUpdate = {
+        fecula_conversion_factor: factors.feculaConversionFactor,
+        production_prediction_factor: factors.productionPredictionFactor,
+        conservant_conversion_factor: factors.conservantConversionFactor,
+        conservant_usage_factor: factors.conservantUsageFactor
+      };
+
+      let error;
+
+      if (factors.id) {
+        // Se temos um ID, atualizamos o registro existente
+        const { error: updateError } = await supabase
+          .from("global_settings")
+          .update(dataToUpdate)
+          .eq("id", factors.id);
+        error = updateError;
+      } else {
+        // Se não temos um ID (primeira vez, ou falha ao buscar), tentamos inserir um novo registro.
+        // O ID será gerado pelo banco de dados (DEFAULT gen_random_uuid()).
+        // E created_at e updated_at também serão definidos pelo banco.
+        const { data: newData, error: insertError } = await supabase
+          .from("global_settings")
+          .insert(dataToUpdate)
+          .select("id") // Seleciona o ID do novo registro para atualizar o estado
+          .single();
+        error = insertError;
+        if (!error && newData) {
+          setFactors(prevFactors => ({ ...prevFactors, id: newData.id })); // Atualiza o ID no estado
+        }
+      }
       
       if (error) {
         console.error("Error updating global factors:", error);

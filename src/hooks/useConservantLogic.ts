@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { UsedMaterial } from "@/types";
 
@@ -39,7 +38,7 @@ export const useConservantLogic = (
         maxMixes: Math.floor((material.quantity || 0) / conservantUsageFactor),
         assignedMixes,
         quantity: assignedMixes * conservantUsageFactor,
-        unitOfMeasure: material.unitOfMeasure
+        unitOfMeasure: "kg"
       };
     });
 
@@ -113,7 +112,7 @@ export const useConservantLogic = (
       materialType: "Conservante",
       batchNumber: usage.batchNumber,
       quantity: usage.quantity,
-      unitOfMeasure: usage.unitOfMeasure,
+      unitOfMeasure: "kg",
       mixCountUsed: usage.assignedMixes
     }));
   };
