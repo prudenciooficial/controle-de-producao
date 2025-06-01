@@ -78,6 +78,10 @@ interface DataContextType {
   refetchMaterials: () => Promise<void>;
   refetchSuppliers: () => Promise<void>;
   refetchMaterialBatches: () => Promise<void>;
+  refetchProductionBatches: () => Promise<void>;
+  refetchSales: () => Promise<void>;
+  refetchOrders: () => Promise<void>;
+  refetchLosses: () => Promise<void>;
   
   // CRUD operations
   addProductionBatch: (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => Promise<void>;
@@ -414,6 +418,74 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refetchProductionBatches = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, productionBatches: true }));
+      const productionBatchesData = await fetchProductionBatches();
+      setProductionBatches(productionBatchesData);
+    } catch (error) {
+      console.error("Error refetching production batches:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar dados dos lotes de produção",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, productionBatches: false }));
+    }
+  };
+
+  const refetchSales = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, sales: true }));
+      const salesData = await fetchSales();
+      setSales(salesData);
+    } catch (error) {
+      console.error("Error refetching sales:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar dados das vendas",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, sales: false }));
+    }
+  };
+
+  const refetchOrders = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, orders: true }));
+      const ordersData = await fetchOrders();
+      setOrders(ordersData);
+    } catch (error) {
+      console.error("Error refetching orders:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar dados dos pedidos",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, orders: false }));
+    }
+  };
+
+  const refetchLosses = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, losses: true }));
+      const lossesData = await fetchLossesWithDetails();
+      setLosses(lossesData);
+    } catch (error) {
+      console.error("Error refetching losses:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar dados das perdas",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, losses: false }));
+    }
+  };
+
   // Calculate dashboard stats based on date range
   useEffect(() => {
     // Filter data based on date range
@@ -536,7 +608,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addProductionBatch = async (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newBatch = await createProductionBatchApi(batch);
-      setProductionBatches(prev => [...prev, newBatch]);
+      await refetchProductionBatches();
+      await refetchMaterialBatches();
       toast({
         title: "Sucesso",
         description: "Lote de produção registrado com sucesso",
@@ -555,9 +628,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProductionBatch = async (id: string, batch: Partial<ProductionBatch>) => {
     try {
       await updateProductionBatchApi(id, batch);
-      setProductionBatches(prev => 
-        prev.map(pb => pb.id === id ? { ...pb, ...batch, updatedAt: new Date() } : pb)
-      );
+      await refetchProductionBatches();
+      await refetchMaterialBatches();
       toast({
         title: "Sucesso",
         description: "Lote de produção atualizado com sucesso",
@@ -576,7 +648,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteProductionBatch = async (id: string) => {
     try {
       await deleteProductionBatchApi(id);
-      setProductionBatches(prev => prev.filter(pb => pb.id !== id));
+      await refetchProductionBatches();
+      await refetchMaterialBatches();
       toast({
         title: "Sucesso",
         description: "Lote de produção excluído com sucesso",
@@ -596,11 +669,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addSale = async (sale: Omit<Sale, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newSale = await createSaleApi(sale);
-      setSales(prev => [...prev, newSale]);
-      
-      // Update production batches after sale
-      await fetchProductionBatches().then(setProductionBatches);
-      
+      // setSales(prev => [...prev, newSale]); // Será feito por um refetchSales se necessário, ou manter para otimismo
+      // await fetchProductionBatches().then(setProductionBatches); // Substituir
+      await refetchProductionBatches();
+      await refetchSales(); // Adicionar para atualizar a lista de vendas
       toast({
         title: "Sucesso",
         description: "Venda registrada com sucesso",
@@ -619,9 +691,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateSale = async (id: string, sale: Partial<Sale>) => {
     try {
       await updateSaleApi(id, sale);
-      setSales(prev => 
-        prev.map(s => s.id === id ? { ...s, ...sale, updatedAt: new Date() } : s)
-      );
+      // setSales(prev => 
+      //   prev.map(s => s.id === id ? { ...s, ...sale, updatedAt: new Date() } : s)
+      // ); // Será feito pelo refetch
+      await refetchProductionBatches();
+      await refetchSales();
       toast({
         title: "Sucesso",
         description: "Venda atualizada com sucesso",
@@ -640,11 +714,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteSale = async (id: string) => {
     try {
       await deleteSaleApi(id);
-      setSales(prev => prev.filter(s => s.id !== id));
-      
+      // setSales(prev => prev.filter(s => s.id !== id)); // Será feito pelo refetch
       // Refresh production batches after deleting a sale
-      await fetchProductionBatches().then(setProductionBatches);
-      
+      // await fetchProductionBatches().then(setProductionBatches); // Substituir
+      await refetchProductionBatches();
+      await refetchSales();
       toast({
         title: "Sucesso",
         description: "Venda excluída com sucesso",
@@ -664,11 +738,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addOrder = async (order: Omit<Order, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newOrder = await createOrderApi(order);
-      setOrders(prev => [...prev, newOrder]);
-      
+      // setOrders(prev => [...prev, newOrder]); // Será feito por refetchOrders
       // Refresh material batches after adding an order
-      await fetchMaterialBatchesWithDetails().then(setMaterialBatches);
-      
+      // await fetchMaterialBatchesWithDetails().then(setMaterialBatches); // Substituir
+      await refetchMaterialBatches();
+      await refetchOrders(); // Adicionar para atualizar a lista de pedidos
       toast({
         title: "Sucesso",
         description: "Pedido registrado com sucesso",
@@ -687,9 +761,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateOrder = async (id: string, order: Partial<Order>) => {
     try {
       await updateOrderApi(id, order);
-      setOrders(prev => 
-        prev.map(o => o.id === id ? { ...o, ...order, updatedAt: new Date() } : o)
-      );
+      // setOrders(prev => 
+      //   prev.map(o => o.id === id ? { ...o, ...order, updatedAt: new Date() } : o)
+      // ); // Será feito pelo refetch
+      await refetchMaterialBatches();
+      await refetchOrders();
       toast({
         title: "Sucesso",
         description: "Pedido atualizado com sucesso",
@@ -708,11 +784,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteOrder = async (id: string) => {
     try {
       await deleteOrderApi(id);
-      setOrders(prev => prev.filter(o => o.id !== id));
-      
+      // setOrders(prev => prev.filter(o => o.id !== id)); // Será feito pelo refetch
       // Refresh material batches after deleting an order
-      await fetchMaterialBatchesWithDetails().then(setMaterialBatches);
-      
+      // await fetchMaterialBatchesWithDetails().then(setMaterialBatches); // Substituir
+      await refetchMaterialBatches();
+      await refetchOrders(); 
       toast({
         title: "Sucesso",
         description: "Pedido excluído com sucesso",
@@ -732,7 +808,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addLoss = async (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">) => {
     try {
       const newLoss = await createLossApi(loss);
-      setLosses(prev => [...prev, newLoss]);
+      // setLosses(prev => [...prev, newLoss]); // Será feito por refetchLosses
+      await refetchProductionBatches();
+      await refetchMaterialBatches();
+      await refetchLosses(); // Adicionar para atualizar a lista de perdas
       toast({
         title: "Sucesso",
         description: "Perda registrada com sucesso",
@@ -751,9 +830,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateLoss = async (id: string, loss: Partial<Loss>) => {
     try {
       await updateLossApi(id, loss);
-      setLosses(prev => 
-        prev.map(l => l.id === id ? { ...l, ...loss, updatedAt: new Date() } : l)
-      );
+      await refetchProductionBatches();
+      await refetchMaterialBatches();
+      await refetchLosses();
       toast({
         title: "Sucesso",
         description: "Perda atualizada com sucesso",
@@ -776,7 +855,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await deleteLossApi(id);
       
       // Update the state only after successful deletion
-      setLosses(prev => prev.filter(l => l.id !== id));
+      // setLosses(prev => prev.filter(l => l.id !== id)); // Será feito pelo refetch
+      await refetchProductionBatches();
+      await refetchMaterialBatches();
+      await refetchLosses();
       
       // Clear any toasts that might be showing
       toast({
@@ -1019,6 +1101,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refetchMaterials,
     refetchSuppliers,
     refetchMaterialBatches,
+    refetchProductionBatches,
+    refetchSales,
+    refetchOrders,
+    refetchLosses,
     addProductionBatch,
     updateProductionBatch,
     deleteProductionBatch,
