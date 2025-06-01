@@ -1,4 +1,3 @@
-
 import { DateRange } from "react-day-picker";
 
 export interface ProductionBatch {
@@ -18,7 +17,7 @@ export interface ProductionBatch {
 }
 
 export interface ProducedItem {
-  id: string;
+  id?: string;
   productId: string;
   productName: string;
   batchNumber: string;

@@ -22,7 +22,13 @@ export const useConservantLogic = (
 
   // Initialize conservant usages when materials change
   useEffect(() => {
+    console.log('[useConservantLogic] Effect to calculate usages triggered.');
+    console.log('[useConservantLogic] Received conservantMaterials:', JSON.stringify(conservantMaterials, null, 2));
+    console.log('[useConservantLogic] Received totalMixes:', totalMixes);
+    console.log('[useConservantLogic] Received conservantUsageFactor:', conservantUsageFactor);
+
     if (conservantMaterials.length === 0) {
+      console.log('[useConservantLogic] No conservant materials, setting usages to [].');
       setConservantUsages([]);
       return;
     }
@@ -30,18 +36,22 @@ export const useConservantLogic = (
     const usages = conservantMaterials.map((material, index) => {
       // For the first (or only) conservant, assign all remaining mixes
       const assignedMixes = index === 0 ? totalMixes : 0;
+      const calculatedQuantity = assignedMixes * conservantUsageFactor;
       
+      console.log(`[useConservantLogic] Mapping material ${material.materialName} (index ${index}): assignedMixes=${assignedMixes}, calculatedQuantity=${calculatedQuantity}`);
+
       return {
         materialBatchId: material.materialBatchId,
         materialName: material.materialName,
         batchNumber: material.batchNumber,
         maxMixes: Math.floor((material.quantity || 0) / conservantUsageFactor),
         assignedMixes,
-        quantity: assignedMixes * conservantUsageFactor,
+        quantity: calculatedQuantity,
         unitOfMeasure: "kg"
       };
     });
 
+    console.log('[useConservantLogic] Calculated usages to set:', JSON.stringify(usages, null, 2));
     setConservantUsages(usages);
   }, [conservantMaterials, totalMixes, conservantUsageFactor]);
 
@@ -117,12 +127,14 @@ export const useConservantLogic = (
     }));
   };
 
+  console.log('[useConservantLogic] Returning from function. conservantUsages.length:', conservantUsages.length);
+  console.log('[useConservantLogic] showMixFields:', conservantUsages.length > 1);
+
   return {
     conservantUsages,
     isValid,
     validationError,
     updateMixCount,
     getConservantMaterials,
-    showMixFields: conservantUsages.length > 1
   };
 };
