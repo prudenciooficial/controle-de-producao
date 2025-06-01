@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConservantLogic } from "@/hooks/useConservantLogic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox } from "@/components/ui/combobox";
+import { ConservantMixFields } from "@/components/production/ConservantMixFields";
 import { History, Plus, Trash, Package, Factory, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -96,6 +98,46 @@ const Production = () => {
   const availableMaterialBatches = materialBatches.filter(
     (batch) => batch.remainingQuantity > 0
   );
+
+  // Watch form values for conservant logic
+  const watchedUsedMaterials = form.watch("usedMaterials");
+  const watchedMixCount = form.watch("mixCount");
+
+  // Get conservant materials from selected materials
+  const conservantMaterials = React.useMemo(() => {
+    return watchedUsedMaterials
+      .filter(material => material.materialBatchId)
+      .map(material => {
+        const batch = getMaterialBatchDetails(material.materialBatchId);
+        return batch;
+      })
+      .filter(batch => batch && batch.materialType === "Conservante")
+      .map(batch => ({
+        materialBatchId: batch!.id,
+        materialName: batch!.materialName,
+        materialType: batch!.materialType,
+        batchNumber: batch!.batchNumber,
+        quantity: batch!.remainingQuantity,
+        unitOfMeasure: batch!.unitOfMeasure,
+      }));
+  }, [watchedUsedMaterials, materialBatches]);
+
+  // Get conservant usage factor from products table
+  const conservantUsageFactor = React.useMemo(() => {
+    // Get the first product to use its conservant usage factor
+    const firstProduct = products[0];
+    return firstProduct?.conservantUsageFactor || 0.1;
+  }, [products]);
+
+  // Use conservant logic hook
+  const {
+    conservantUsages,
+    isValid: conservantValid,
+    validationError: conservantError,
+    updateMixCount,
+    getConservantMaterials,
+    showMixFields
+  } = useConservantLogic(conservantMaterials, watchedMixCount, conservantUsageFactor);
   
   // Get product details
   const getProductDetails = (productId: string) => {
@@ -113,6 +155,16 @@ const Production = () => {
         variant: "destructive",
         title: "Acesso Negado",
         description: "Você não tem permissão para registrar novas produções.",
+      });
+      return;
+    }
+
+    // Validate conservant distribution if conservants are present
+    if (conservantMaterials.length > 0 && !conservantValid) {
+      toast({
+        variant: "destructive",
+        title: "Erro na distribuição de conservantes",
+        description: conservantError,
       });
       return;
     }
@@ -137,28 +189,66 @@ const Production = () => {
         };
       });
       
-      // Prepare usedMaterials with additional data
-      const usedMaterials = data.usedMaterials.map((item) => {
-        const materialBatch = getMaterialBatchDetails(item.materialBatchId);
+      // Prepare usedMaterials with conservant logic
+      let usedMaterials;
+      
+      if (conservantMaterials.length > 0) {
+        // Use conservant materials from the hook
+        const conservantUsedMaterials = getConservantMaterials();
         
-        if (!materialBatch) {
-          throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
-        }
+        // Get non-conservant materials
+        const nonConservantMaterials = data.usedMaterials
+          .filter(item => {
+            const batch = getMaterialBatchDetails(item.materialBatchId);
+            return batch && batch.materialType !== "Conservante";
+          })
+          .map((item) => {
+            const materialBatch = getMaterialBatchDetails(item.materialBatchId);
+            
+            if (!materialBatch) {
+              throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
+            }
+            
+            if (materialBatch.remainingQuantity < item.quantity) {
+              throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
+            }
+            
+            return {
+              id: Math.random().toString(36).substring(2, 15),
+              materialBatchId: item.materialBatchId,
+              materialName: materialBatch.materialName,
+              materialType: materialBatch.materialType,
+              batchNumber: materialBatch.batchNumber,
+              quantity: item.quantity,
+              unitOfMeasure: materialBatch.unitOfMeasure,
+            };
+          });
         
-        if (materialBatch.remainingQuantity < item.quantity) {
-          throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
-        }
-        
-        return {
-          id: Math.random().toString(36).substring(2, 15),
-          materialBatchId: item.materialBatchId,
-          materialName: materialBatch.materialName,
-          materialType: materialBatch.materialType,
-          batchNumber: materialBatch.batchNumber,
-          quantity: item.quantity,
-          unitOfMeasure: materialBatch.unitOfMeasure,
-        };
-      });
+        usedMaterials = [...conservantUsedMaterials, ...nonConservantMaterials];
+      } else {
+        // Regular material processing
+        usedMaterials = data.usedMaterials.map((item) => {
+          const materialBatch = getMaterialBatchDetails(item.materialBatchId);
+          
+          if (!materialBatch) {
+            throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
+          }
+          
+          if (materialBatch.remainingQuantity < item.quantity) {
+            throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
+          }
+          
+          return {
+            id: Math.random().toString(36).substring(2, 15),
+            materialBatchId: item.materialBatchId,
+            materialName: materialBatch.materialName,
+            materialType: materialBatch.materialType,
+            batchNumber: materialBatch.batchNumber,
+            quantity: item.quantity,
+            unitOfMeasure: materialBatch.unitOfMeasure,
+          };
+        });
+      }
       
       // Create and add production batch
       const productionBatch = {
@@ -417,7 +507,7 @@ const Production = () => {
               </Card>
             </TabsContent>
 
-            {/* Aba de Insumos Utilizados */}
+            {/* Updated materials tab with conservant logic */}
             <TabsContent value="materials" forceMount className={cn(activeTabId !== "materials" && "hidden")} >
               <Card>
                 <CardHeader>
@@ -530,6 +620,17 @@ const Production = () => {
                   >
                     <Plus className="mr-2 h-4 w-4" /> Adicionar Insumo
                   </Button>
+
+                  {/* Conservant Mix Fields */}
+                  {showMixFields && (
+                    <ConservantMixFields
+                      conservantUsages={conservantUsages}
+                      isValid={conservantValid}
+                      validationError={conservantError}
+                      onMixCountChange={updateMixCount}
+                      form={form}
+                    />
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
