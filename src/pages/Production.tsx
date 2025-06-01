@@ -113,6 +113,7 @@ const Production = () => {
       })
       .filter(batch => batch && batch.materialType === "Conservante")
       .map(batch => ({
+        id: batch!.id,
         materialBatchId: batch!.id,
         materialName: batch!.materialName,
         materialType: batch!.materialType,
