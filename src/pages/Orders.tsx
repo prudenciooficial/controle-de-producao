@@ -13,12 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { History, Plus, Trash, ClipboardList, Factory } from "lucide-react";
+import { History, Plus, Trash, ClipboardList, Factory, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Combobox } from "@/components/ui/combobox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Schema for form validation
 const ordersFormSchema = z.object({
@@ -54,6 +55,7 @@ const Orders = () => {
   const { hasPermission } = useAuth();
   const isMobile = useIsMobile();
   const [activeTabId, setActiveTabId] = React.useState<string>(ORDER_TABS[0].id);
+  const [conservantConversions, setConservantConversions] = React.useState<Array<{itemIndex: number, originalQty: number, convertedQty: number}>>([]);
   
   const form = useForm<OrdersFormValues>({
     resolver: zodResolver(ordersFormSchema),
@@ -88,6 +90,27 @@ const Orders = () => {
   const getSupplierDetails = (supplierId: string) => {
     return suppliers.find((s) => s.id === supplierId);
   };
+
+  // Check for conservant conversions when quantity changes
+  const handleQuantityChange = (itemIndex: number, value: number, materialId: string) => {
+    const material = getMaterialDetails(materialId);
+    
+    if (material?.type === "Conservante") {
+      const conversionFactor = 1; // This would come from global settings, using 1 as default
+      const convertedQty = value * conversionFactor;
+      
+      setConservantConversions(prev => {
+        const filtered = prev.filter(c => c.itemIndex !== itemIndex);
+        if (value > 0) {
+          return [...filtered, { itemIndex, originalQty: value, convertedQty }];
+        }
+        return filtered;
+      });
+    } else {
+      // Remove any existing conversion for this item if it's not conservant
+      setConservantConversions(prev => prev.filter(c => c.itemIndex !== itemIndex));
+    }
+  };
   
   const onSubmit = (data: OrdersFormValues) => {
     if (!hasPermission('orders', 'create')) {
@@ -105,6 +128,9 @@ const Orders = () => {
       if (!supplier) {
         throw new Error(`Fornecedor não encontrado: ${data.supplierId}`);
       }
+      
+      // Check if there are conservant conversions to notify user
+      const hasConversions = conservantConversions.length > 0;
       
       // Prepare order items with additional data
       const orderItems = data.items.map((item) => {
@@ -139,6 +165,14 @@ const Orders = () => {
       
       addOrder(order);
       
+      // Show conversion notification if applicable
+      if (hasConversions) {
+        toast({
+          title: "Conversão Automática Aplicada",
+          description: "Conservantes foram automaticamente convertidos de caixas para kg.",
+        });
+      }
+      
       // Reset form
       form.reset({
         date: getTodayDateString(),
@@ -157,6 +191,7 @@ const Orders = () => {
       });
 
       setActiveTabId(ORDER_TABS[0].id); // Reset para a primeira aba
+      setConservantConversions([]); // Clear conversions
     } catch (error) {
       console.error("Erro ao registrar pedido:", error);
       toast({
@@ -280,6 +315,21 @@ const Orders = () => {
                   <CardDescription>Liste os insumos recebidos, lotes e validades.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Show conversion alert if there are conservant items */}
+                  {conservantConversions.length > 0 && (
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Conversão Automática:</strong> Conservantes serão automaticamente convertidos de caixas para kg no estoque.
+                        {conservantConversions.map((conv, idx) => (
+                          <div key={idx} className="text-sm mt-1">
+                            • Item {conv.itemIndex + 1}: {conv.originalQty} caixas → {conv.convertedQty} kg
+                          </div>
+                        ))}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
                   {fields.map((item, index) => (
                     <Card key={item.id} className="p-4 relative bg-muted/30">
                       <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => remove(index)}>
@@ -307,13 +357,34 @@ const Orders = () => {
                         <FormField
                           control={form.control}
                           name={`items.${index}.quantity`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Quantidade Recebida</FormLabel>
-                              <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                          render={({ field }) => {
+                            const material = getMaterialDetails(form.watch(`items.${index}.materialId`));
+                            const isConservant = material?.type === "Conservante";
+                            
+                            return (
+                              <FormItem>
+                                <FormLabel>
+                                  Quantidade Recebida
+                                  {isConservant && (
+                                    <span className="text-sm text-muted-foreground ml-1">(caixas)</span>
+                                  )}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    placeholder="0" 
+                                    {...field} 
+                                    onChange={e => {
+                                      const value = parseFloat(e.target.value) || 0;
+                                      field.onChange(value);
+                                      handleQuantityChange(index, value, form.watch(`items.${index}.materialId`));
+                                    }} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            );
+                          }}
                         />
                         <FormField
                           control={form.control}

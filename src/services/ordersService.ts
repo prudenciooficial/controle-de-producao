@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Order, OrderItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -65,12 +64,31 @@ export const fetchOrders = async (): Promise<Order[]> => {
   return orders;
 };
 
+// Helper function to get conservant conversion factor
+const getConservantConversionFactor = async (): Promise<number> => {
+  const { data, error } = await supabase
+    .from("products")
+    .select("conservant_conversion_factor")
+    .limit(1)
+    .single();
+  
+  if (error) {
+    console.warn("Could not fetch conservant conversion factor, using default:", error);
+    return 1; // Default factor
+  }
+  
+  return data.conservant_conversion_factor || 1;
+};
+
 export const createOrder = async (
   order: Omit<Order, "id" | "createdAt" | "updatedAt">
 ): Promise<Order> => {
   try {
     // Start a transaction
     await beginTransaction();
+    
+    // Get conservant conversion factor
+    const conservantFactor = await getConservantConversionFactor();
     
     // Insert the order
     const { data: orderData, error: orderError } = await supabase
@@ -88,16 +106,23 @@ export const createOrder = async (
     
     const orderId = orderData.id;
     
-    // Insert order items only - removed manual material_batches insertion 
-    // since this is handled by the database trigger
+    // Insert order items with automatic conservant conversion
     for (const item of order.items) {
+      let adjustedQuantity = item.quantity;
+      
+      // Check if this is a conservant material and apply conversion
+      if (item.materialType === "Conservante") {
+        adjustedQuantity = item.quantity * conservantFactor;
+        console.log(`Converting conservant: ${item.quantity} caixas × ${conservantFactor} = ${adjustedQuantity} kg`);
+      }
+      
       // Insert order item
       const { error: itemError } = await supabase
         .from("order_items")
         .insert({
           order_id: orderId,
           material_id: item.materialId,
-          quantity: item.quantity,
+          quantity: adjustedQuantity, // Use converted quantity for conservants
           unit_of_measure: item.unitOfMeasure,
           batch_number: item.batchNumber,
           expiry_date: item.expiryDate instanceof Date ? item.expiryDate.toISOString() : item.expiryDate,
@@ -216,14 +241,24 @@ export const updateOrder = async (
         if (deleteError) throw deleteError;
       }
       
+      // Get conservant conversion factor for updates and additions
+      const conservantFactor = await getConservantConversionFactor();
+      
       // Process updates
       for (const item of itemsToUpdate) {
         if (!item.id) continue; // Extra safety check
         
+        let adjustedQuantity = item.quantity;
+        
+        // Apply conservant conversion if needed
+        if (item.materialType === "Conservante") {
+          adjustedQuantity = item.quantity * conservantFactor;
+        }
+        
         const { error: updateError } = await supabase
           .from("order_items")
           .update({
-            quantity: item.quantity,
+            quantity: adjustedQuantity,
             unit_of_measure: item.unitOfMeasure,
             batch_number: item.batchNumber,
             expiry_date: item.expiryDate instanceof Date ? item.expiryDate.toISOString() : item.expiryDate,
@@ -244,7 +279,7 @@ export const updateOrder = async (
           // Get the original order item to see if quantity changed
           const originalItem = currentItems?.find(ci => ci.id === item.id);
           if (originalItem) {
-            const quantityDiff = item.quantity - originalItem.quantity;
+            const quantityDiff = adjustedQuantity - originalItem.quantity;
             if (quantityDiff !== 0) {
               for (const batch of materialBatches) {
                 // Only update if not being used in production yet
@@ -273,13 +308,20 @@ export const updateOrder = async (
       
       // Process additions
       for (const item of itemsToAdd) {
+        let adjustedQuantity = item.quantity;
+        
+        // Apply conservant conversion if needed
+        if (item.materialType === "Conservante") {
+          adjustedQuantity = item.quantity * conservantFactor;
+        }
+        
         // Insert the new order item
         const { error: insertError } = await supabase
           .from("order_items")
           .insert({
             order_id: id,
             material_id: item.materialId,
-            quantity: item.quantity,
+            quantity: adjustedQuantity,
             unit_of_measure: item.unitOfMeasure,
             batch_number: item.batchNumber,
             expiry_date: item.expiryDate instanceof Date ? item.expiryDate.toISOString() : item.expiryDate,

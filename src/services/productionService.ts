@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -62,6 +61,7 @@ const fetchUsedMaterials = async (productionBatchId: string): Promise<UsedMateri
     batchNumber: material.material_batches.batch_number, // Now getting batch number from joined data
     quantity: material.quantity,
     unitOfMeasure: material.unit_of_measure,
+    mixCountUsed: material.mix_count_used, // Include the new mix count field
     createdAt: new Date(material.created_at),
     updatedAt: new Date(material.updated_at)
   }));
@@ -183,7 +183,8 @@ export const createProductionBatch = async (
           production_batch_id: batchData.id,
           material_batch_id: material.materialBatchId,
           quantity: material.quantity,
-          unit_of_measure: material.unitOfMeasure
+          unit_of_measure: material.unitOfMeasure,
+          mix_count_used: material.mixCountUsed // Include mix count for conservants
         });
       
       if (materialError) {
@@ -361,7 +362,8 @@ export const updateProductionBatch = async (
           .update({
             material_batch_id: material.materialBatchId,
             quantity: material.quantity,
-            unit_of_measure: material.unitOfMeasure
+            unit_of_measure: material.unitOfMeasure,
+            mix_count_used: material.mixCountUsed // Update mix count for conservants
           })
           .eq("id", material.id);
 
