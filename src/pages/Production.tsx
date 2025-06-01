@@ -198,7 +198,7 @@ const Production = () => {
 
     try {
       // Prepare producedItems with additional data
-      const producedItems = data.producedItems.map((item) => {
+      const producedItemsData = data.producedItems.map((item) => {
         const product = getProductDetails(item.productId);
         
         if (!product) {
@@ -206,92 +206,80 @@ const Production = () => {
         }
         
         return {
-          id: Math.random().toString(36).substring(2, 15),
+          // id: gerado pelo backend
           productId: item.productId,
           productName: product.name,
           quantity: item.quantity,
           unitOfMeasure: product.unitOfMeasure,
-          batchNumber: data.batchNumber, // FIXED: Use only the batch number without product code
-          remainingQuantity: item.quantity,
+          batchNumber: data.batchNumber,
+          remainingQuantity: item.quantity, // Assumindo que a quantidade produzida é a quantidade restante inicial
         };
       });
       
       // Prepare usedMaterials with conservant logic
-      let usedMaterials;
+      let usedMaterialsPayload: any[] = []; // Definir tipo mais específico se possível, ex: Array<TablesInsert<"used_materials">>
       
       if (conservantMaterials.length > 0) {
-        // Use conservant materials from the hook
-        const conservantUsedMaterials = getConservantMaterials();
+        const conservantUsedData = getConservantMaterials(); // Já retorna com quantity em KG e mixCountUsed
         
-        // Get non-conservant materials
-        const nonConservantMaterials = data.usedMaterials
+        const nonConservantMaterialsData = data.usedMaterials
           .filter(item => {
-            const batch = getMaterialBatchDetails(item.materialBatchId);
-            return batch && batch.materialType !== "Conservante";
+            const batchDetails = getMaterialBatchDetails(item.materialBatchId);
+            return batchDetails && batchDetails.materialType !== "Conservante";
           })
           .map((item) => {
             const materialBatch = getMaterialBatchDetails(item.materialBatchId);
-            
-            if (!materialBatch) {
-              throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
-            }
-            
+            if (!materialBatch) throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
             if (materialBatch.remainingQuantity < item.quantity) {
               throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
             }
-            
             return {
-              id: Math.random().toString(36).substring(2, 15),
               materialBatchId: item.materialBatchId,
-              materialName: materialBatch.materialName,
-              materialType: materialBatch.materialType,
-              batchNumber: materialBatch.batchNumber,
+              materialName: materialBatch.materialName, // Pode ser útil para logs, mas não necessariamente para DB
+              materialType: materialBatch.materialType, // Idem
+              batchNumber: materialBatch.batchNumber,   // Idem
               quantity: item.quantity,
               unitOfMeasure: materialBatch.unitOfMeasure,
+              mixCountUsed: null, // Explicitamente null para não-conservantes
             };
           });
-        
-        usedMaterials = [...conservantUsedMaterials, ...nonConservantMaterials];
+        usedMaterialsPayload = [...conservantUsedData, ...nonConservantMaterialsData];
       } else {
-        // Regular material processing
-        usedMaterials = data.usedMaterials.map((item) => {
+        usedMaterialsPayload = data.usedMaterials.map((item) => {
           const materialBatch = getMaterialBatchDetails(item.materialBatchId);
-          
-          if (!materialBatch) {
-            throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
-          }
-          
+          if (!materialBatch) throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
           if (materialBatch.remainingQuantity < item.quantity) {
             throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
           }
-          
           return {
-            id: Math.random().toString(36).substring(2, 15),
             materialBatchId: item.materialBatchId,
             materialName: materialBatch.materialName,
             materialType: materialBatch.materialType,
             batchNumber: materialBatch.batchNumber,
             quantity: item.quantity,
             unitOfMeasure: materialBatch.unitOfMeasure,
+            mixCountUsed: null, // Explicitamente null para não-conservantes
           };
         });
       }
       
-      // Create and add production batch
-      const productionBatch = {
+      const productionBatchPayload = {
         batchNumber: data.batchNumber,
         productionDate: parseDateString(data.productionDate),
-        mixDay: data.mixDate,
+        mix_day: parseDateString(data.mixDate), // Corrigido para mix_day e garantindo que seja string via parseDateString
         mixCount: data.mixCount,
         notes: data.notes,
-        producedItems,
-        usedMaterials,
+        producedItems: producedItemsData,
+        usedMaterials: usedMaterialsPayload,
       };
       
-      addProductionBatch(productionBatch);
+      addProductionBatch(productionBatchPayload);
       
+      toast({
+        title: "Produção Registrada",
+        description: `Lote de produção ${data.batchNumber} registrado com sucesso.`,
+      });
       
-      // Reset form
       form.reset({
         productionDate: today,
         batchNumber: `PROD-${today}`,
