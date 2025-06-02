@@ -350,28 +350,46 @@ export type Database = {
       }
       products: {
         Row: {
+          conservant_conversion_factor: number | null
+          conservant_usage_factor: number | null
           created_at: string
           description: string | null
+          fecula_conversion_factor: number | null
           id: string
           name: string
+          notes: string | null
+          production_prediction_factor: number | null
+          type: string | null
           unit_of_measure: string
           updated_at: string
           weight_factor: number | null
         }
         Insert: {
+          conservant_conversion_factor?: number | null
+          conservant_usage_factor?: number | null
           created_at?: string
           description?: string | null
+          fecula_conversion_factor?: number | null
           id?: string
           name: string
+          notes?: string | null
+          production_prediction_factor?: number | null
+          type?: string | null
           unit_of_measure: string
           updated_at?: string
           weight_factor?: number | null
         }
         Update: {
+          conservant_conversion_factor?: number | null
+          conservant_usage_factor?: number | null
           created_at?: string
           description?: string | null
+          fecula_conversion_factor?: number | null
           id?: string
           name?: string
+          notes?: string | null
+          production_prediction_factor?: number | null
+          type?: string | null
           unit_of_measure?: string
           updated_at?: string
           weight_factor?: number | null

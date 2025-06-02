@@ -4,14 +4,14 @@ import { Product } from "../types";
 import { createLogEntry } from "./logService";
 
 export const fetchProducts = async (): Promise<Product[]> => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("products")
     .select("*")
     .order("name");
   
   if (error) throw error;
   
-  return data.map(product => ({
+  return data.map((product: any) => ({
     id: product.id,
     name: product.name,
     description: product.description,
@@ -46,7 +46,7 @@ export const createProduct = async (
     notes: product.notes
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("products")
     .insert(productDataToInsert)
     .select("*")
@@ -105,7 +105,7 @@ export const updateProduct = async (
     return;
   }
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from("products")
     .update(updates)
     .eq("id", id);
@@ -123,7 +123,7 @@ export const updateProduct = async (
 };
 
 export const deleteProduct = async (id: string, userId?: string, userEmail?: string): Promise<void> => {
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from("products")
     .delete()
     .eq("id", id);

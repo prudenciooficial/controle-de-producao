@@ -85,7 +85,7 @@ export const getEntityTypes = async (): Promise<string[]> => {
 
   if (error) throw error;
 
-  const uniqueTypes = [...new Set(data.map((item: any) => item.entity_type))].filter(Boolean);
+  const uniqueTypes = [...new Set(data.map((item: any) => item.entity_type))].filter(Boolean) as string[];
   return uniqueTypes.sort();
 };
 
