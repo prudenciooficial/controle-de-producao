@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 import PrintableTraceabilityPage from "./pages/print/PrintableTraceabilityPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import { cn } from "./lib/utils";
+import SystemLogsPage from "./pages/SystemLogsPage/SystemLogsPage";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const AppContent = () => {
                   <Route path="/rastreabilidade" element={<Traceability />} />
                   <Route path="/cadastro" element={<Registration />} />
                   <Route path="/usuarios" element={<Users />} />
+                  <Route path="/logs" element={<SystemLogsPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

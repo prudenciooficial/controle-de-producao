@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,11 +17,19 @@ const MotionLink = motion(Link);
 export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) {
   const location = useLocation();
   const isMobile = useIsMobile();
-  const { hasRole, hasPermission } = useAuth();
+  const { hasRole, hasPermission, canViewSystemLogs } = useAuth();
   const [isDesktopSidebarExpanded, setIsDesktopSidebarExpanded] = useState(false);
   const [availableMenuItems, setAvailableMenuItems] = useState<any[]>([]);
 
-  const [allMenuItems] = useState([
+  type MenuItem = {
+    name: string;
+    path: string;
+    icon: React.ElementType;
+    module?: string;
+    permissionCheck?: () => boolean;
+  };
+
+  const [allMenuItems] = useState<MenuItem[]>([
     { name: "Dashboard", path: "/", icon: LayoutDashboard, module: "dashboard" },
     { name: "Produção", path: "/producao", icon: Factory, module: "production" },
     { name: "Vendas", path: "/vendas", icon: ShoppingCart, module: "sales" },
@@ -31,6 +39,12 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search, module: "traceability" },
     { name: "Cadastro", path: "/cadastro", icon: Settings, module: "general_settings" },
     { name: "Usuários", path: "/usuarios", icon: Users, module: "user_management" },
+    {
+      name: "Logs do Sistema",
+      path: "/logs",
+      icon: ScrollText,
+      permissionCheck: canViewSystemLogs,
+    },
   ]);
 
   useEffect(() => {
@@ -49,21 +63,29 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
           continue;
         }
         
-        try {
-          const hasAccess = hasPermission(item.module, 'read');
-          if (hasAccess) {
+        if (item.permissionCheck) {
+          if (item.permissionCheck()) {
             filteredItems.push(item);
           }
-        } catch (error) {
-          console.error(`Error checking permission for ${item.module}:`, error);
+          continue;
+        }
+
+        if (item.module) {
+          try {
+            const hasAccess = hasPermission(item.module, 'read');
+            if (hasAccess) {
+              filteredItems.push(item);
+            }
+          } catch (error) {
+            console.error(`Error checking permission for ${item.module}:`, error);
+          }
         }
       }
-      
       setAvailableMenuItems(filteredItems);
     };
 
     checkPermissions();
-  }, [hasRole, hasPermission, allMenuItems]);
+  }, [hasRole, hasPermission, canViewSystemLogs, allMenuItems]);
 
   const sidebarHeaderVariants = {
     expanded: { opacity: 1, x: 0 },

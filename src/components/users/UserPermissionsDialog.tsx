@@ -19,6 +19,7 @@ interface DetailedPermissions {
   system_status: 'active' | 'inactive';
   modules_access: { [moduleKey: string]: boolean };
   module_actions: { [moduleKey: string]: ModuleActions };
+  can_view_system_logs?: boolean;
 }
 
 interface UserPermissionsDialogProps {
@@ -68,6 +69,7 @@ const getDefaultPermissions = (): DetailedPermissions => {
     system_status: 'active',
     modules_access: defaultModulesAccess,
     module_actions: defaultModuleActions,
+    can_view_system_logs: false,
   };
 };
 
@@ -87,6 +89,9 @@ export function UserPermissionsDialog({ open, onOpenChange, user, onPermissionsU
           system_status: loadedPermissions.system_status || defaultPerms.system_status,
           modules_access: { ...defaultPerms.modules_access },
           module_actions: { ...defaultPerms.module_actions },
+          can_view_system_logs: typeof loadedPermissions.can_view_system_logs === 'boolean' 
+            ? loadedPermissions.can_view_system_logs 
+            : defaultPerms.can_view_system_logs,
         };
 
         for (const module of ALL_MODULES) {
@@ -149,6 +154,12 @@ export function UserPermissionsDialog({ open, onOpenChange, user, onPermissionsU
       };
       return { ...prev, modules_access: newModulesAccess, module_actions: newModuleActions };
     });
+  };
+
+  const handleCanViewSystemLogsChange = (checked: boolean) => {
+    setCurrentPermissions(prev => 
+      prev ? { ...prev, can_view_system_logs: checked } : null
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -239,6 +250,28 @@ export function UserPermissionsDialog({ open, onOpenChange, user, onPermissionsU
               <p className="text-sm text-muted-foreground ml-auto">
                 Usuários inativos não podem acessar o sistema.
               </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">Permissões Gerais</h3>
+            <div className="p-4 border rounded-md space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="can_view_system_logs"
+                  checked={!!currentPermissions.can_view_system_logs}
+                  onCheckedChange={handleCanViewSystemLogsChange}
+                  disabled={loading || user?.user_metadata?.role === 'admin'}
+                />
+                <Label htmlFor="can_view_system_logs" className="text-sm font-normal">
+                  Visualizar Logs do Sistema
+                </Label>
+                {user?.user_metadata?.role === 'admin' && (
+                  <p className="text-xs text-muted-foreground ml-auto">
+                    (Administradores sempre têm acesso aos logs)
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

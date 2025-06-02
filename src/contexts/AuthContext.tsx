@@ -14,6 +14,7 @@ interface DetailedPermissions {
   system_status: 'active' | 'inactive';
   modules_access: { [moduleKey: string]: boolean };
   module_actions: { [moduleKey: string]: ModuleActions };
+  can_view_system_logs?: boolean;
 }
 
 interface AuthContextType {
@@ -25,6 +26,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   hasPermission: (moduleKey: string, actionKey: string) => boolean;
   hasRole: (role: string) => boolean;
+  canViewSystemLogs: () => boolean;
   getSession: () => Promise<Session | null>;
 }
 
@@ -172,6 +174,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user?.user_metadata?.role === role;
   };
 
+  const canViewSystemLogs = (): boolean => {
+    if (!user) return false;
+    if (user.user_metadata?.role === 'admin') return true;
+
+    const detailedPermissions = user.user_metadata?.permissions as DetailedPermissions | undefined;
+    return !!detailedPermissions?.can_view_system_logs;
+  };
+
   const getSession = async (): Promise<Session | null> => {
     const { data, error } = await supabase.auth.getSession();
     if (error) {
@@ -190,6 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     hasPermission,
     hasRole,
+    canViewSystemLogs,
     getSession,
   };
 

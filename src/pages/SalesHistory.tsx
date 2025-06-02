@@ -43,6 +43,7 @@ const SalesHistory = () => {
   const [availableItems, setAvailableItems] = useState<ProducedItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [newItem, setNewItem] = useState<Partial<SaleItem>>({
     productId: "",
     producedItemId: "",
@@ -107,7 +108,7 @@ const SalesHistory = () => {
     }
   }, [newItem.productId, getAvailableProducts]);
   
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!hasPermission('sales', 'delete')) {
       toast({
         variant: "destructive",
@@ -117,9 +118,21 @@ const SalesHistory = () => {
       setShowDeleteDialog(false);
       return;
     }
-    deleteSale(id);
-    setShowDeleteDialog(false);
-    toast({ title: "Registro Excluído", description: "O registro de venda foi excluído com sucesso." });
+    try {
+      setIsDeleting(true);
+      await deleteSale(id);
+      setShowDeleteDialog(false);
+      toast({ title: "Registro Excluído", description: "O registro de venda foi excluído com sucesso." });
+    } catch (error) {
+      console.error("Erro ao excluir venda no SalesHistory:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao Excluir Venda",
+        description: error instanceof Error ? error.message : "Ocorreu um problema ao tentar excluir o registro.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
   
   const handleEdit = async () => {
@@ -743,8 +756,16 @@ const SalesHistory = () => {
             <Button
               variant="destructive"
               onClick={() => selectedSale && handleDelete(selectedSale.id)}
+              disabled={isDeleting}
             >
-              Excluir
+              {isDeleting ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
