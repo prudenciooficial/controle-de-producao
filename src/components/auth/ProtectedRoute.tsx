@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,3 +48,5 @@ export function ProtectedRoute({
 
   return <>{children}</>;
 }
+
+export default ProtectedRoute;

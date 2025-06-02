@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -117,11 +116,17 @@ export default function Logs() {
   };
 
   const applyFilters = () => {
-    const newFilters: LogFilters = {
-      searchText: searchText || undefined,
-      startDate,
-      endDate
-    };
+    const newFilters: LogFilters = {};
+    
+    if (searchText) {
+      newFilters.searchText = searchText;
+    }
+    if (startDate) {
+      newFilters.startDate = startDate;
+    }
+    if (endDate) {
+      newFilters.endDate = endDate;
+    }
 
     setFilters(newFilters);
     setCurrentPage(1);
@@ -138,7 +143,9 @@ export default function Logs() {
   const handleFilterChange = (key: keyof LogFilters, value: string | undefined) => {
     const newFilters = { ...filters };
     if (value && value !== 'all') {
-      newFilters[key] = value;
+      if (key === 'userId' || key === 'entityType' || key === 'actionType') {
+        newFilters[key] = value;
+      }
     } else {
       delete newFilters[key];
     }

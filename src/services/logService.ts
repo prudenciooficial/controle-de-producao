@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { LogEntry } from "../types";
 
@@ -11,7 +12,7 @@ interface CreateLogEntryPayload {
 }
 
 export const createLogEntry = async (payload: CreateLogEntryPayload): Promise<void> => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("system_logs")
     .insert([{
       user_id: payload.user_id,

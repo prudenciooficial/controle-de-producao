@@ -21,7 +21,7 @@ export const fetchSystemLogs = async (
   page: number = 1,
   pageSize: number = 50
 ): Promise<LogsResponse> => {
-  let query = supabase
+  let query = (supabase as any)
     .from("system_logs")
     .select("*", { count: 'exact' })
     .order("created_at", { ascending: false });
@@ -60,7 +60,7 @@ export const fetchSystemLogs = async (
 
   if (error) throw error;
 
-  const logs: LogEntry[] = data.map(log => ({
+  const logs: LogEntry[] = data.map((log: any) => ({
     id: log.id,
     created_at: log.created_at,
     user_id: log.user_id,
@@ -78,19 +78,19 @@ export const fetchSystemLogs = async (
 };
 
 export const getEntityTypes = async (): Promise<string[]> => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("system_logs")
     .select("entity_type")
     .not("entity_type", "is", null);
 
   if (error) throw error;
 
-  const uniqueTypes = [...new Set(data.map(item => item.entity_type))].filter(Boolean);
+  const uniqueTypes = [...new Set(data.map((item: any) => item.entity_type))].filter(Boolean);
   return uniqueTypes.sort();
 };
 
 export const getUsersFromLogs = async (): Promise<Array<{id: string, description: string}>> => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("system_logs")
     .select("user_id, user_description")
     .not("user_id", "is", null)
@@ -98,12 +98,12 @@ export const getUsersFromLogs = async (): Promise<Array<{id: string, description
 
   if (error) throw error;
 
-  const uniqueUsers = data.reduce((acc, item) => {
+  const uniqueUsers = data.reduce((acc: Array<{id: string, description: string}>, item: any) => {
     if (!acc.find(u => u.id === item.user_id)) {
       acc.push({ id: item.user_id, description: item.user_description });
     }
     return acc;
-  }, [] as Array<{id: string, description: string}>);
+  }, []);
 
   return uniqueUsers.sort((a, b) => a.description.localeCompare(b.description));
 };
