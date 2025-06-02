@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Order, OrderItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -68,7 +67,7 @@ export const fetchOrders = async (): Promise<Order[]> => {
 // Helper function to get conservant conversion factor
 const getConservantConversionFactor = async (): Promise<number> => {
   const { data, error } = await supabase
-    .from("global_settings")
+    .from("products")
     .select("conservant_conversion_factor")
     .limit(1)
     .single();

@@ -660,7 +660,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Production Batches
   const addProductionBatch = async (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newBatch = await createProductionBatchApi(batch);
+      const newBatch = await createProductionBatchApi(batch, user?.id, user?.email);
       await refetchProductionBatches();
       await refetchMaterialBatches();
       toast({
@@ -680,7 +680,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProductionBatch = async (id: string, batch: Partial<ProductionBatch>) => {
     try {
-      await updateProductionBatchApi(id, batch);
+      await updateProductionBatchApi(id, batch, user?.id, user?.email);
       await refetchProductionBatches();
       await refetchMaterialBatches();
       toast({
@@ -700,7 +700,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteProductionBatch = async (id: string) => {
     try {
-      await deleteProductionBatchApi(id);
+      await deleteProductionBatchApi(id, user?.id, user?.email);
       await refetchProductionBatches();
       await refetchMaterialBatches();
       toast({
@@ -721,7 +721,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Sales
   const addSale = async (sale: Omit<Sale, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newSale = await createSaleApi(sale);
+      const newSale = await createSaleApi(sale, user?.id, user?.email);
       await refetchProductionBatches();
       await refetchSales();
       toast({
@@ -741,7 +741,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateSale = async (id: string, sale: Partial<Sale>) => {
     try {
-      await updateSaleApi(id, sale);
+      await updateSaleApi(id, sale, user?.id, user?.email);
       await refetchProductionBatches();
       await refetchSales();
       toast({
@@ -761,7 +761,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteSale = async (id: string) => {
     try {
-      await deleteSaleApi(id);
+      await deleteSaleApi(id, user?.id, user?.email);
       await refetchProductionBatches();
       await refetchSales();
       toast({
@@ -782,7 +782,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Orders
   const addOrder = async (order: Omit<Order, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newOrder = await createOrderApi(order);
+      const newOrder = await createOrderApi(order, user?.id, user?.email);
       await refetchMaterialBatches();
       await refetchOrders();
       toast({
@@ -802,7 +802,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateOrder = async (id: string, order: Partial<Order>) => {
     try {
-      await updateOrderApi(id, order);
+      await updateOrderApi(id, order, user?.id, user?.email);
       await refetchMaterialBatches();
       await refetchOrders();
       toast({
@@ -822,7 +822,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteOrder = async (id: string) => {
     try {
-      await deleteOrderApi(id);
+      await deleteOrderApi(id, user?.id, user?.email);
       await refetchMaterialBatches();
       await refetchOrders();
       toast({
@@ -843,7 +843,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Losses
   const addLoss = async (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newLoss = await createLossApi(loss);
+      const newLoss = await createLossApi(loss, user?.id, user?.email);
       await refetchProductionBatches();
       await refetchMaterialBatches();
       await refetchLosses();
@@ -864,7 +864,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateLoss = async (id: string, loss: Partial<Loss>) => {
     try {
-      await updateLossApi(id, loss);
+      await updateLossApi(id, loss, user?.id, user?.email);
       await refetchProductionBatches();
       await refetchMaterialBatches();
       await refetchLosses();
@@ -887,7 +887,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(prev => ({ ...prev, losses: true }));
       
-      await deleteLossApi(id);
+      await deleteLossApi(id, user?.id, user?.email);
       
       await refetchProductionBatches();
       await refetchMaterialBatches();
@@ -913,7 +913,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Products - Using Supabase
   const addProduct = async (product: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newProduct = await createProduct(product);
+      const newProduct = await createProduct(product, user?.id, user?.email);
       setProducts([...products, newProduct]);
       toast({
         title: "Sucesso",
@@ -932,7 +932,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProduct = async (id: string, product: Partial<Product>) => {
     try {
-      await updateProductApi(id, product);
+      await updateProductApi(id, product, user?.id, user?.email);
       setProducts(
         products.map(p => 
           p.id === id ? { ...p, ...product, updatedAt: new Date() } : p
@@ -955,7 +955,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteProduct = async (id: string) => {
     try {
-      await deleteProductApi(id);
+      await deleteProductApi(id, user?.id, user?.email);
       setProducts(products.filter(p => p.id !== id));
       toast({
         title: "Sucesso",
@@ -975,7 +975,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Materials - Updated to use Supabase
   const addMaterial = async (material: Omit<Material, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newMaterial = await createMaterial(material);
+      const newMaterial = await createMaterial(material, user?.id, user?.email);
       setMaterials([...materials, newMaterial]);
       toast({
         title: "Sucesso",
@@ -994,7 +994,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateMaterial = async (id: string, material: Partial<Material>) => {
     try {
-      await updateMaterialApi(id, material);
+      await updateMaterialApi(id, material, user?.id, user?.email);
       setMaterials(
         materials.map(m => 
           m.id === id ? { ...m, ...material, updatedAt: new Date() } : m
@@ -1017,7 +1017,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteMaterial = async (id: string) => {
     try {
-      await deleteMaterialApi(id);
+      await deleteMaterialApi(id, user?.id, user?.email);
       setMaterials(materials.filter(m => m.id !== id));
       toast({
         title: "Sucesso",
@@ -1037,7 +1037,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Suppliers - Updated to use Supabase
   const addSupplier = async (supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newSupplier = await createSupplier(supplier);
+      const newSupplier = await createSupplier(supplier, user?.id, user?.email);
       setSuppliers([...suppliers, newSupplier]);
       toast({
         title: "Sucesso",
@@ -1056,7 +1056,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateSupplier = async (id: string, supplier: Partial<Supplier>) => {
     try {
-      await updateSupplierApi(id, supplier);
+      await updateSupplierApi(id, supplier, user?.id, user?.email);
       setSuppliers(
         suppliers.map(s => 
           s.id === id ? { ...s, ...supplier, updatedAt: new Date() } : s
@@ -1079,7 +1079,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteSupplier = async (id: string) => {
     try {
-      await deleteSupplierApi(id);
+      await deleteSupplierApi(id, user?.id, user?.email);
       setSuppliers(suppliers.filter(s => s.id !== id));
       toast({
         title: "Sucesso",
