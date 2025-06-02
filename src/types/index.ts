@@ -179,3 +179,15 @@ export interface GlobalSettings {
   created_at?: string; // ou Date, dependendo de como você lida com datas
   updated_at?: string; // ou Date
 }
+
+// Interface para entradas de log do sistema
+export interface LogEntry {
+  id: string;
+  created_at: string; // ou Date
+  user_id?: string;
+  user_description?: string; // Ex: email do usuário
+  action_type: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'OTHER'; // Tipos de ação
+  entity_type?: string; // Ex: 'products', 'sales', 'users'
+  entity_id?: string;   // ID do registro afetado
+  details: string | Record<string, any>; // Mensagem descritiva ou objeto JSON com detalhes
+}

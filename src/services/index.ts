@@ -8,6 +8,7 @@ export * from './ordersService';
 export * from './lossesService';
 export * from './traceabilityService';
 export * from './base/supabaseClient';
+export * from './logService';
 
 // Nova função para buscar as configurações globais
 import { supabase } from "@/integrations/supabase/client";
