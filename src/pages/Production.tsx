@@ -31,6 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import type { ProductionBatch } from "@/types";
 
 // Schema for form validation
 const productionFormSchema = z.object({
@@ -69,8 +70,44 @@ const TABS = [
   { id: "materials", name: "Insumos Utilizados", fields: ["usedMaterials"] as const, icon: Factory },
 ];
 
+const generateSuggestedBatchNumber = (
+  batches: ProductionBatch[] | undefined
+): string => {
+  const defaultInitialSuggestion = "1";
+
+  if (!batches || batches.length === 0) {
+    return defaultInitialSuggestion;
+  }
+
+  let maxNum = 0;
+  let prefixForMaxNum = ""; 
+  let foundNumericBatch = false;
+
+  batches.forEach(batch => {
+    if (batch && typeof batch.batchNumber === 'string') {
+      const bn = batch.batchNumber;
+      const match = bn.match(/^(.*?)(\d+)$/); 
+
+      if (match) {
+        foundNumericBatch = true;
+        const currentNum = parseInt(match[2], 10);
+        if (currentNum >= maxNum) {
+          maxNum = currentNum;
+          prefixForMaxNum = match[1]; 
+        }
+      }
+    }
+  });
+
+  if (!foundNumericBatch) {
+    return defaultInitialSuggestion;
+  }
+  
+  return `${prefixForMaxNum}${maxNum + 1}`;
+};
+
 const Production = () => {
-  const { products, materialBatches, addProductionBatch } = useData();
+  const { products, materialBatches, addProductionBatch, productionBatches, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
@@ -85,6 +122,7 @@ const Production = () => {
   const [conflictingConservantInfo, setConflictingConservantInfo] = useState<{ index: number; materialName: string } | null>(null);
   const previousConservantCountRef = React.useRef(0);
 
+  // useEffect para buscar fatores globais (posição original)
   React.useEffect(() => {
     const fetchGlobalFactors = async () => {
       setIsLoadingFactor(true);
@@ -117,7 +155,7 @@ const Production = () => {
     resolver: zodResolver(productionFormSchema),
     defaultValues: {
       productionDate: today,
-      batchNumber: `PROD-${today}`,
+      batchNumber: "", // Inicialmente vazio
       mixDate: today,
       mixCount: 1,
       notes: "",
@@ -127,6 +165,18 @@ const Production = () => {
       ],
     },
   });
+
+  // useEffect para sugerir o número do lote (APÓS form init e APÓS fetchGlobalFactors useEffect)
+  React.useEffect(() => {
+    if (!isLoading.productionBatches && productionBatches && Array.isArray(productionBatches)) {
+      const suggestedBatch = generateSuggestedBatchNumber(productionBatches);
+      const currentBatchValue = form.getValues("batchNumber");
+      
+      if (!form.formState.dirtyFields.batchNumber && currentBatchValue === "") {
+        form.setValue("batchNumber", suggestedBatch, { shouldValidate: false, shouldDirty: false });
+      }
+    }
+  }, [isLoading.productionBatches, productionBatches, form]);
   
   const { fields: producedItemFields, append: appendProducedItem, remove: removeProducedItem } = 
     useFieldArray({
@@ -320,8 +370,13 @@ const Production = () => {
       toast({ title: "Produção Registrada", description: `Lote de produção ${data.batchNumber} registrado com sucesso.` });
       
       form.reset({
-        productionDate: today, batchNumber: `PROD-${today}`, mixDate: today, mixCount: 1, notes: "",
-        producedItems: [{ productId: "", quantity: 0 }], usedMaterials: [{ materialBatchId: "", quantity: 0 }],
+        productionDate: today, 
+        batchNumber: generateSuggestedBatchNumber(productionBatches), // Sugestão no reset
+        mixDate: today, 
+        mixCount: 1, 
+        notes: "",
+        producedItems: [{ productId: "", quantity: 0 }], 
+        usedMaterials: [{ materialBatchId: "", quantity: 0 }],
       });
       setIsDistributeSectionVisible(false); 
     } catch (error) {
@@ -358,7 +413,7 @@ const Production = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2">
         <h1 className="text-2xl font-bold">Registrar Nova Produção</h1>
         <Button variant="outline" onClick={() => navigate("/producao/historico")}>
           <History className="mr-2 h-4 w-4" /> Histórico de Produção

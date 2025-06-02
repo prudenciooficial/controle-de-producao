@@ -152,7 +152,7 @@ export function SimpleDateFilter({
             <Button
               variant={isCustomDateActive ? "default" : "outline"}
               size="sm"
-              className="text-xs font-medium w-full sm:w-auto justify-start text-left"
+              className="text-xs font-medium w-full sm:w-auto sm:justify-start justify-center"
             >
               <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
               <span className="truncate">

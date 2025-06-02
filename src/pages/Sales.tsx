@@ -171,7 +171,7 @@ const Sales = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2">
         <h1 className="text-2xl font-bold">Registrar Nova Saída/Venda</h1>
         <Button variant="outline" onClick={() => navigate("/vendas/historico")}>
           <History className="mr-2 h-4 w-4" />
