@@ -9,7 +9,8 @@ import {
   Supplier,
   MaterialBatch,
   ProducedItem,
-  DashboardStats
+  DashboardStats,
+  GlobalSettings
 } from "../types";
 import { 
   fetchProducts, 
@@ -40,7 +41,8 @@ import {
   fetchLossesWithDetails,
   createLoss as createLossApi,
   updateLoss as updateLossApi,
-  deleteLoss as deleteLossApi
+  deleteLoss as deleteLossApi,
+  fetchGlobalSettings
 } from "../services";
 import { useToast } from "@/hooks/use-toast";
 import { DateRange } from "react-day-picker";
@@ -55,6 +57,7 @@ interface DataContextType {
   materials: Material[];
   suppliers: Supplier[];
   materialBatches: MaterialBatch[];
+  globalSettings: GlobalSettings | null;
   
   // Loading states
   isLoading: {
@@ -66,6 +69,7 @@ interface DataContextType {
     sales: boolean;
     orders: boolean;
     losses: boolean;
+    globalSettings: boolean;
   };
   
   // Stats
@@ -82,6 +86,7 @@ interface DataContextType {
   refetchSales: () => Promise<void>;
   refetchOrders: () => Promise<void>;
   refetchLosses: () => Promise<void>;
+  refetchGlobalSettings: () => Promise<void>;
   
   // CRUD operations
   addProductionBatch: (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => Promise<void>;
@@ -199,6 +204,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materialBatches, setMaterialBatches] = useState<MaterialBatch[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null);
 
   // Loading states
   const [isLoading, setIsLoading] = useState({
@@ -210,6 +216,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sales: true,
     orders: true,
     losses: true,
+    globalSettings: true,
   });
 
   const { toast } = useToast();
@@ -219,7 +226,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     totalProduction: 0,
     totalSales: 0,
     currentInventory: 0,
-    averageProfitability: 0
+    averageProfitability: 0,
+    totalFeculaInventoryKg: 0
   });
 
   // Fetch all data from Supabase
@@ -332,7 +340,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         setIsLoading(prev => ({ ...prev, losses: true }));
-        const lossesData = await fetchLossesWithDetails();
+        const lossesData = await fetchLossesWithDetails(dateRange);
         setLosses(lossesData);
       } catch (error) {
         console.error("Error loading losses:", error);
@@ -344,10 +352,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } finally {
         setIsLoading(prev => ({ ...prev, losses: false }));
       }
+
+      // Buscar configurações globais
+      try {
+        setIsLoading(prev => ({ ...prev, globalSettings: true }));
+        const settings = await fetchGlobalSettings();
+        setGlobalSettings(settings);
+      } catch (error) {
+        console.error("Error loading global settings:", error);
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar configurações globais",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, globalSettings: false }));
+      }
     };
     
     loadData();
-  }, [toast]);
+  }, [dateRange, toast]);
 
   // Refetch functions
   const refetchProducts = async () => {
@@ -472,17 +496,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refetchLosses = async () => {
     try {
       setIsLoading(prev => ({ ...prev, losses: true }));
-      const lossesData = await fetchLossesWithDetails();
-      setLosses(lossesData);
+      const data = await fetchLossesWithDetails(dateRange);
+      setLosses(data);
     } catch (error) {
       console.error("Error refetching losses:", error);
       toast({
         title: "Erro",
-        description: "Falha ao atualizar dados das perdas",
+        description: "Falha ao recarregar dados das perdas",
         variant: "destructive",
       });
     } finally {
       setIsLoading(prev => ({ ...prev, losses: false }));
+    }
+  };
+
+  const refetchGlobalSettings = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, globalSettings: true }));
+      const data = await fetchGlobalSettings();
+      setGlobalSettings(data);
+    } catch (error) {
+      console.error("Error refetching global settings:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao recarregar configurações globais",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, globalSettings: false }));
     }
   };
 
@@ -580,11 +621,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ? productionEfficiencies.reduce((sum, eff) => sum + eff, 0) / productionEfficiencies.length 
       : 0;
 
+    // Calcular o estoque total de Fécula em KG (a partir de materialBatches)
+    const totalFeculaInventoryKg = materialBatches.reduce((acc, batch) => {
+      // Certifique-se de que materialType existe e é uma string antes de chamar toLowerCase()
+      if (batch.materialType && typeof batch.materialType === 'string' && batch.materialType.toLowerCase().includes('fécula')) {
+        return acc + (batch.remainingQuantity || 0); // Adiciona remainingQuantity, tratando undefined como 0
+      }
+      return acc;
+    }, 0);
+
     setDashboardStats({
       totalProduction,
       totalSales,
       currentInventory,
-      averageProfitability: parseFloat(averageProfitability.toFixed(4))
+      averageProfitability: parseFloat(averageProfitability.toFixed(4)),
+      totalFeculaInventoryKg,
     });
 
     // Log the calculated values for debugging
@@ -597,7 +648,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       averageProfitability: parseFloat(averageProfitability.toFixed(4))
     });
 
-  }, [productionBatches, sales, dateRange, products, materials]);
+  }, [productionBatches, sales, dateRange, products, materials, materialBatches]);
 
   // Helper functions
   const generateId = () => {
@@ -1093,6 +1144,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     materials,
     suppliers,
     materialBatches,
+    globalSettings,
     isLoading,
     dashboardStats,
     dateRange,
@@ -1105,6 +1157,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refetchSales,
     refetchOrders,
     refetchLosses,
+    refetchGlobalSettings,
     addProductionBatch,
     updateProductionBatch,
     deleteProductionBatch,

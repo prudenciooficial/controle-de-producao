@@ -1,13 +1,21 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Loss } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
+import type { DateRange } from "react-day-picker";
 
-export const fetchLossesWithDetails = async (): Promise<Loss[]> => {
-  const { data: lossesData, error: lossesError } = await supabase
+export const fetchLossesWithDetails = async (dateRange?: DateRange): Promise<Loss[]> => {
+  let query = supabase
     .from("losses")
     .select("*, production_batches(batch_number)")
     .order("date", { ascending: false });
+
+  if (dateRange?.from && dateRange?.to) {
+    query = query
+      .gte("date", dateRange.from.toISOString())
+      .lte("date", dateRange.to.toISOString());
+  }
+  
+  const { data: lossesData, error: lossesError } = await query;
   
   if (lossesError) throw lossesError;
   

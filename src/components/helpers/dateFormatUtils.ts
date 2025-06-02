@@ -47,7 +47,17 @@ export function getChartTooltipLabel(date: Date, isDaily: boolean): string {
 
 /**
  * Formats a value as Brazilian number
+ * @param value The number to format
+ * @param options Optional formatting options
+ * @param options.roundBeforeFormat If true, rounds the number to the nearest integer before formatting.
+ * @param options.maximumFractionDigits Specifies the maximum number of fraction digits to use.
  */
-export function formatNumberBR(value: number): string {
-  return value.toLocaleString('pt-BR');
+export function formatNumberBR(value: number, options?: { roundBeforeFormat?: boolean; maximumFractionDigits?: number }): string {
+  let numToFormat = value;
+  if (options?.roundBeforeFormat) {
+    numToFormat = Math.round(numToFormat);
+  }
+  return numToFormat.toLocaleString('pt-BR', {
+    maximumFractionDigits: options?.maximumFractionDigits ?? (options?.roundBeforeFormat ? 0 : undefined),
+  });
 }

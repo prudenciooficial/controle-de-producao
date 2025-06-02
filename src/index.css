@@ -7,6 +7,9 @@
     --background: 210 30% 99%;
     --foreground: 224 71% 4%;
 
+    /* Gradiente para o tema claro */
+    --gradient-primary: linear-gradient(to right, #0853da, #0085d4, #28a1af);
+
     --card: 0 0% 100%;
     --card-foreground: 224 71% 4%;
 
@@ -51,6 +54,9 @@
   .dark {
     --background: 224 71% 4%;
     --foreground: 210 40% 98%;
+
+    /* Gradiente sutil para o tema escuro */
+    --gradient-primary-dark: linear-gradient(to right, #0f172a, #1e293b, #334155);
     
     --card: 224 71% 4%;
     --card-foreground: 210 40% 98%;
@@ -98,8 +104,15 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    /* Aplicar o gradiente ao body */
+    background: var(--gradient-primary);
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  .dark body {
+    /* Aplicar o gradiente escuro ao body no tema escuro */
+    background: var(--gradient-primary-dark);
   }
 }
 

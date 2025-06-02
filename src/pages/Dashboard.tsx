@@ -26,6 +26,7 @@ const Dashboard = () => {
     sales,
     losses,
     products,
+    globalSettings,
     isLoading,
     dateRange,
     setDateRange,
@@ -44,7 +45,7 @@ const Dashboard = () => {
     totalProduction: 0,
     totalSales: 0,
     currentInventory: 0,
-    averageProfitability: 0
+    averageProfitability: 0,
   });
   
   // Calculate previous month date range
@@ -61,7 +62,7 @@ const Dashboard = () => {
   
   // Calculate previous month stats
   useEffect(() => {
-    if (previousMonthRange && productionBatches && sales) {
+    if (previousMonthRange && productionBatches && sales && globalSettings) {
       // Calculate previous month production
       const prevProduction = productionBatches
         .filter(batch => {
@@ -98,22 +99,31 @@ const Dashboard = () => {
       
       // For profitability, use the current value if no historical data is available
       const prevProfitability = prevProduction > 0 ? (prevSales / prevProduction) * 100 : dashboardStats.averageProfitability;
-      
+
       setPreviousMonthStats({
         totalProduction: prevProduction,
         totalSales: prevSales,
         currentInventory: prevInventory,
-        averageProfitability: prevProfitability
+        averageProfitability: prevProfitability,
       });
     }
-  }, [previousMonthRange, productionBatches, sales, dashboardStats, products]);
+  }, [previousMonthRange, productionBatches, sales, dashboardStats, products, globalSettings]);
+  
+  // Calcular capacidade produtiva atual
+  const currentCapacidadeProdutiva = React.useMemo(() => {
+    if (isLoading.globalSettings || !globalSettings || dashboardStats.totalFeculaInventoryKg === undefined) {
+      return 0; // Ou algum valor de carregamento/padrão
+    }
+    // Usar o estoque de FÉCULA para o cálculo
+    return (dashboardStats.totalFeculaInventoryKg || 0) * globalSettings.production_prediction_factor;
+  }, [dashboardStats.totalFeculaInventoryKg, globalSettings, isLoading.globalSettings]);
   
   // Calculate percentage changes
   const percentChanges = {
     production: getPercentChange(dashboardStats.totalProduction, previousMonthStats.totalProduction),
     sales: getPercentChange(dashboardStats.totalSales, previousMonthStats.totalSales),
     inventory: getPercentChange(dashboardStats.currentInventory, previousMonthStats.currentInventory),
-    profitability: getPercentChange(dashboardStats.averageProfitability, previousMonthStats.averageProfitability)
+    profitability: getPercentChange(dashboardStats.averageProfitability, previousMonthStats.averageProfitability),
   };
   
   React.useEffect(() => {
@@ -528,7 +538,7 @@ const Dashboard = () => {
         <div className="bg-background border border-border p-2 rounded-md shadow-md">
           <p className="font-medium">{dateLabel}</p>
           <p className="text-sm text-red-500">
-            Perdas: {formatNumberBR(data.losses)} kg
+            Perdas: {formatNumberBR(data.losses, { roundBeforeFormat: true })} kg
           </p>
           {percentageChangeValue !== 0 && (
             <div className="flex items-center text-sm mt-1">
@@ -570,7 +580,7 @@ const Dashboard = () => {
             return (
               <div key={`item-${index}`} className="flex flex-col">
                 <p className="text-sm" style={{ color: entry.color }}>
-                  {entry.name}: {formatNumberBR(entry.value)} kg
+                  {entry.name}: {formatNumberBR(entry.value, { roundBeforeFormat: true })} kg
                 </p>
                 
                 {percentChange !== 0 && (
@@ -598,8 +608,14 @@ const Dashboard = () => {
     return null;
   };
   
+  // Stats para exibição, incluindo a capacidade produtiva e o estoque de fécula
+  const statsForDisplay = {
+    ...dashboardStats, // Isso já inclui totalFeculaInventoryKg e currentInventory (produtos acabados)
+    capacidadeProdutiva: currentCapacidadeProdutiva,
+  };
+  
   // Loading state rendering
-  if (isLoading.products || isLoading.materialBatches) {
+  if (isLoading.products || isLoading.materialBatches || isLoading.globalSettings) {
     return (
       <div className="space-y-6 animate-fade-in flex justify-center items-center h-[80vh]">
         <div className="text-center">
@@ -621,8 +637,8 @@ const Dashboard = () => {
         </div>
 
         {/* Seção de estatísticas */}
-        {dashboardStats && percentChanges && (
-          <StatsSection stats={dashboardStats} changes={percentChanges} />
+        {statsForDisplay && percentChanges && (
+          <StatsSection stats={statsForDisplay} changes={percentChanges} />
         )}
 
         {/* Gráficos */}

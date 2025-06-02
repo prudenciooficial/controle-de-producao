@@ -32,7 +32,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen w-full lg:grid lg:grid-cols-2 relative">
+    <div className="min-h-screen w-full lg:grid lg:grid-cols-2 relative bg-[var(--gradient-primary)] dark:bg-[var(--gradient-primary-dark)]">
       {/* Painel Esquerdo (Visual) - Visível em telas grandes */}
       <div className="hidden lg:flex lg:flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-sky-100 dark:from-slate-900 dark:to-sky-800 p-12 border-r dark:border-slate-800">
         <div className="text-center">
@@ -52,7 +52,7 @@ export default function Auth() {
       </div>
 
       {/* Painel Direito (Formulário) */}
-      <div className="flex items-center justify-center p-6 sm:p-10 lg:p-12 bg-background lg:bg-transparent dark:lg:bg-transparent">
+      <div className="flex items-center justify-center p-6 sm:p-10 lg:p-12 bg-background lg:bg-[var(--gradient-primary)] dark:bg-background dark:lg:bg-[var(--gradient-primary-dark)]">
         <div className="absolute top-4 right-4 z-50">
           <ThemeToggle />
         </div>

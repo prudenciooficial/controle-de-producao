@@ -165,4 +165,17 @@ export interface DashboardStats {
   totalSales: number;
   currentInventory: number;
   averageProfitability: number;
+  capacidadeProdutiva?: number;
+  totalFeculaInventoryKg?: number;
+}
+
+// Interface para as configurações globais
+export interface GlobalSettings {
+  id: string;
+  fecula_conversion_factor: number;
+  production_prediction_factor: number;
+  conservant_conversion_factor: number;
+  conservant_usage_factor: number;
+  created_at?: string; // ou Date, dependendo de como você lida com datas
+  updated_at?: string; // ou Date
 }
