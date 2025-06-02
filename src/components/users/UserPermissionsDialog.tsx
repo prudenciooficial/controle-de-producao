@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ const ALL_MODULES = [
   { key: 'traceability', label: 'Rastreabilidade', has_actions: false },
   { key: 'general_settings', label: 'Cadastros (Geral)', has_actions: false },
   { key: 'user_management', label: 'Gerenciamento de Usuários', has_actions: false },
+  { key: 'logs', label: 'Logs do Sistema', has_actions: false },
 ];
 
 const ACTION_KEYS: (keyof ModuleActions)[] = ['create', 'read', 'update', 'delete'];

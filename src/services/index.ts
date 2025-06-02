@@ -1,3 +1,4 @@
+
 // Re-export all services
 export * from './productsService';
 export * from './materialsService';
@@ -9,6 +10,7 @@ export * from './lossesService';
 export * from './traceabilityService';
 export * from './base/supabaseClient';
 export * from './logService';
+export * from './logsService';
 
 // Nova função para buscar as configurações globais
 import { supabase } from "@/integrations/supabase/client";

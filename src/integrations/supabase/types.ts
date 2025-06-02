@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      global_settings: {
+        Row: {
+          conservant_conversion_factor: number | null
+          conservant_usage_factor: number | null
+          created_at: string
+          fecula_conversion_factor: number | null
+          id: string
+          production_prediction_factor: number | null
+          updated_at: string
+        }
+        Insert: {
+          conservant_conversion_factor?: number | null
+          conservant_usage_factor?: number | null
+          created_at?: string
+          fecula_conversion_factor?: number | null
+          id?: string
+          production_prediction_factor?: number | null
+          updated_at?: string
+        }
+        Update: {
+          conservant_conversion_factor?: number | null
+          conservant_usage_factor?: number | null
+          created_at?: string
+          fecula_conversion_factor?: number | null
+          id?: string
+          production_prediction_factor?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       losses: {
         Row: {
           batch_number: string | null
@@ -320,40 +350,28 @@ export type Database = {
       }
       products: {
         Row: {
-          conservant_conversion_factor: number | null
-          conservant_usage_factor: number | null
           created_at: string
           description: string | null
-          fecula_conversion_factor: number | null
           id: string
           name: string
-          production_prediction_factor: number | null
           unit_of_measure: string
           updated_at: string
           weight_factor: number | null
         }
         Insert: {
-          conservant_conversion_factor?: number | null
-          conservant_usage_factor?: number | null
           created_at?: string
           description?: string | null
-          fecula_conversion_factor?: number | null
           id?: string
           name: string
-          production_prediction_factor?: number | null
           unit_of_measure: string
           updated_at?: string
           weight_factor?: number | null
         }
         Update: {
-          conservant_conversion_factor?: number | null
-          conservant_usage_factor?: number | null
           created_at?: string
           description?: string | null
-          fecula_conversion_factor?: number | null
           id?: string
           name?: string
-          production_prediction_factor?: number | null
           unit_of_measure?: string
           updated_at?: string
           weight_factor?: number | null
@@ -475,6 +493,39 @@ export type Database = {
           name?: string
           notes?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      system_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          details: Json
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          user_description: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          details: Json
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          user_description?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          user_description?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

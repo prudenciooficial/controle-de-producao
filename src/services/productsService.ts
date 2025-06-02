@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Product } from "../types";
 import { createLogEntry } from "./logService";

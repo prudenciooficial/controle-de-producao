@@ -1,14 +1,14 @@
-import { useState } from "react";
+
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { DataProvider } from "./context/DataContext";
-import { AuthProvider } from "./contexts/AuthContext";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-import { ThemeProvider } from "./components/theme/ThemeProvider";
-import { Sidebar } from "./components/layout/Sidebar";
-import { Header } from "./components/layout/Header";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { DataProvider } from "@/context/DataContext";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Production from "./pages/Production";
 import ProductionHistory from "./pages/ProductionHistory";
@@ -22,73 +22,56 @@ import LossesHistory from "./pages/LossesHistory";
 import Traceability from "./pages/Traceability";
 import Registration from "./pages/Registration";
 import Users from "./pages/Users";
-import Auth from "./pages/Auth";
+import Logs from "./pages/Logs";
 import NotFound from "./pages/NotFound";
 import PrintableTraceabilityPage from "./pages/print/PrintableTraceabilityPage";
-import { useIsMobile } from "./hooks/use-mobile";
-import { cn } from "./lib/utils";
 
 const queryClient = new QueryClient();
 
-const AppContent = () => {
-  const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
+function App() {
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      <Routes>
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/print/traceability/:batchId" element={<PrintableTraceabilityPage />} />
-        <Route path="/*" element={
-          <ProtectedRoute>
-            <Sidebar isMobileMenuOpen={sidebarOpen} onMobileMenuToggle={toggleSidebar} />
-            <div className={cn("flex flex-col flex-1 transition-all duration-300 ease-in-out", isMobile ? "w-full" : "md:ml-20")}>
-              <Header toggleSidebar={toggleSidebar} />
-              <main className="flex-1 p-4 sm:p-6 bg-muted">
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+        <TooltipProvider>
+          <Toaster />
+          <BrowserRouter>
+            <AuthProvider>
+              <DataProvider>
                 <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/producao" element={<Production />} />
-                  <Route path="/producao/historico" element={<ProductionHistory />} />
-                  <Route path="/vendas" element={<Sales />} />
-                  <Route path="/vendas/historico" element={<SalesHistory />} />
-                  <Route path="/pedidos" element={<Orders />} />
-                  <Route path="/pedidos/historico" element={<OrdersHistory />} />
-                  <Route path="/estoque" element={<Inventory />} />
-                  <Route path="/perdas" element={<Losses />} />
-                  <Route path="/perdas/historico" element={<LossesHistory />} />
-                  <Route path="/rastreabilidade" element={<Traceability />} />
-                  <Route path="/cadastro" element={<Registration />} />
-                  <Route path="/usuarios" element={<Users />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/print/traceability/:batchNumber" element={<PrintableTraceabilityPage />} />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Index />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<Dashboard />} />
+                    <Route path="production" element={<Production />} />
+                    <Route path="production/history" element={<ProductionHistory />} />
+                    <Route path="sales" element={<Sales />} />
+                    <Route path="sales/history" element={<SalesHistory />} />
+                    <Route path="orders" element={<Orders />} />
+                    <Route path="orders/history" element={<OrdersHistory />} />
+                    <Route path="inventory" element={<Inventory />} />
+                    <Route path="losses" element={<Losses />} />
+                    <Route path="losses/history" element={<LossesHistory />} />
+                    <Route path="traceability" element={<Traceability />} />
+                    <Route path="registration" element={<Registration />} />
+                    <Route path="users" element={<Users />} />
+                    <Route path="logs" element={<Logs />} />
+                  </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </main>
-            </div>
-          </ProtectedRoute>
-        } />
-      </Routes>
-      <Toaster />
-    </div>
+              </DataProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
-};
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <DataProvider>
-          <TooltipProvider>
-            <BrowserRouter>
-              <AppContent />
-            </BrowserRouter>
-          </TooltipProvider>
-        </DataProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+}
 
 export default App;
