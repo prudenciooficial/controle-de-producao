@@ -124,19 +124,6 @@ export const createSale = async (
         throw new Error(`Quantidade insuficiente do produto ${item.productName}. Disponível: ${producedItem.remaining_quantity}, Solicitado: ${item.quantity}`);
       }
       
-      // Update produced item quantity first
-      const { error: updateError } = await supabase
-        .from("produced_items")
-        .update({ 
-          remaining_quantity: producedItem.remaining_quantity - item.quantity 
-        })
-        .eq("id", item.producedItemId);
-      
-      if (updateError) {
-        console.error("Error updating produced item quantity:", updateError);
-        throw new Error(`Erro ao atualizar estoque: ${updateError.message}`);
-      }
-      
       // Insert sale item
       const itemToInsert = {
         sale_id: saleId,
@@ -274,16 +261,6 @@ export const updateSale = async (
       
       // Process deletions
       for (const item of itemsToDelete) {
-        // Restore the quantity to the produced item
-        const { error: restoreError } = await supabase
-          .from("produced_items")
-          .update({
-            remaining_quantity: item.produced_items.remaining_quantity + item.quantity
-          })
-          .eq("id", item.produced_item_id);
-        
-        if (restoreError) throw restoreError;
-        
         // Now delete the sale item
         const { error: deleteError } = await supabase
           .from("sale_items")
@@ -297,79 +274,30 @@ export const updateSale = async (
       for (const itemUpdate of itemsToUpdate) {
         if (!itemUpdate.id) continue; // Safety check
         
-        // Find the original item to calculate quantity difference
         const originalItem = currentItems?.find(ci => ci.id === itemUpdate.id);
         
         if (originalItem) {
           const quantityDiff = itemUpdate.quantity - originalItem.quantity;
           
           if (quantityDiff !== 0) {
-            // Update the produced item's remaining quantity
-            const { data: producedItem, error: fetchProducedError } = await supabase
-              .from("produced_items")
-              .select("remaining_quantity")
-              .eq("id", itemUpdate.producedItemId || originalItem.produced_item_id)
-              .single();
+            // Update the sale item
+            const { error: updateError } = await supabase
+              .from("sale_items")
+              .update({
+                product_id: itemUpdate.productId || originalItem.product_id,
+                produced_item_id: itemUpdate.producedItemId || originalItem.produced_item_id,
+                quantity: itemUpdate.quantity,
+                unit_of_measure: itemUpdate.unitOfMeasure
+              })
+              .eq("id", itemUpdate.id);
             
-            if (fetchProducedError) throw fetchProducedError;
-            
-            const newRemainingQty = producedItem.remaining_quantity - quantityDiff;
-            
-            // Check if we have enough remaining quantity
-            if (newRemainingQty < 0) {
-              throw new Error(`Não há quantidade suficiente disponível para o produto ${itemUpdate.productName || 'selecionado'}`);
-            }
-            
-            // Update the produced item
-            const { error: updateProducedError } = await supabase
-              .from("produced_items")
-              .update({ remaining_quantity: newRemainingQty })
-              .eq("id", itemUpdate.producedItemId || originalItem.produced_item_id);
-            
-            if (updateProducedError) throw updateProducedError;
+            if (updateError) throw updateError;
           }
-          
-          // Update the sale item
-          const { error: updateError } = await supabase
-            .from("sale_items")
-            .update({
-              product_id: itemUpdate.productId || originalItem.product_id,
-              produced_item_id: itemUpdate.producedItemId || originalItem.produced_item_id,
-              quantity: itemUpdate.quantity,
-              unit_of_measure: itemUpdate.unitOfMeasure
-            })
-            .eq("id", itemUpdate.id);
-          
-          if (updateError) throw updateError;
         }
       }
       
       // Process additions
       for (const itemToAdd of itemsToAdd) {
-        // Check if we have enough remaining quantity
-        const { data: producedItem, error: fetchProducedError } = await supabase
-          .from("produced_items")
-          .select("remaining_quantity")
-          .eq("id", itemToAdd.producedItemId)
-          .single();
-        
-        if (fetchProducedError) throw fetchProducedError;
-        
-        const newRemainingQty = producedItem.remaining_quantity - itemToAdd.quantity;
-        
-        // Check if we have enough remaining quantity
-        if (newRemainingQty < 0) {
-          throw new Error(`Não há quantidade suficiente disponível para o produto ${itemToAdd.productName || 'selecionado'}`);
-        }
-        
-        // Update the produced item
-        const { error: updateProducedError } = await supabase
-          .from("produced_items")
-          .update({ remaining_quantity: newRemainingQty })
-          .eq("id", itemToAdd.producedItemId);
-        
-        if (updateProducedError) throw updateProducedError;
-        
         // Add the new sale item
         const { error: insertError } = await supabase
           .from("sale_items")
@@ -403,70 +331,25 @@ export const deleteSale = async (id: string): Promise<void> => {
     console.log("Transaction started");
     
     // Get the sale items to restore produced item quantities
-    const { data: saleItemsData, error: getSaleItemsError } = await supabase
-      .from("sale_items")
-      .select("*")
-      .eq("sale_id", id);
+    // Esta busca por saleItemsData pode não ser mais estritamente necessária aqui
+    // se o único propósito era obter os dados para o estorno manual.
+    // const { data: saleItemsData, error: getSaleItemsError } = await supabase
+    //   .from("sale_items")
+    //   .select("*")
+    //   .eq("sale_id", id);
+    // 
+    // if (getSaleItemsError) {
+    //   console.error("Error getting sale items:", getSaleItemsError);
+    //   await abortTransaction();
+    //   throw getSaleItemsError;
+    // }
+    // 
+    // console.log(`Found ${saleItemsData?.length || 0} sale items to process`);
     
-    if (getSaleItemsError) {
-      console.error("Error getting sale items:", getSaleItemsError);
-      await abortTransaction();
-      throw getSaleItemsError;
-    }
+    // REMOVIDO: Loop para restaurar remaining quantities manualmente.
+    // O trigger after_sale_items_change cuidará do estorno quando os sale_items forem deletados.
     
-    console.log(`Found ${saleItemsData?.length || 0} sale items to process`);
-    
-    // Restore remaining quantities
-    for (const item of saleItemsData || []) {
-      console.log(`Processing item: ${item.id} for produced item: ${item.produced_item_id}`);
-      try {
-        // Get current remaining quantity
-        const { data: producedItemData, error: fetchError } = await supabase
-          .from("produced_items")
-          .select("remaining_quantity")
-          .eq("id", item.produced_item_id)
-          .single();
-        
-        if (fetchError) {
-          console.error("Error fetching produced item data:", fetchError);
-          await abortTransaction();
-          throw fetchError;
-        }
-        
-        if (!producedItemData) {
-          console.error("No produced item data found for:", item.produced_item_id);
-          await abortTransaction();
-          throw new Error(`No data found for produced item: ${item.produced_item_id}`);
-        }
-        
-        console.log(`Current remaining quantity: ${producedItemData.remaining_quantity}, Adding back: ${item.quantity}`);
-        
-        // Calculate new remaining quantity
-        const newRemainingQty = producedItemData.remaining_quantity + item.quantity;
-        
-        console.log(`New remaining quantity will be: ${newRemainingQty}`);
-        
-        // Update the produced item
-        const { error: updateError } = await supabase
-          .from("produced_items")
-          .update({ remaining_quantity: newRemainingQty })
-          .eq("id", item.produced_item_id);
-        
-        if (updateError) {
-          console.error("Error updating produced item quantity:", updateError);
-          await abortTransaction();
-          throw updateError;
-        }
-        
-        console.log(`Successfully updated remaining quantity for: ${item.produced_item_id}`);
-      } catch (itemError) {
-        console.error(`Error processing sale item ${item.id}:`, itemError);
-        await abortTransaction();
-        throw itemError;
-      }
-    }
-    
-    console.log("All produced item quantities updated, now deleting sale items");
+    // console.log("All produced item quantities updated, now deleting sale items");
     
     // Delete sale items
     const { error: saleItemsError } = await supabase

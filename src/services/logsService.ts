@@ -1,14 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { SystemLog } from '@/types/logs'; // Precisaremos definir este tipo
-
-export interface LogFilters {
-  userId?: string;
-  entityType?: string;
-  startDate?: string; // Formato YYYY-MM-DD
-  endDate?: string;   // Formato YYYY-MM-DD
-  page?: number;
-  pageSize?: number;
-}
+import type { SystemLog, LogFilters, LogActionType, UserSelectItem, EntityTableSelectItem } from '@/types/logs';
 
 export interface FetchLogsResponse {
   logs: SystemLog[];
@@ -19,28 +10,39 @@ export interface FetchLogsResponse {
 export const fetchSystemLogs = async (filters: LogFilters): Promise<FetchLogsResponse> => {
   let query = supabase
     .from('system_logs')
-    .select('*', { count: 'exact' });
+    .select(`
+      id,
+      created_at,
+      user_id,
+      user_display_name,
+      action_type,
+      entity_schema,
+      entity_table,
+      entity_id,
+      old_data,
+      new_data
+    `, { count: 'exact' });
 
   if (filters.userId) {
     query = query.eq('user_id', filters.userId);
   }
-  if (filters.entityType) {
-    query = query.eq('entity_type', filters.entityType);
+  if (filters.entityTable) {
+    query = query.eq('entity_table', filters.entityTable);
   }
-  if (filters.startDate) {
-    query = query.gte('created_at', filters.startDate);
+  if (filters.actionType) {
+    query = query.eq('action_type', filters.actionType);
   }
-  if (filters.endDate) {
-    // Adiciona 1 dia ao endDate para incluir todos os logs do dia selecionado
-    const nextDay = new Date(filters.endDate);
+  if (filters.dateFrom) {
+    query = query.gte('created_at', filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    const nextDay = new Date(filters.dateTo);
     nextDay.setDate(nextDay.getDate() + 1);
     query = query.lt('created_at', nextDay.toISOString().split('T')[0]);
   }
 
-  // Ordenação padrão: mais recentes primeiro
   query = query.order('created_at', { ascending: false });
 
-  // Paginação
   if (filters.page && filters.pageSize) {
     const from = (filters.page - 1) * filters.pageSize;
     const to = from + filters.pageSize - 1;
@@ -54,50 +56,67 @@ export const fetchSystemLogs = async (filters: LogFilters): Promise<FetchLogsRes
     throw new Error(error.message || 'Falha ao buscar logs do sistema.');
   }
 
-  return { logs: (data as SystemLog[]) || [], count: count || 0 };
+  const logs: SystemLog[] = (data || []).map(item => ({
+    id: item.id,
+    created_at: item.created_at,
+    user_id: item.user_id,
+    user_display_name: item.user_display_name,
+    action_type: item.action_type as LogActionType,
+    entity_schema: item.entity_schema,
+    entity_table: item.entity_table,
+    entity_id: item.entity_id,
+    old_data: (typeof item.old_data === 'object' && item.old_data !== null) ? item.old_data as Record<string, any> : null,
+    new_data: (typeof item.new_data === 'object' && item.new_data !== null) ? item.new_data as Record<string, any> : null,
+  }));
+
+  return { logs, count: count || 0 };
 };
 
-// Função para buscar usuários distintos que realizaram ações (para o filtro)
-export const fetchLogUsers = async (): Promise<{ id: string; description: string }[]> => {
+// Função para buscar user_ids distintos que realizaram ações
+export const fetchLogUsers = async (): Promise<UserSelectItem[]> => {
   const { data, error } = await supabase
     .from('system_logs')
-    .select('user_id, user_description')
-    // .distinctOn(['user_id', 'user_description']); // distinctOn não é diretamente suportado assim no JS SDK para todas as bases
+    .select('user_id, user_display_name')
+    .not('user_id', 'is', null);
 
   if (error) {
     console.error('Error fetching distinct log users:', error);
     throw new Error(error.message || 'Falha ao buscar usuários para filtro de logs.');
   }
 
-  // Processamento para obter valores distintos, já que distinctOn pode não funcionar como esperado
-  const uniqueUsersMap = new Map<string, { id: string; description: string }>();
-  data?.forEach(item => {
-    if (item.user_id && item.user_description && !uniqueUsersMap.has(item.user_id)) {
-      uniqueUsersMap.set(item.user_id, { id: item.user_id, description: item.user_description });
+  const uniqueUsers = new Map<string, string>();
+  (data || []).forEach(item => {
+    if (item.user_id) {
+      const displayName = item.user_display_name?.trim() ? item.user_display_name.trim() : item.user_id;
+      if (!uniqueUsers.has(item.user_id)) {
+         uniqueUsers.set(item.user_id, displayName);
+      }
     }
   });
   
-  return Array.from(uniqueUsersMap.values()).sort((a, b) => a.description.localeCompare(b.description));
+  return Array.from(uniqueUsers.entries())
+    .map(([id, displayName]) => ({ id: id, display_name: displayName }))
+    .sort((a,b) => a.display_name.localeCompare(b.display_name));
 };
 
-// Função para buscar tipos de entidade distintos (para o filtro)
-export const fetchLogEntityTypes = async (): Promise<string[]> => {
+// Função para buscar tipos de entidade (nomes de tabela) distintos
+export const fetchLogEntityTables = async (): Promise<EntityTableSelectItem[]> => {
   const { data, error } = await supabase
     .from('system_logs')
-    .select('entity_type');
-    // .distinctOn(['entity_type']); // Mesmo caso do distinctOn acima
+    .select('entity_table')
+    .not('entity_table', 'is', null);
 
   if (error) {
-    console.error('Error fetching distinct entity types:', error);
-    throw new Error(error.message || 'Falha ao buscar tipos de entidade para filtro de logs.');
+    console.error('Error fetching distinct entity tables:', error);
+    throw new Error(error.message || 'Falha ao buscar tabelas para filtro de logs.');
   }
   
-  const uniqueEntityTypes = new Set<string>();
-  data?.forEach(item => {
-    if (item.entity_type) {
-      uniqueEntityTypes.add(item.entity_type);
+  const uniqueEntityTables = new Set<string>();
+  (data || []).forEach(item => {
+    if (item.entity_table) {
+      uniqueEntityTables.add(item.entity_table);
     }
   });
 
-  return Array.from(uniqueEntityTypes).sort();
+  return Array.from(uniqueEntityTables).map(name => ({ name })).sort((a,b) => a.name.localeCompare(b.name));
 }; 

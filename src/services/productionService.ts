@@ -175,7 +175,7 @@ export const createProductionBatch = async (
       }
     }
     
-    // Insert used materials and update material batch quantities
+    // Insert used materials
     for (const material of batch.usedMaterials) {
       const { error: materialError } = await supabase
         .from("used_materials")
@@ -190,35 +190,6 @@ export const createProductionBatch = async (
       if (materialError) {
         await abortTransaction();
         throw materialError;
-      }
-      
-      // FIXED: Manually update the remaining_quantity in material_batches
-      // Get current remaining quantity first
-      const { data: materialBatchData, error: fetchError } = await supabase
-        .from("material_batches")
-        .select("remaining_quantity")
-        .eq("id", material.materialBatchId)
-        .single();
-      
-      if (fetchError) {
-        console.error("Error fetching material batch data:", fetchError);
-        await abortTransaction();
-        throw fetchError;
-      }
-      
-      // Calculate new remaining quantity 
-      const newRemainingQty = materialBatchData.remaining_quantity - material.quantity;
-      
-      // Update the material batch with the new remaining quantity
-      const { error: updateError } = await supabase
-        .from("material_batches")
-        .update({ remaining_quantity: newRemainingQty })
-        .eq("id", material.materialBatchId);
-      
-      if (updateError) {
-        console.error("Error updating material batch quantity:", updateError);
-        await abortTransaction();
-        throw updateError;
       }
     }
     
@@ -313,54 +284,17 @@ export const updateProductionBatch = async (
       for (const material of batch.usedMaterials) {
         // First check if the quantity is going to change
         if (material.quantity !== undefined) {
-          // Get the original material usage record
-          const { data: originalUsage, error: getUsageError } = await supabase
-            .from("used_materials")
-            .select("quantity, material_batch_id")
-            .eq("id", material.id)
-            .single();
-            
-          if (getUsageError) {
-            await abortTransaction();
-            throw getUsageError;
-          }
+          // REMOVIDO: A busca por originalUsage, cálculo de quantityDiff e atualização de material_batches.
+          // O trigger after_used_materials_change cuidará do ajuste de estoque quando used_materials for atualizado.
           
-          // Calculate the difference in quantity
-          const quantityDiff = material.quantity - originalUsage.quantity;
-          
-          // Get current material batch data
-          const { data: materialBatch, error: batchError } = await supabase
-            .from("material_batches")
-            .select("remaining_quantity")
-            .eq("id", originalUsage.material_batch_id)
-            .single();
-            
-          if (batchError) {
-            await abortTransaction();
-            throw batchError;
-          }
-          
-          // If we're increasing usage, decrease the remaining quantity in material batch
-          // If we're decreasing usage, increase the remaining quantity in material batch
-          const newRemainingQuantity = materialBatch.remaining_quantity - quantityDiff;
-          
-          // Update the material batch remaining quantity
-          const { error: updateBatchError } = await supabase
-            .from("material_batches")
-            .update({ remaining_quantity: newRemainingQuantity })
-            .eq("id", originalUsage.material_batch_id);
-            
-          if (updateBatchError) {
-            await abortTransaction();
-            throw updateBatchError;
-          }
+          // Apenas garantimos que o material_batch_id existe se fornecido, ou mantemos o original (não implementado aqui, assumindo que não muda ou é sempre fornecido se mudar)
         }
         
         // Update the used material record
         const { error: materialError } = await supabase
           .from("used_materials")
           .update({
-            material_batch_id: material.materialBatchId,
+            material_batch_id: material.materialBatchId, // Se materialBatchId pode mudar, essa atualização é importante.
             quantity: material.quantity,
             unit_of_measure: material.unitOfMeasure,
             mix_count_used: material.mixCountUsed // Update mix count for conservants
@@ -391,43 +325,21 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
     await beginTransaction();
 
     // Get all used materials for this production batch
-    const { data: usedMaterials, error: usedMaterialsError } = await supabase
-      .from("used_materials")
-      .select("*")
-      .eq("production_batch_id", id);
+    // Esta busca ainda pode ser útil se você precisar dos dados dos insumos por algum outro motivo antes de deletar,
+    // mas não é estritamente necessária para o trigger de estorno funcionar.
+    // const { data: usedMaterials, error: usedMaterialsError } = await supabase
+    //   .from("used_materials")
+    //   .select("*")
+    //   .eq("production_batch_id", id);
 
-    if (usedMaterialsError) {
-      await abortTransaction();
-      throw usedMaterialsError;
-    }
+    // if (usedMaterialsError) {
+    //   await abortTransaction();
+    //   throw usedMaterialsError;
+    // }
 
-    // Return materials to inventory
-    for (const material of usedMaterials) {
-      // Get current remaining quantity
-      const { data: materialBatch, error: fetchError } = await supabase
-        .from("material_batches")
-        .select("remaining_quantity")
-        .eq("id", material.material_batch_id)
-        .single();
-      
-      if (fetchError) {
-        await abortTransaction();
-        throw fetchError;
-      }
-      
-      // Update the material batch to return the quantity
-      const newRemainingQuantity = materialBatch.remaining_quantity + material.quantity;
-      
-      const { error: updateError } = await supabase
-        .from("material_batches")
-        .update({ remaining_quantity: newRemainingQuantity })
-        .eq("id", material.material_batch_id);
-      
-      if (updateError) {
-        await abortTransaction();
-        throw updateError;
-      }
-    }
+    // REMOVIDO: Loop para retornar materiais ao inventário manualmente.
+    // O trigger after_used_materials_change cuidará do estorno quando os registros
+    // de used_materials forem deletados na etapa seguinte.
 
     // Delete produced items
     const { error: producedItemsError } = await supabase

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { LogEntry } from "../types";
 
@@ -25,8 +24,9 @@ export const createLogEntry = async (payload: CreateLogEntryPayload): Promise<vo
         : (payload.details || {}),
     };
 
-    console.log("Creating log entry:", logData);
+    console.log("Skipping log entry creation (system_logs table removed):", logData);
 
+    /*
     const { data, error } = await supabase
       .from("system_logs")
       .insert([logData]);
@@ -38,6 +38,7 @@ export const createLogEntry = async (payload: CreateLogEntryPayload): Promise<vo
     } else {
       console.log("Log entry created successfully:", data);
     }
+    */
   } catch (error) {
     console.error("Unexpected error creating log entry:", error);
     // Silent fail to not interrupt main operations

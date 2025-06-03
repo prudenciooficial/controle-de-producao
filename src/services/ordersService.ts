@@ -205,33 +205,6 @@ export const updateOrder = async (
       
       // Process deletions
       for (const item of itemsToDelete) {
-        // First check if any material batches related to this order item need to be deleted
-        const { data: materialBatches } = await supabase
-          .from("material_batches")
-          .select("id")
-          .eq("material_id", item.material_id)
-          .eq("batch_number", item.batch_number);
-        
-        if (materialBatches && materialBatches.length > 0) {
-          // Check if any of these batches are used in production
-          const batchIds = materialBatches.map(batch => batch.id);
-          
-          const { data: usedMaterials } = await supabase
-            .from("used_materials")
-            .select("material_batch_id")
-            .in("material_batch_id", batchIds);
-          
-          if (!usedMaterials || usedMaterials.length === 0) {
-            // Safe to delete the material batch if not used in production
-            const { error: deleteBatchError } = await supabase
-              .from("material_batches")
-              .delete()
-              .in("id", batchIds);
-            
-            if (deleteBatchError) throw deleteBatchError;
-          }
-        }
-        
         // Now delete the order item
         const { error: deleteError } = await supabase
           .from("order_items")
@@ -249,8 +222,7 @@ export const updateOrder = async (
         if (!item.id) continue; // Extra safety check
         
         let adjustedQuantity = item.quantity;
-        
-        // Apply conservant conversion if needed
+        // Check if this is a conservant material and apply conversion
         if (item.materialType === "Conservante") {
           adjustedQuantity = item.quantity * conservantFactor;
         }
@@ -258,6 +230,7 @@ export const updateOrder = async (
         const { error: updateError } = await supabase
           .from("order_items")
           .update({
+            material_id: item.materialId,
             quantity: adjustedQuantity,
             unit_of_measure: item.unitOfMeasure,
             batch_number: item.batchNumber,
@@ -267,55 +240,16 @@ export const updateOrder = async (
           .eq("id", item.id);
         
         if (updateError) throw updateError;
-        
-        // Update corresponding material batch if it exists
-        const { data: materialBatches } = await supabase
-          .from("material_batches")
-          .select("*")
-          .eq("material_id", item.materialId)
-          .eq("batch_number", item.batchNumber);
-        
-        if (materialBatches && materialBatches.length > 0) {
-          // Get the original order item to see if quantity changed
-          const originalItem = currentItems?.find(ci => ci.id === item.id);
-          if (originalItem) {
-            const quantityDiff = adjustedQuantity - originalItem.quantity;
-            if (quantityDiff !== 0) {
-              for (const batch of materialBatches) {
-                // Only update if not being used in production yet
-                const { data: usedMaterials } = await supabase
-                  .from("used_materials")
-                  .select("material_batch_id")
-                  .eq("material_batch_id", batch.id);
-                
-                if (!usedMaterials || usedMaterials.length === 0) {
-                  const { error: updateBatchError } = await supabase
-                    .from("material_batches")
-                    .update({
-                      quantity: batch.quantity + quantityDiff,
-                      supplied_quantity: batch.supplied_quantity + quantityDiff,
-                      remaining_quantity: batch.remaining_quantity + quantityDiff
-                    })
-                    .eq("id", batch.id);
-                  
-                  if (updateBatchError) throw updateBatchError;
-                }
-              }
-            }
-          }
-        }
       }
       
       // Process additions
       for (const item of itemsToAdd) {
         let adjustedQuantity = item.quantity;
-        
-        // Apply conservant conversion if needed
+        // Check if this is a conservant material and apply conversion
         if (item.materialType === "Conservante") {
           adjustedQuantity = item.quantity * conservantFactor;
         }
         
-        // Insert the new order item
         const { error: insertError } = await supabase
           .from("order_items")
           .insert({
@@ -341,79 +275,23 @@ export const updateOrder = async (
 
 export const deleteOrder = async (id: string): Promise<void> => {
   try {
+    // Start transaction
     await beginTransaction();
-    console.log(`Deleting order with ID: ${id}`);
-    
-    // First, get all order items for this order
-    const { data: orderItems, error: itemsError } = await supabase
-      .from("order_items")
-      .select("*")
-      .eq("order_id", id);
-    
-    if (itemsError) {
-      console.error("Error fetching order items:", itemsError);
-      await abortTransaction();
-      throw itemsError;
-    }
-    
-    console.log(`Found ${orderItems?.length || 0} order items to process`);
-    
-    // For each order item, check if there are material batches that need to be deleted
-    for (const item of orderItems || []) {
-      console.log(`Processing order item: ${item.id} for material: ${item.material_id}, batch: ${item.batch_number}`);
-      
-      // Check if material batches from this order are being used in any production
-      // Using a better approach for the query
-      const { data: materialBatches } = await supabase
-        .from("material_batches")
-        .select("id")
-        .eq("material_id", item.material_id)
-        .eq("batch_number", item.batch_number);
-        
-      if (!materialBatches || materialBatches.length === 0) {
-        console.log("No material batches found for this order item");
-        continue;
-      }
-      
-      const batchIds = materialBatches.map(batch => batch.id);
-      
-      // Check if any of these batches are used in production
-      const { data: usedMaterials } = await supabase
-        .from("used_materials")
-        .select("material_batch_id")
-        .in("material_batch_id", batchIds);
-      
-      if (usedMaterials && usedMaterials.length > 0) {
-        console.log(`Material batch is being used in production. Cannot delete material batches.`);
-        // Skip deleting material batches that are being used
-      } else {
-        console.log(`No usage found for material batches. Safe to delete.`);
-        // Delete material batches that are not being used
-        const { error: deleteBatchError } = await supabase
-          .from("material_batches")
-          .delete()
-          .in("id", batchIds);
-        
-        if (deleteBatchError) {
-          console.error("Error deleting material batches:", deleteBatchError);
-          // Continue deleting other items even if this one fails
-        }
-      }
-    }
-    
-    // Delete all order items
+
+    // Delete all order items for this order first (se não houver ON DELETE CASCADE na FK de orders para order_items)
+    // Se houver CASCADE, esta etapa é redundante mas não prejudicial.
     const { error: deleteItemsError } = await supabase
       .from("order_items")
       .delete()
       .eq("order_id", id);
-    
+
     if (deleteItemsError) {
       console.error("Error deleting order items:", deleteItemsError);
       await abortTransaction();
       throw deleteItemsError;
     }
-    
-    // Finally, delete the order itself
+
+    // Then delete the order itself
     const { error: deleteOrderError } = await supabase
       .from("orders")
       .delete()
@@ -425,11 +303,13 @@ export const deleteOrder = async (id: string): Promise<void> => {
       throw deleteOrderError;
     }
     
-    console.log("Order deletion completed successfully");
+    // Commit the transaction
     await endTransaction();
+    
   } catch (error) {
-    console.error("Error in deleteOrder:", error);
+    // Rollback on error
     await abortTransaction();
+    console.error("Error in deleteOrder transaction:", error);
     throw error;
   }
 };

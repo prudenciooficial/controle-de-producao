@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useQuery, QueryKey } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchSystemLogs, fetchLogUsers, fetchLogEntityTypes, LogFilters, FetchLogsResponse } from '@/services/logsService';
-import { SystemLog } from '@/types/logs';
+import {
+  fetchSystemLogs,
+  fetchLogUsers,
+  fetchLogEntityTables,
+  type FetchLogsResponse
+} from '@/services/logsService';
+import { type SystemLog, type LogFilters, type UserSelectItem, type EntityTableSelectItem } from '@/types/logs';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-// import { Input } from '@/components/ui/input'; // Não usado diretamente, mas pode ser útil para paginação numérica futura
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -24,11 +28,9 @@ export default function SystemLogsPage() {
   const [currentDateRange, setCurrentDateRange] = useState<DateRange | undefined>(undefined);
 
   const logUsersQueryKey: QueryKey = ['logUsers'];
-  const { data: logUsers, isLoading: isLoadingUsers } = useQuery<
-    { id: string; description: string }[], 
+  const { data: logUsersData, isLoading: isLoadingUsers } = useQuery<
+    UserSelectItem[], 
     Error
-    // { id: string; description: string }[], 
-    // QueryKey // Não é necessário especificar os 2 últimos tipos genéricos se o queryFn for simples
   >(
     {
       queryKey: logUsersQueryKey,
@@ -37,16 +39,14 @@ export default function SystemLogsPage() {
     }
   );
 
-  const logEntityTypesQueryKey: QueryKey = ['logEntityTypes'];
-  const { data: logEntityTypes, isLoading: isLoadingEntityTypes } = useQuery<
-    string[], 
+  const logEntityTablesQueryKey: QueryKey = ['logEntityTables'];
+  const { data: logEntityTablesData, isLoading: isLoadingEntityTables } = useQuery<
+    EntityTableSelectItem[], 
     Error
-    // string[], 
-    // QueryKey
   >(
     {
-      queryKey: logEntityTypesQueryKey,
-      queryFn: fetchLogEntityTypes,
+      queryKey: logEntityTablesQueryKey,
+      queryFn: fetchLogEntityTables,
       enabled: !!user,
     }
   );
@@ -62,8 +62,6 @@ export default function SystemLogsPage() {
       queryKey: systemLogsQueryKey,
       queryFn: () => fetchSystemLogs(filters),
       enabled: !!user && canViewSystemLogs(),
-      // placeholderData: (previousData) => previousData, // Removido - não é a forma correta para manter dados durante refetch
-      // O comportamento padrão do TanStack Query v5+ é manter os dados antigos enquanto busca novos (isFetching=true)
     }
   );
 
@@ -102,8 +100,8 @@ export default function SystemLogsPage() {
     setCurrentDateRange(dateRangeValue);
     setFilters(prev => ({
       ...prev,
-      startDate: dateRangeValue?.from ? format(dateRangeValue.from, 'yyyy-MM-dd') : undefined,
-      endDate: dateRangeValue?.to ? format(dateRangeValue.to, 'yyyy-MM-dd') : undefined,
+      dateFrom: dateRangeValue?.from ? format(dateRangeValue.from, 'yyyy-MM-dd') : undefined,
+      dateTo: dateRangeValue?.to ? format(dateRangeValue.to, 'yyyy-MM-dd') : undefined,
       page: 1,
     }));
   };
@@ -111,41 +109,63 @@ export default function SystemLogsPage() {
   const handlePageChange = (newPage: number) => {
     if (newPage < 1) return;
     const currentTotalPages = logsData?.count ? Math.ceil(logsData.count / ITEMS_PER_PAGE) : 1;
-    if (newPage > currentTotalPages && currentTotalPages > 0) return; // Não ir além da última página calculada
+    if (newPage > currentTotalPages && currentTotalPages > 0) return;
     setFilters(prev => ({ ...prev, page: newPage }));
   };
 
   const formatLogDetails = (log: SystemLog): string => {
-    let details = '';
-    const oldData = log.details?.old_data;
-    const newData = log.details?.new_data;
+    const { old_data, new_data, action_type } = log;
 
-    if (log.action_type === 'INSERT' && newData) {
-      const entries = Object.entries(newData).map(([key, value]) => `${key}: ${JSON.stringify(value)}`).join(', ');
-      details = `Dados: {${entries}}.`;
+    if (action_type === 'INSERT' && new_data) {
+      const entries = Object.entries(new_data)
+        .map(([key, value]) => `  ${key}: ${JSON.stringify(value)}`)
+        .join('\n');
+      return `Adicionado:\n${entries}`;
     }
-    else if (log.action_type === 'DELETE' && oldData) {
-      const entries = Object.entries(oldData).map(([key, value]) => `${key}: ${JSON.stringify(value)}`).join(', ');
-      details = `Removido: {${entries}}.`;
+    
+    if (action_type === 'DELETE' && old_data) {
+      const entries = Object.entries(old_data)
+        .map(([key, value]) => `  ${key}: ${JSON.stringify(value)}`)
+        .join('\n');
+      return `Removido:\n${entries}`;
     }
-    else if (log.action_type === 'UPDATE' && oldData && newData) {
-      const changes = Object.entries(newData).map(([key, newValue]) => {
-        const oldValue = oldData[key];
-        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-          return `'${key}': '${JSON.stringify(oldValue)}' -> '${JSON.stringify(newValue)}'`;
-        }
-        return null;
-      }).filter(Boolean).join('; ');
-      details = changes ? `Alterações: ${changes}.` : 'Nenhuma alteração de dados registrada.';
+
+    if (action_type === 'UPDATE' && old_data && new_data) {
+      const changes = Object.keys(new_data) // Iterar sobre as chaves de new_data pode ser suficiente
+        .map(key => {
+          const oldValue = old_data[key];
+          const newValue = new_data[key];
+          
+          // Compara os valores após a serialização para JSON para tratar objetos e arrays
+          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            return `  ${key}: ${JSON.stringify(oldValue)} -> ${JSON.stringify(newValue)}`;
+          }
+          return null;
+        })
+        .filter(Boolean); // Remove entradas nulas (campos não alterados)
+
+      // Considerar também chaves que podem ter sido removidas (presentes em old_data mas não em new_data)
+      // Ou chaves que foram adicionadas (presentes em new_data mas não em old_data)
+      // A lógica atual cobre bem as modificações de valores existentes e adição de novas chaves.
+      // Para remoção de chaves em um UPDATE, seria preciso iterar old_data.keys() e verificar se não existem em new_data.
+      // Por simplicidade e foco no que é mais comum em logs (mudança de valores ou adição), manteremos assim por ora.
+
+      if (changes.length > 0) {
+        return `Alterações:\n${changes.join('\n')}`;
+      }
+      return 'Nenhuma alteração de dados significativa detectada.';
     }
-    return details;
+    return 'Detalhes não disponíveis ou ação desconhecida.';
   };
 
   const logs = logsData?.logs || [];
   const totalCount = logsData?.count || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-  const isLoadingFilters = isLoadingUsers || isLoadingEntityTypes;
+  const isLoadingFilters = isLoadingUsers || isLoadingEntityTables;
+
+  const logUsersForSelect = logUsersData || [];
+  const logEntityTablesForSelect = logEntityTablesData || [];
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -174,24 +194,24 @@ export default function SystemLogsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Usuários</SelectItem>
-              {logUsers?.map(u => (
-                <SelectItem key={u.id} value={u.id}>{u.description}</SelectItem>
+              {logUsersForSelect.map(u => (
+                <SelectItem key={u.id} value={u.id}>{u.display_name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <Select
-            onValueChange={(value) => handleFilterChange('entityType', value)}
-            disabled={isLoadingEntityTypes || isFetchingLogs}
-            value={filters.entityType || 'all'}
+            onValueChange={(value) => handleFilterChange('entityTable', value)}
+            disabled={isLoadingEntityTables || isFetchingLogs}
+            value={filters.entityTable || 'all'}
           >
-            <SelectTrigger className={isLoadingEntityTypes ? 'animate-pulse' : ''}>
+            <SelectTrigger className={isLoadingEntityTables ? 'animate-pulse' : ''}>
               <SelectValue placeholder="Filtrar por módulo..." />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Módulos</SelectItem>
-              {logEntityTypes?.map(et => (
-                <SelectItem key={et} value={et}>{et}</SelectItem>
+              {logEntityTablesForSelect.map(et => (
+                <SelectItem key={et.name} value={et.name}>{et.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -243,9 +263,9 @@ export default function SystemLogsPage() {
                   {logs.map(log => (
                     <TableRow key={log.id}>
                       <TableCell>{format(new Date(log.created_at), 'dd/MM/yy HH:mm:ss', { locale: ptBR })}</TableCell>
-                      <TableCell>{log.user_description || 'N/A'}</TableCell>
+                      <TableCell>{log.user_display_name || log.user_id || 'N/A'}</TableCell>
                       <TableCell>{log.action_type}</TableCell>
-                      <TableCell>{log.entity_type}</TableCell>
+                      <TableCell>{log.entity_table || 'N/A'}</TableCell>
                       <TableCell>{log.entity_id || 'N/A'}</TableCell>
                       <TableCell className="text-xs max-w-sm break-words whitespace-pre-wrap" title={formatLogDetails(log)}>
                         {formatLogDetails(log)}

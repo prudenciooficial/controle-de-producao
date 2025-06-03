@@ -141,21 +141,27 @@ const Inventory = () => {
   
   // Get expiry badge
   const getExpiryBadge = (expiryDate: Date | undefined) => {
-    if (!expiryDate) return null;
+    if (!expiryDate) return <Badge variant="secondary">Sem data</Badge>;
     
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const expiry = new Date(expiryDate);
+    expiry.setHours(0, 0, 0, 0);
+
     const diffTime = expiry.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 0) {
-      return <Badge variant="destructive">Vencido</Badge>;
-    } else if (diffDays <= 30) {
-      return <Badge variant="destructive">Vence em {diffDays} dias</Badge>;
-    } else if (diffDays <= 90) {
-      return <Badge className="bg-yellow-500">Vence em {diffDays} dias</Badge>;
+      return <Badge variant="destructive" className="font-bold">Vencido</Badge>;
+    } else if (diffDays === 0) {
+      return <Badge variant="destructive" className="font-semibold">Vence hoje</Badge>;
+    } else if (diffDays < 30) {
+      return <Badge className="bg-orange-500 text-white">Vence em {diffDays} dia{diffDays === 1 ? '' : 's'}</Badge>;
     } else {
-      return <Badge variant="outline">{new Date(expiryDate).toLocaleDateString()}</Badge>;
+      const day = expiry.getDate().toString().padStart(2, '0');
+      const month = (expiry.getMonth() + 1).toString().padStart(2, '0');
+      const year = expiry.getFullYear();
+      return <Badge variant="outline">{`${day}/${month}/${year}`}</Badge>;
     }
   };
   
