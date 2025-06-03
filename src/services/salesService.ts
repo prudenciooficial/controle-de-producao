@@ -1,16 +1,23 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Sale, SaleItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
+import { createLogEntry } from "./logService";
 
 export const fetchSales = async (): Promise<Sale[]> => {
+  console.log("Fetching sales...");
+  
   // First, fetch the sales
   const { data: salesData, error: salesError } = await supabase
     .from("sales")
     .select("*")
     .order("date", { ascending: false });
   
-  if (salesError) throw salesError;
+  if (salesError) {
+    console.error("Error fetching sales:", salesError);
+    throw salesError;
+  }
+  
+  console.log(`Found ${salesData?.length || 0} sales`);
   
   // Create an array to store complete sales
   const sales: Sale[] = [];
@@ -31,7 +38,10 @@ export const fetchSales = async (): Promise<Sale[]> => {
       `)
       .eq("sale_id", sale.id);
     
-    if (saleItemsError) throw saleItemsError;
+    if (saleItemsError) {
+      console.error("Error fetching sale items for sale:", sale.id, saleItemsError);
+      throw saleItemsError;
+    }
     
     // Format sale items
     const items: SaleItem[] = saleItemsData.map(item => ({
@@ -58,15 +68,19 @@ export const fetchSales = async (): Promise<Sale[]> => {
     });
   }
   
+  console.log("Sales fetched successfully");
   return sales;
 };
 
 export const createSale = async (
   sale: Omit<Sale, "id" | "createdAt" | "updatedAt">
 ): Promise<Sale> => {
+  console.log("Creating sale:", sale);
+  
   try {
     // Start a transaction
     await beginTransaction();
+    console.log("Transaction started");
     
     // Insert the sale
     const { data: saleData, error: saleError } = await supabase
@@ -81,13 +95,49 @@ export const createSale = async (
       .select()
       .single();
     
-    if (saleError) throw saleError;
+    if (saleError) {
+      console.error("Error creating sale:", saleError);
+      throw saleError;
+    }
     
+    console.log("Sale created:", saleData);
     const saleId = saleData.id;
     
     // Insert sale items - let Supabase generate the IDs
-    for (const item of sale.items) {
-      // Insert each sale item individually, removing the ID field to let Supabase generate it
+    for (let i = 0; i < sale.items.length; i++) {
+      const item = sale.items[i];
+      console.log(`Processing sale item ${i + 1}/${sale.items.length}:`, item);
+      
+      // Check available quantity before processing
+      const { data: producedItem, error: checkError } = await supabase
+        .from("produced_items")
+        .select("remaining_quantity")
+        .eq("id", item.producedItemId)
+        .single();
+      
+      if (checkError) {
+        console.error("Error checking produced item:", checkError);
+        throw new Error(`Erro ao verificar produto: ${checkError.message}`);
+      }
+      
+      if (producedItem.remaining_quantity < item.quantity) {
+        throw new Error(`Quantidade insuficiente do produto ${item.productName}. Disponível: ${producedItem.remaining_quantity}, Solicitado: ${item.quantity}`);
+      }
+      
+      // Update produced item quantity first
+      const { error: updateError } = await supabase
+        .from("produced_items")
+        .update({ 
+          remaining_quantity: producedItem.remaining_quantity - item.quantity 
+        })
+        .eq("id", item.producedItemId);
+      
+      if (updateError) {
+        console.error("Error updating produced item quantity:", updateError);
+        throw new Error(`Erro ao atualizar estoque: ${updateError.message}`);
+      }
+      
+      // Insert sale item
       const itemToInsert = {
         sale_id: saleId,
         product_id: item.productId,
@@ -100,11 +150,27 @@ export const createSale = async (
         .from("sale_items")
         .insert(itemToInsert);
       
-      if (itemError) throw itemError;
+      if (itemError) {
+        console.error("Error creating sale item:", itemError);
+        throw new Error(`Erro ao inserir item da venda: ${itemError.message}`);
+      }
     }
     
     // Commit the transaction
     await endTransaction();
+    console.log("Transaction committed successfully");
+    
+    // Log the operation (non-blocking)
+    createLogEntry({
+      action_type: "CREATE",
+      entity_type: "sales",
+      entity_id: saleId,
+      details: {
+        customer: sale.customerName,
+        type: sale.type,
+        items_count: sale.items.length
+      }
+    }).catch(err => console.error("Log creation failed:", err));
     
     // Fetch the inserted sale items to get their IDs
     const { data: insertedItems, error: fetchItemsError } = await supabase
@@ -116,7 +182,10 @@ export const createSale = async (
       `)
       .eq("sale_id", saleId);
     
-    if (fetchItemsError) throw fetchItemsError;
+    if (fetchItemsError) {
+      console.error("Error fetching inserted items:", fetchItemsError);
+      throw fetchItemsError;
+    }
     
     // Map the inserted items to our SaleItem type
     const items: SaleItem[] = insertedItems.map(item => ({
@@ -130,15 +199,19 @@ export const createSale = async (
     }));
     
     // Return the complete sale with correctly generated IDs
-    return {
+    const completeSale = {
       ...sale,
       id: saleId,
       items,
       createdAt: new Date(saleData.created_at),
       updatedAt: new Date(saleData.updated_at)
     };
+    
+    console.log("Sale created successfully:", completeSale);
+    return completeSale;
   } catch (error) {
     // Rollback on error
+    console.error("Error in createSale, rolling back:", error);
     await abortTransaction();
     throw error;
   }
