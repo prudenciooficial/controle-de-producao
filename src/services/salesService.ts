@@ -73,7 +73,9 @@ export const fetchSales = async (): Promise<Sale[]> => {
 };
 
 export const createSale = async (
-  sale: Omit<Sale, "id" | "createdAt" | "updatedAt">
+  sale: Omit<Sale, "id" | "createdAt" | "updatedAt">,
+  userId?: string,
+  userDisplayName?: string
 ): Promise<Sale> => {
   console.log("Creating sale:", sale);
   
@@ -148,7 +150,9 @@ export const createSale = async (
     console.log("Transaction committed successfully");
     
     // Log the operation (non-blocking)
-    createLogEntry({
+    await createLogEntry({
+      user_id: userId,
+      user_description: userDisplayName,
       action_type: "CREATE",
       entity_type: "sales",
       entity_id: saleId,
@@ -157,7 +161,7 @@ export const createSale = async (
         type: sale.type,
         items_count: sale.items.length
       }
-    }).catch(err => console.error("Log creation failed:", err));
+    });
     
     // Fetch the inserted sale items to get their IDs
     const { data: insertedItems, error: fetchItemsError } = await supabase
@@ -206,7 +210,9 @@ export const createSale = async (
 
 export const updateSale = async (
   id: string,
-  sale: Partial<Sale>
+  sale: Partial<Sale>,
+  userId?: string,
+  userDisplayName?: string
 ): Promise<void> => {
   try {
     await beginTransaction();
@@ -314,6 +320,14 @@ export const updateSale = async (
     }
     
     await endTransaction();
+    await createLogEntry({
+      user_id: userId,
+      user_description: userDisplayName,
+      action_type: "UPDATE",
+      entity_type: "sales",
+      entity_id: id,
+      details: { message: `Venda (ID: ${id}) atualizada.`, changes: sale }
+    });
   } catch (error) {
     // Rollback on error
     await abortTransaction();
@@ -321,7 +335,7 @@ export const updateSale = async (
   }
 };
 
-export const deleteSale = async (id: string): Promise<void> => {
+export const deleteSale = async (id: string, userId?: string, userDisplayName?: string): Promise<void> => {
   // The system is freezing during deletion, so let's add some error handling and improve the transaction flow
   try {
     console.log("Beginning deletion process for sale:", id);
@@ -382,6 +396,14 @@ export const deleteSale = async (id: string): Promise<void> => {
     // Commit the transaction
     await endTransaction();
     console.log("Transaction committed successfully");
+    await createLogEntry({
+      user_id: userId,
+      user_description: userDisplayName,
+      action_type: "DELETE",
+      entity_type: "sales",
+      entity_id: id,
+      details: { message: `Venda (ID: ${id}) excluída.` }
+    });
   } catch (error) {
     // Rollback on error
     console.error("Error in delete sale operation, rolling back:", error);

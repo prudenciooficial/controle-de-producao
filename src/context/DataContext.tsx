@@ -195,7 +195,7 @@ const mockLosses: Loss[] = [
 ];
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, getUserDisplayName } = useAuth();
   
   // State for all data collections
   const [productionBatches, setProductionBatches] = useState<ProductionBatch[]>([]);
@@ -661,18 +661,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Production Batches
   const addProductionBatch = async (batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newBatch = await createProductionBatchApi(batch);
-      await refetchProductionBatches();
-      await refetchMaterialBatches();
+      const newBatch = await createProductionBatchApi(batch, user?.id, getUserDisplayName());
+      setProductionBatches([...productionBatches, newBatch]);
       toast({
         title: "Sucesso",
-        description: "Lote de produção registrado com sucesso",
+        description: "Lote de produção criado com sucesso",
       });
     } catch (error) {
       console.error("Error adding production batch:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao registrar lote de produção",
+        description: "Falha ao criar lote de produção",
         variant: "destructive",
       });
       throw error;
@@ -681,9 +680,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProductionBatch = async (id: string, batch: Partial<ProductionBatch>) => {
     try {
-      await updateProductionBatchApi(id, batch);
-      await refetchProductionBatches();
-      await refetchMaterialBatches();
+      await updateProductionBatchApi(id, batch, user?.id, getUserDisplayName());
+      setProductionBatches(
+        productionBatches.map(b => 
+          b.id === id ? { ...b, ...batch, updatedAt: new Date() } : b
+        )
+      );
       toast({
         title: "Sucesso",
         description: "Lote de produção atualizado com sucesso",
@@ -692,7 +694,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error updating production batch:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao atualizar lote de produção",
+        description: "Falha ao atualizar lote de produção",
         variant: "destructive",
       });
       throw error;
@@ -701,9 +703,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteProductionBatch = async (id: string) => {
     try {
-      await deleteProductionBatchApi(id);
-      await refetchProductionBatches();
-      await refetchMaterialBatches();
+      await deleteProductionBatchApi(id, user?.id, getUserDisplayName());
+      setProductionBatches(productionBatches.filter(b => b.id !== id));
       toast({
         title: "Sucesso",
         description: "Lote de produção excluído com sucesso",
@@ -712,7 +713,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error deleting production batch:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao excluir lote de produção",
+        description: "Falha ao excluir lote de produção",
         variant: "destructive",
       });
       throw error;
@@ -722,18 +723,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Sales
   const addSale = async (sale: Omit<Sale, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newSale = await createSaleApi(sale);
-      await refetchProductionBatches();
-      await refetchSales();
+      const newSale = await createSaleApi(sale, user?.id, getUserDisplayName());
+      setSales([...sales, newSale]);
       toast({
         title: "Sucesso",
-        description: "Venda registrada com sucesso",
+        description: "Venda criada com sucesso",
       });
     } catch (error) {
       console.error("Error adding sale:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao registrar venda",
+        description: "Falha ao criar venda",
         variant: "destructive",
       });
       throw error;
@@ -742,9 +742,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateSale = async (id: string, sale: Partial<Sale>) => {
     try {
-      await updateSaleApi(id, sale);
-      await refetchProductionBatches();
-      await refetchSales();
+      await updateSaleApi(id, sale, user?.id, getUserDisplayName());
+      setSales(
+        sales.map(s => 
+          s.id === id ? { ...s, ...sale, updatedAt: new Date() } : s
+        )
+      );
       toast({
         title: "Sucesso",
         description: "Venda atualizada com sucesso",
@@ -753,7 +756,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error updating sale:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao atualizar venda",
+        description: "Falha ao atualizar venda",
         variant: "destructive",
       });
       throw error;
@@ -762,9 +765,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteSale = async (id: string) => {
     try {
-      await deleteSaleApi(id);
-      await refetchProductionBatches();
-      await refetchSales();
+      await deleteSaleApi(id, user?.id, getUserDisplayName());
+      setSales(sales.filter(s => s.id !== id));
       toast({
         title: "Sucesso",
         description: "Venda excluída com sucesso",
@@ -773,7 +775,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error deleting sale:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao excluir venda",
+        description: "Falha ao excluir venda",
         variant: "destructive",
       });
       throw error;
@@ -783,18 +785,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Orders
   const addOrder = async (order: Omit<Order, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newOrder = await createOrderApi(order);
-      await refetchMaterialBatches();
-      await refetchOrders();
+      const newOrder = await createOrderApi(order, user?.id, getUserDisplayName());
+      setOrders([...orders, newOrder]);
       toast({
         title: "Sucesso",
-        description: "Pedido registrado com sucesso",
+        description: "Pedido criado com sucesso",
       });
     } catch (error) {
       console.error("Error adding order:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao registrar pedido",
+        description: "Falha ao criar pedido",
         variant: "destructive",
       });
       throw error;
@@ -803,9 +804,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateOrder = async (id: string, order: Partial<Order>) => {
     try {
-      await updateOrderApi(id, order);
-      await refetchMaterialBatches();
-      await refetchOrders();
+      await updateOrderApi(id, order, user?.id, getUserDisplayName());
+      setOrders(
+        orders.map(o => 
+          o.id === id ? { ...o, ...order, updatedAt: new Date() } : o
+        )
+      );
       toast({
         title: "Sucesso",
         description: "Pedido atualizado com sucesso",
@@ -814,7 +818,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error updating order:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao atualizar pedido",
+        description: "Falha ao atualizar pedido",
         variant: "destructive",
       });
       throw error;
@@ -823,9 +827,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteOrder = async (id: string) => {
     try {
-      await deleteOrderApi(id);
-      await refetchMaterialBatches();
-      await refetchOrders();
+      await deleteOrderApi(id, user?.id, getUserDisplayName());
+      setOrders(orders.filter(o => o.id !== id));
       toast({
         title: "Sucesso",
         description: "Pedido excluído com sucesso",
@@ -834,7 +837,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error deleting order:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao excluir pedido",
+        description: "Falha ao excluir pedido",
         variant: "destructive",
       });
       throw error;
@@ -844,10 +847,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Losses
   const addLoss = async (loss: Omit<Loss, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newLoss = await createLossApi(loss);
-      await refetchProductionBatches();
-      await refetchMaterialBatches();
-      await refetchLosses();
+      const newLoss = await createLossApi(loss, user?.id, getUserDisplayName());
+      setLosses([...losses, newLoss]);
       toast({
         title: "Sucesso",
         description: "Perda registrada com sucesso",
@@ -856,7 +857,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error adding loss:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao registrar perda",
+        description: "Falha ao registrar perda",
         variant: "destructive",
       });
       throw error;
@@ -865,10 +866,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateLoss = async (id: string, loss: Partial<Loss>) => {
     try {
-      await updateLossApi(id, loss);
-      await refetchProductionBatches();
-      await refetchMaterialBatches();
-      await refetchLosses();
+      await updateLossApi(id, loss, user?.id, getUserDisplayName());
+      setLosses(
+        losses.map(l => 
+          l.id === id ? { ...l, ...loss, updatedAt: new Date() } : l
+        )
+      );
       toast({
         title: "Sucesso",
         description: "Perda atualizada com sucesso",
@@ -877,7 +880,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error updating loss:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao atualizar perda",
+        description: "Falha ao atualizar perda",
         variant: "destructive",
       });
       throw error;
@@ -886,14 +889,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteLoss = async (id: string) => {
     try {
-      setIsLoading(prev => ({ ...prev, losses: true }));
-      
-      await deleteLossApi(id);
-      
-      await refetchProductionBatches();
-      await refetchMaterialBatches();
-      await refetchLosses();
-      
+      await deleteLossApi(id, user?.id, getUserDisplayName());
+      setLosses(losses.filter(l => l.id !== id));
       toast({
         title: "Sucesso",
         description: "Perda excluída com sucesso",
@@ -902,19 +899,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error deleting loss:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao excluir perda",
+        description: "Falha ao excluir perda",
         variant: "destructive",
       });
       throw error;
-    } finally {
-      setIsLoading(prev => ({ ...prev, losses: false }));
     }
   };
 
   // CRUD operations for Products - Using Supabase
   const addProduct = async (product: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newProduct = await createProduct(product);
+      const newProduct = await createProduct(product, user?.id, getUserDisplayName());
       setProducts([...products, newProduct]);
       toast({
         title: "Sucesso",
@@ -933,7 +928,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProduct = async (id: string, product: Partial<Product>) => {
     try {
-      await updateProductApi(id, product);
+      await updateProductApi(id, product, user?.id, getUserDisplayName());
       setProducts(
         products.map(p => 
           p.id === id ? { ...p, ...product, updatedAt: new Date() } : p
@@ -956,7 +951,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteProduct = async (id: string) => {
     try {
-      await deleteProductApi(id);
+      await deleteProductApi(id, user?.id, getUserDisplayName());
       setProducts(products.filter(p => p.id !== id));
       toast({
         title: "Sucesso",
@@ -976,7 +971,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Materials - Updated to use Supabase
   const addMaterial = async (material: Omit<Material, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newMaterial = await createMaterial(material);
+      const newMaterial = await createMaterial(material, user?.id, getUserDisplayName());
       setMaterials([...materials, newMaterial]);
       toast({
         title: "Sucesso",
@@ -995,7 +990,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateMaterial = async (id: string, material: Partial<Material>) => {
     try {
-      await updateMaterialApi(id, material);
+      await updateMaterialApi(id, material, user?.id, getUserDisplayName());
       setMaterials(
         materials.map(m => 
           m.id === id ? { ...m, ...material, updatedAt: new Date() } : m
@@ -1018,7 +1013,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteMaterial = async (id: string) => {
     try {
-      await deleteMaterialApi(id);
+      await deleteMaterialApi(id, user?.id, getUserDisplayName());
       setMaterials(materials.filter(m => m.id !== id));
       toast({
         title: "Sucesso",
@@ -1038,7 +1033,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CRUD operations for Suppliers - Updated to use Supabase
   const addSupplier = async (supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newSupplier = await createSupplier(supplier);
+      const newSupplier = await createSupplier(supplier, user?.id, getUserDisplayName());
       setSuppliers([...suppliers, newSupplier]);
       toast({
         title: "Sucesso",
@@ -1057,7 +1052,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateSupplier = async (id: string, supplier: Partial<Supplier>) => {
     try {
-      await updateSupplierApi(id, supplier);
+      await updateSupplierApi(id, supplier, user?.id, getUserDisplayName());
       setSuppliers(
         suppliers.map(s => 
           s.id === id ? { ...s, ...supplier, updatedAt: new Date() } : s
@@ -1080,7 +1075,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteSupplier = async (id: string) => {
     try {
-      await deleteSupplierApi(id);
+      await deleteSupplierApi(id, user?.id, getUserDisplayName());
       setSuppliers(suppliers.filter(s => s.id !== id));
       toast({
         title: "Sucesso",

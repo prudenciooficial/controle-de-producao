@@ -29,63 +29,51 @@ export const fetchProducts = async (): Promise<Product[]> => {
 
 export const createProduct = async (
   product: Omit<Product, "id" | "createdAt" | "updatedAt">,
-  userId?: string, 
-  userEmail?: string 
+  userId?: string,
+  userDisplayName?: string
 ): Promise<Product> => {
-  const productDataToInsert = {
-    name: product.name,
-    description: product.description,
-    unit_of_measure: product.unitOfMeasure,
-    weight_factor: product.weightFactor,
-    fecula_conversion_factor: product.feculaConversionFactor,
-    production_prediction_factor: product.productionPredictionFactor,
-    conservant_conversion_factor: product.conservantConversionFactor, 
-    conservant_usage_factor: product.conservantUsageFactor,
-    type: product.type,
-    notes: product.notes
-  };
-
   const { data, error } = await supabase
     .from("products")
-    .insert(productDataToInsert)
-    .select("*")
+    .insert({
+      name: product.name,
+      description: product.description,
+      unit_of_measure: product.unitOfMeasure,
+      weight_factor: product.weightFactor,
+      fecula_conversion_factor: product.feculaConversionFactor,
+      production_prediction_factor: product.productionPredictionFactor,
+      conservant_conversion_factor: product.conservantConversionFactor,
+      conservant_usage_factor: product.conservantUsageFactor,
+      type: product.type,
+      notes: product.notes
+    })
+    .select()
     .single();
-  
-  if (error) throw error;
 
-  const newProduct: Product = {
+  if (error) throw error;
+  const newProduct = {
+    ...product,
     id: data.id,
-    name: data.name,
-    description: data.description,
-    unitOfMeasure: data.unit_of_measure,
-    weightFactor: data.weight_factor === null ? undefined : data.weight_factor,
-    feculaConversionFactor: data.fecula_conversion_factor === null ? undefined : data.fecula_conversion_factor,
-    productionPredictionFactor: data.production_prediction_factor === null ? undefined : data.production_prediction_factor,
-    conservantConversionFactor: data.conservant_conversion_factor === null ? undefined : data.conservant_conversion_factor,
-    conservantUsageFactor: data.conservant_usage_factor === null ? undefined : data.conservant_usage_factor,
-    type: data.type === null ? undefined : data.type,
-    notes: data.notes === null ? undefined : data.notes,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
 
   await createLogEntry({
     user_id: userId,
-    user_description: userEmail,
+    user_description: userDisplayName,
     action_type: "CREATE",
     entity_type: "products",
     entity_id: newProduct.id,
     details: { message: `Produto '${newProduct.name}' (ID: ${newProduct.id}) criado.`, data: newProduct }
   });
-  
+
   return newProduct;
 };
 
 export const updateProduct = async (
   id: string,
   product: Partial<Product>,
-  userId?: string, 
-  userEmail?: string 
+  userId?: string,
+  userDisplayName?: string
 ): Promise<void> => {
   const updates: { [key: string]: any } = {};
   if (product.name !== undefined) updates.name = product.name;
@@ -98,7 +86,7 @@ export const updateProduct = async (
   if (product.conservantUsageFactor !== undefined) updates.conservant_usage_factor = product.conservantUsageFactor;
   if (product.type !== undefined) updates.type = product.type;
   if (product.notes !== undefined) updates.notes = product.notes;
-  
+
   if (Object.keys(updates).length === 0) {
     console.log("UpdateProduct: Nenhuma alteração fornecida para o produto ID:", id);
     return;
@@ -108,12 +96,12 @@ export const updateProduct = async (
     .from("products")
     .update(updates)
     .eq("id", id);
-  
+
   if (error) throw error;
 
   await createLogEntry({
     user_id: userId,
-    user_description: userEmail,
+    user_description: userDisplayName,
     action_type: "UPDATE",
     entity_type: "products",
     entity_id: id,
@@ -121,17 +109,17 @@ export const updateProduct = async (
   });
 };
 
-export const deleteProduct = async (id: string, userId?: string, userEmail?: string): Promise<void> => {
+export const deleteProduct = async (id: string, userId?: string, userDisplayName?: string): Promise<void> => {
   const { error } = await supabase
     .from("products")
     .delete()
     .eq("id", id);
-  
+
   if (error) throw error;
 
   await createLogEntry({
     user_id: userId,
-    user_description: userEmail,
+    user_description: userDisplayName,
     action_type: "DELETE",
     entity_type: "products",
     entity_id: id,

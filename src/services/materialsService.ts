@@ -1,6 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Material, MaterialBatch } from "../types";
+import { createLogEntry } from "./logService";
 
 // Materials
 export const fetchMaterials = async (): Promise<Material[]> => {
@@ -25,7 +25,9 @@ export const fetchMaterials = async (): Promise<Material[]> => {
 };
 
 export const createMaterial = async (
-  material: Omit<Material, "id" | "createdAt" | "updatedAt">
+  material: Omit<Material, "id" | "createdAt" | "updatedAt">,
+  userId?: string,
+  userDisplayName?: string
 ): Promise<Material> => {
   const { data, error } = await supabase
     .from("materials")
@@ -41,7 +43,7 @@ export const createMaterial = async (
   
   if (error) throw error;
   
-  return {
+  const newMaterial = {
     ...data,
     id: data.id,
     name: data.name,
@@ -52,11 +54,24 @@ export const createMaterial = async (
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
+  
+  await createLogEntry({
+    user_id: userId,
+    user_description: userDisplayName,
+    action_type: "CREATE",
+    entity_type: "materials",
+    entity_id: newMaterial.id,
+    details: { message: `Material '${newMaterial.name}' (ID: ${newMaterial.id}) criado.`, data: newMaterial }
+  });
+  
+  return newMaterial;
 };
 
 export const updateMaterial = async (
   id: string,
-  material: Partial<Material>
+  material: Partial<Material>,
+  userId?: string,
+  userDisplayName?: string
 ): Promise<void> => {
   const updates: any = {};
   
@@ -72,15 +87,33 @@ export const updateMaterial = async (
     .eq("id", id);
   
   if (error) throw error;
+  
+  await createLogEntry({
+    user_id: userId,
+    user_description: userDisplayName,
+    action_type: "UPDATE",
+    entity_type: "materials",
+    entity_id: id,
+    details: { message: `Material (ID: ${id}) atualizado.`, changes: updates }
+  });
 };
 
-export const deleteMaterial = async (id: string): Promise<void> => {
+export const deleteMaterial = async (id: string, userId?: string, userDisplayName?: string): Promise<void> => {
   const { error } = await supabase
     .from("materials")
     .delete()
     .eq("id", id);
   
   if (error) throw error;
+  
+  await createLogEntry({
+    user_id: userId,
+    user_description: userDisplayName,
+    action_type: "DELETE",
+    entity_type: "materials",
+    entity_id: id,
+    details: { message: `Material (ID: ${id}) excluído.` }
+  });
 };
 
 // Material Batches

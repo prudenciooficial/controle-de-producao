@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
+import { createLogEntry } from "./logService";
 
 const fetchProducedItems = async (productionBatchId: string): Promise<ProducedItem[]> => {
   // Updated query to include the product name from products table
@@ -132,7 +133,9 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
 
 // When creating a production batch, ensure remaining_quantity is set to the same value as quantity
 export const createProductionBatch = async (
-  batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">
+  batch: Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">,
+  userId?: string,
+  userDisplayName?: string
 ): Promise<ProductionBatch> => {
   try {
     await beginTransaction();
@@ -194,8 +197,14 @@ export const createProductionBatch = async (
     }
     
     await endTransaction();
-    
-    // Return the created batch with all relations
+    await createLogEntry({
+      user_id: userId,
+      user_description: userDisplayName,
+      action_type: "CREATE",
+      entity_type: "production_batches",
+      entity_id: batchData.id,
+      details: { message: `Lote de produção '${batch.batchNumber}' (ID: ${batchData.id}) criado.`, data: batch }
+    });
     return fetchProductionBatchById(batchData.id);
   } catch (error) {
     console.error("Error creating production batch:", error);
@@ -210,7 +219,9 @@ export const createProductionBatch = async (
 
 export const updateProductionBatch = async (
   id: string,
-  batch: Partial<ProductionBatch>
+  batch: Partial<ProductionBatch>,
+  userId?: string,
+  userDisplayName?: string
 ): Promise<void> => {
   try {
     await beginTransaction();
@@ -309,6 +320,14 @@ export const updateProductionBatch = async (
     }
 
     await endTransaction();
+    await createLogEntry({
+      user_id: userId,
+      user_description: userDisplayName,
+      action_type: "UPDATE",
+      entity_type: "production_batches",
+      entity_id: id,
+      details: { message: `Lote de produção (ID: ${id}) atualizado.`, changes: batch }
+    });
   } catch (error) {
     console.error("Error updating production batch:", error);
     try {
@@ -320,7 +339,7 @@ export const updateProductionBatch = async (
   }
 };
 
-export const deleteProductionBatch = async (id: string): Promise<void> => {
+export const deleteProductionBatch = async (id: string, userId?: string, userDisplayName?: string): Promise<void> => {
   try {
     await beginTransaction();
 
@@ -375,6 +394,14 @@ export const deleteProductionBatch = async (id: string): Promise<void> => {
     }
 
     await endTransaction();
+    await createLogEntry({
+      user_id: userId,
+      user_description: userDisplayName,
+      action_type: "DELETE",
+      entity_type: "production_batches",
+      entity_id: id,
+      details: { message: `Lote de produção (ID: ${id}) excluído.` }
+    });
   } catch (error) {
     console.error("Error deleting production batch:", error);
     try {

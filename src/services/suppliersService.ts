@@ -1,6 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Supplier } from "../types";
+import { createLogEntry } from "./logService";
 
 export const fetchSuppliers = async (): Promise<Supplier[]> => {
   const { data, error } = await supabase
@@ -23,7 +23,9 @@ export const fetchSuppliers = async (): Promise<Supplier[]> => {
 };
 
 export const createSupplier = async (
-  supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">
+  supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">,
+  userId?: string,
+  userDisplayName?: string
 ): Promise<Supplier> => {
   const { data, error } = await supabase
     .from("suppliers")
@@ -38,7 +40,7 @@ export const createSupplier = async (
   
   if (error) throw error;
   
-  return {
+  const newSupplier = {
     ...data,
     id: data.id,
     name: data.name,
@@ -48,11 +50,24 @@ export const createSupplier = async (
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
+  
+  await createLogEntry({
+    user_id: userId,
+    user_description: userDisplayName,
+    action_type: "CREATE",
+    entity_type: "suppliers",
+    entity_id: newSupplier.id,
+    details: { message: `Fornecedor '${newSupplier.name}' (ID: ${newSupplier.id}) criado.`, data: newSupplier }
+  });
+  
+  return newSupplier;
 };
 
 export const updateSupplier = async (
   id: string,
-  supplier: Partial<Supplier>
+  supplier: Partial<Supplier>,
+  userId?: string,
+  userDisplayName?: string
 ): Promise<void> => {
   const updates: any = {};
   
@@ -67,13 +82,35 @@ export const updateSupplier = async (
     .eq("id", id);
   
   if (error) throw error;
+  
+  await createLogEntry({
+    user_id: userId,
+    user_description: userDisplayName,
+    action_type: "UPDATE",
+    entity_type: "suppliers",
+    entity_id: id,
+    details: { message: `Fornecedor (ID: ${id}) atualizado.`, changes: updates }
+  });
 };
 
-export const deleteSupplier = async (id: string): Promise<void> => {
+export const deleteSupplier = async (
+  id: string,
+  userId?: string,
+  userDisplayName?: string
+): Promise<void> => {
   const { error } = await supabase
     .from("suppliers")
     .delete()
     .eq("id", id);
   
   if (error) throw error;
+  
+  await createLogEntry({
+    user_id: userId,
+    user_description: userDisplayName,
+    action_type: "DELETE",
+    entity_type: "suppliers",
+    entity_id: id,
+    details: { message: `Fornecedor (ID: ${id}) excluído.` }
+  });
 };

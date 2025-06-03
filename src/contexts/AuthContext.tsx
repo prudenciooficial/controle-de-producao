@@ -213,8 +213,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+
+  // Helper para obter o nome de exibição do usuário autenticado
+  const getUserDisplayName = () => {
+    const { user } = context;
+    if (!user) return undefined;
+    // Tenta pegar o full_name, depois username, depois email, depois id
+    return (
+      user.user_metadata?.full_name ||
+      user.user_metadata?.username ||
+      user.email ||
+      user.id
+    );
+  };
+
+  return { ...context, getUserDisplayName };
 }
