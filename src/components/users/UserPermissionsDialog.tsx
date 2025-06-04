@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logSystemEvent } from '@/services/logService';
 
 interface ModuleActions {
   create: boolean;
@@ -201,6 +202,18 @@ export function UserPermissionsDialog({ open, onOpenChange, user, onPermissionsU
         console.error('Error invoking update-user-admin for permissions:', invokeError);
         throw new Error(detailedError);
       }
+
+      // Registrar log da alteração de permissões
+      const currentUserSession = session.user;
+      await logSystemEvent({
+        userId: currentUserSession?.id,
+        userDisplayName: currentUserSession?.user_metadata?.full_name || currentUserSession?.email,
+        actionType: 'UPDATE',
+        entityTable: 'auth.users.permissions',
+        entityId: user.id,
+        oldData: user.user_metadata?.permissions || {},
+        newData: currentPermissions
+      });
 
       toast({
         title: "Permissões atualizadas",

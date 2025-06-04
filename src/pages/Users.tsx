@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Edit, Trash2, Ban, CheckCircle } from 'lucide-react';
+import { UserPlus, Edit, Trash2, Ban, CheckCircle, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserDialog } from '@/components/users/UserDialog';
 import { UserPermissionsDialog } from '@/components/users/UserPermissionsDialog';
+import { logSystemEvent } from '@/services/logService';
 
 interface UserData {
   id: string;
@@ -122,6 +123,24 @@ export default function Users() {
         throw invokeError;
       }
 
+      // Registrar log da alteração de status
+      const currentUser = await getSession().then(s => s?.user);
+      await logSystemEvent({
+        userId: currentUser?.id,
+        userDisplayName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        actionType: 'UPDATE',
+        entityTable: 'auth.users',
+        entityId: user.id,
+        oldData: {
+          status: isCurrentlyBanned ? 'inativo' : 'ativo',
+          banned_until: user.banned_until
+        },
+        newData: {
+          status: isCurrentlyBanned ? 'ativo' : 'inativo',
+          ban_duration: updatePayload.updateData.ban_duration
+        }
+      });
+
       toast({
         title: "Status atualizado",
         description: `Usuário ${isCurrentlyBanned ? 'ativado' : 'desativado'} com sucesso.`,
@@ -169,6 +188,23 @@ export default function Users() {
         console.error('Error invoking delete-user-admin:', invokeError);
         throw invokeError;
       }
+
+      // Registrar log da exclusão de usuário
+      const currentUser = await getSession().then(s => s?.user);
+      await logSystemEvent({
+        userId: currentUser?.id,
+        userDisplayName: currentUser?.user_metadata?.full_name || currentUser?.email,
+        actionType: 'DELETE',
+        entityTable: 'auth.users',
+        entityId: user.id,
+        oldData: {
+          email: user.email,
+          full_name: user.user_metadata?.full_name,
+          username: user.user_metadata?.username,
+          role: user.user_metadata?.role,
+          created_at: user.created_at
+        }
+      });
 
       toast({
         title: "Usuário excluído",

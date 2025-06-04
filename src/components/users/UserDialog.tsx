@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logSystemEvent } from '@/services/logService';
 
 interface UserDialogProps {
   open: boolean;
@@ -93,6 +94,26 @@ export function UserDialog({ open, onOpenChange, user, onUserUpdated }: UserDial
           throw new Error(detailedError);
         }
 
+        const currentUser = session.user;
+        await logSystemEvent({
+          userId: currentUser?.id,
+          userDisplayName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          actionType: 'UPDATE',
+          entityTable: 'auth.users',
+          entityId: user.id,
+          oldData: {
+            full_name: user.user_metadata?.full_name,
+            username: user.user_metadata?.username,
+            role: user.user_metadata?.role
+          },
+          newData: {
+            full_name: formData.fullName,
+            username: formData.username,
+            role: formData.role,
+            password_changed: !!formData.password
+          }
+        });
+
         toast({
           title: "Usuário atualizado",
           description: "Informações do usuário foram atualizadas com sucesso.",
@@ -125,6 +146,21 @@ export function UserDialog({ open, onOpenChange, user, onUserUpdated }: UserDial
           console.error('Error invoking create-user-admin function:', invokeError);
           throw new Error(detailedError);
         }
+
+        const currentUser = session.user;
+        await logSystemEvent({
+          userId: currentUser?.id,
+          userDisplayName: currentUser?.user_metadata?.full_name || currentUser?.email,
+          actionType: 'CREATE',
+          entityTable: 'auth.users',
+          newData: {
+            email: formData.email,
+            full_name: formData.fullName,
+            username: formData.username,
+            role: formData.role,
+            created_by: currentUser?.id
+          }
+        });
 
         toast({
           title: "Usuário criado",

@@ -7,6 +7,7 @@
 3. **Exclusão de logs com erro** - ✅ Resolvido (era RLS)
 4. **Logs não aparecendo na tela** - ✅ Resolvido (era RLS)
 5. **🆕 Constraint `check_data_for_action` impedindo inserções** - ✅ Identificado e corrigido
+6. **🆕 Logs ausentes nas telas de Cadastro e Usuários** - ✅ Implementado
 
 ## Correções Aplicadas
 
@@ -42,6 +43,44 @@
 - ✅ **🆕 Criado `investigate_constraints.sql` para investigar constraints**
 - ✅ **🆕 Criado `remove_constraint_quick_fix.sql` para correção rápida**
 
+### 6. **🆕 Logs para Tela de Usuários**
+- ✅ **Criação de usuários** - `src/components/users/UserDialog.tsx`
+- ✅ **Edição de usuários** - `src/components/users/UserDialog.tsx`
+- ✅ **Alteração de status** - `src/pages/Users.tsx`
+- ✅ **Exclusão de usuários** - `src/pages/Users.tsx`
+- ✅ **Alteração de permissões** - `src/components/users/UserPermissionsDialog.tsx`
+
+### 7. **🆕 Logs para Tela de Cadastros**
+- ✅ **Produtos** - já implementado via `DataContext.tsx` → `productsService.ts`
+- ✅ **Materiais** - já implementado via `DataContext.tsx` → `materialsService.ts`
+- ✅ **Fornecedores** - já implementado via `DataContext.tsx` → `suppliersService.ts`
+- ✅ **Fatores de Cálculo** - `src/components/registration/CalcTable.tsx`
+- ✅ **Previsibilidade de Produtos** - já implementado via service
+
+## **🆕 Operações com Logs Implementados**
+
+### Usuários (`auth.users`)
+| Operação | Arquivo | Função | Dados Registrados |
+|----------|---------|--------|-------------------|
+| **CREATE** | `UserDialog.tsx` | `handleSubmit` | email, full_name, username, role, created_by |
+| **UPDATE** | `UserDialog.tsx` | `handleSubmit` | old/new: full_name, username, role, password_changed |
+| **UPDATE** (status) | `Users.tsx` | `handleToggleStatus` | old/new: status, banned_until |
+| **DELETE** | `Users.tsx` | `handleDeleteUser` | email, full_name, username, role, created_at |
+| **UPDATE** (permissões) | `UserPermissionsDialog.tsx` | `handleSubmit` | old/new: permissions object |
+
+### Cadastros - Fatores de Cálculo (`global_settings`)
+| Operação | Arquivo | Função | Dados Registrados |
+|----------|---------|--------|-------------------|
+| **CREATE** | `CalcTable.tsx` | `updateGlobalFactors` | fecula_conversion_factor, production_prediction_factor, etc. |
+| **UPDATE** | `CalcTable.tsx` | `updateGlobalFactors` | old/new: todos os fatores de conversão |
+
+### Cadastros - Outros (já implementados anteriormente)
+| Operação | Entidade | Service | Dados Registrados |
+|----------|----------|---------|-------------------|
+| **CREATE/UPDATE/DELETE** | `products` | `productsService.ts` | name, description, unit_of_measure, etc. |
+| **CREATE/UPDATE/DELETE** | `materials` | `materialsService.ts` | name, type, unit_of_measure, etc. |
+| **CREATE/UPDATE/DELETE** | `suppliers` | `suppliersService.ts` | name, contacts, notes, etc. |
+
 ## Como Aplicar as Correções
 
 ### **🚨 CORREÇÃO URGENTE - Execute PRIMEIRO:**
@@ -67,9 +106,15 @@ VALUES ('INSERT', 'public', 'teste_correcao', 'Sistema - Teste');
 1. Acesse a página de "Logs do Sistema"
 2. Clique em "🔍 Consultar Tabela" - deve mostrar registros encontrados
 3. Clique em "🧪 Testar Log" - deve criar log e recarregar página
-4. Verifique se os logs aparecem na lista
+4. **🆕 Teste operações nas telas de Usuários e Cadastros**
+5. Verifique se os logs aparecem na lista
 
-### 3. Se Ainda Houver Problemas
+### 3. **🆕 Testar Novos Logs Implementados**
+1. **Usuários**: Criar, editar, alterar status, excluir usuário, alterar permissões
+2. **Cadastros**: Alterar fatores de cálculo, criar/editar produtos/materiais/fornecedores
+3. Verificar se todos aparecem nos logs do sistema
+
+### 4. Se Ainda Houver Problemas
 Execute o script de correção rápida: `remove_constraint_quick_fix.sql`
 
 ## **🆕 Detalhes da Constraint Problemática**
@@ -154,17 +199,42 @@ if (mappedActionType === 'INSERT') {
 ✅ **Tratamento de Erros** - Melhorado
 ✅ **Scripts de Diagnóstico** - Criados
 ✅ **🆕 Constraint check_data_for_action** - Identificada e corrigida
+✅ **🆕 Logs para Tela de Usuários** - Implementado completamente
+✅ **🆕 Logs para Tela de Cadastros** - Implementado completamente
 
 ## Próximos Passos
 
 1. **EXECUTE PRIMEIRO**: Script de correção rápida da constraint
 2. Execute a migração no Supabase (opcional, para ambiente mais robusto)
-3. Teste os botões na página de logs
-4. Verifique se logs aparecem corretamente
-5. Se houver problemas, execute scripts de diagnóstico
+3. **🆕 Teste as operações de usuários**: criar, editar, excluir, alterar permissões
+4. **🆕 Teste as operações de cadastros**: fatores de cálculo, produtos, materiais, fornecedores
+5. Verifique se todos os logs aparecem corretamente na tela de Logs do Sistema
+6. Se houver problemas, execute scripts de diagnóstico
 
 ## **🆕 Arquivos de Correção da Constraint**
 
 - `investigate_constraints.sql` - Investigar constraints da tabela
 - `remove_constraint_quick_fix.sql` - **Correção rápida (USE ESTE PRIMEIRO)**
 - `supabase/migrations/20241208000001_fix_check_constraint.sql` - Migração completa 
+
+## **🆕 Arquivos Modificados para Logs de Usuários e Cadastros**
+
+### Usuários
+- `src/pages/Users.tsx` - Logs de alteração de status e exclusão
+- `src/components/users/UserDialog.tsx` - Logs de criação e edição
+- `src/components/users/UserPermissionsDialog.tsx` - Logs de alteração de permissões
+
+### Cadastros
+- `src/components/registration/CalcTable.tsx` - Logs de fatores de cálculo
+- Outros já estavam implementados via services
+
+## **🆕 Resumo Final**
+
+**✅ CONCLUÍDO**: Sistema de logs agora registra TODAS as operações principais:
+- ✅ Produção, Vendas, Pedidos, Perdas (já implementado)
+- ✅ Produtos, Materiais, Fornecedores (já implementado)
+- ✅ **NOVO**: Usuários (criar, editar, excluir, alterar status, permissões)
+- ✅ **NOVO**: Fatores de Cálculo (criar, atualizar)
+- ✅ Autenticação (login, logout)
+
+**Total de operações com logs**: ~25+ tipos de operações registradas no sistema 

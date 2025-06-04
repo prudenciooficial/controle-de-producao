@@ -3,9 +3,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { logSystemEvent } from "@/services/logService";
 
 interface GlobalFactors {
   id: string | null;
@@ -17,15 +19,16 @@ interface GlobalFactors {
 
 const CalcTable = () => {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const { user } = useAuth();
   const [factors, setFactors] = useState<GlobalFactors>({
     id: null,
-    feculaConversionFactor: 25,
-    productionPredictionFactor: 1.5,
-    conservantConversionFactor: 1,
-    conservantUsageFactor: 0.1
+    feculaConversionFactor: 0,
+    productionPredictionFactor: 0,
+    conservantConversionFactor: 0,
+    conservantUsageFactor: 0
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchGlobalFactors();
@@ -99,6 +102,7 @@ const CalcTable = () => {
       };
 
       let error;
+      let isCreating = false;
 
       if (factors.id) {
         // Se temos um ID, atualizamos o registro existente
@@ -109,8 +113,7 @@ const CalcTable = () => {
         error = updateError;
       } else {
         // Se não temos um ID (primeira vez, ou falha ao buscar), tentamos inserir um novo registro.
-        // O ID será gerado pelo banco de dados (DEFAULT gen_random_uuid()).
-        // E created_at e updated_at também serão definidos pelo banco.
+        isCreating = true;
         const { data: newData, error: insertError } = await supabase
           .from("global_settings")
           .insert(dataToUpdate)
@@ -131,12 +134,32 @@ const CalcTable = () => {
         });
         return;
       }
+
+      // Registrar log da alteração dos fatores de cálculo
+      await logSystemEvent({
+        userId: user?.id,
+        userDisplayName: user?.user_metadata?.full_name || user?.email,
+        actionType: isCreating ? 'CREATE' : 'UPDATE',
+        entityTable: 'global_settings',
+        entityId: factors.id || 'new',
+        ...(isCreating ? {
+          newData: dataToUpdate
+        } : {
+          oldData: {
+            fecula_conversion_factor: factors.feculaConversionFactor,
+            production_prediction_factor: factors.productionPredictionFactor,
+            conservant_conversion_factor: factors.conservantConversionFactor,
+            conservant_usage_factor: factors.conservantUsageFactor
+          },
+          newData: dataToUpdate
+        })
+      });
       
       toast({
         title: "Fatores atualizados",
         description: "Os fatores de cálculo foram atualizados com sucesso."
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error:", error);
       toast({
         variant: "destructive",
