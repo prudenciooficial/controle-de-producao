@@ -373,7 +373,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     
+    console.log('🔄 DataContext: Carregando dados...');
     loadData();
+  }, []);
+
+  // Separate useEffect for date range changes (only affects losses)
+  useEffect(() => {
+    const reloadLossesForDateRange = async () => {
+      try {
+        setIsLoading(prev => ({ ...prev, losses: true }));
+        const lossesData = await fetchLossesWithDetails(dateRange);
+        setLosses(lossesData);
+      } catch (error) {
+        console.error("Error reloading losses for date range:", error);
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar dados das perdas",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(prev => ({ ...prev, losses: false }));
+      }
+    };
+
+    // Only reload losses if dateRange exists (avoid initial load duplication)
+    if (dateRange) {
+      console.log('📅 DataContext: Recarregando perdas para nova data range...');
+      reloadLossesForDateRange();
+    }
   }, [dateRange, toast]);
 
   // Refetch functions
@@ -663,6 +690,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const newBatch = await createProductionBatchApi(batch, user?.id, getUserDisplayName());
       setProductionBatches([...productionBatches, newBatch]);
+      // Refetch material batches to update stock levels
+      await refetchMaterialBatches();
       toast({
         title: "Sucesso",
         description: "Lote de produção criado com sucesso",
@@ -686,6 +715,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           b.id === id ? { ...b, ...batch, updatedAt: new Date() } : b
         )
       );
+      // Refetch material batches to update stock levels
+      await refetchMaterialBatches();
       toast({
         title: "Sucesso",
         description: "Lote de produção atualizado com sucesso",

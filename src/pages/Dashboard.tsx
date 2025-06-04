@@ -13,10 +13,16 @@ import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsD
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { StatsSection } from "@/components/ui/StatsSection";
 
-// Helper function to calculate percentage change
+// Função melhorada para calcular mudança percentual
 const getPercentChange = (current: number, previous: number) => {
-  if (previous === 0) return current > 0 ? 100 : 0;
-  return ((current - previous) / previous) * 100;
+  // Se ambos são 0, não há mudança
+  if (current === 0 && previous === 0) return 0;
+  
+  // Se previous é 0 mas current não é, consideramos como 100% ou -100%
+  if (previous === 0) return current > 0 ? 100 : (current < 0 ? -100 : 0);
+  
+  // Cálculo normal da porcentagem
+  return ((current - previous) / Math.abs(previous)) * 100;
 };
 
 const Dashboard = () => {
@@ -128,14 +134,16 @@ const Dashboard = () => {
   
   React.useEffect(() => {
     // Set default date range to current month if not set
-    if (!dateRange) {
+    // BUT only if we're not already loading data to avoid double refresh
+    if (!dateRange && !isLoading.productionBatches) {
+      console.log('📅 Dashboard: Definindo data range inicial...');
       const today = new Date();
       setDateRange({
         from: startOfMonth(today),
         to: endOfMonth(today)
       });
     }
-  }, [dateRange, setDateRange]);
+  }, [dateRange, setDateRange, isLoading.productionBatches]);
   
   // Determine if we should show daily or monthly chart
   const showDailyChart = React.useMemo(() => {
@@ -524,7 +532,7 @@ const Dashboard = () => {
     }
   };
   
-  // Custom tooltip formatter for Losses chart
+  // Tooltip melhorado para Perdas 
   const LossesTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length && payload[0].payload) {
       const data = payload[0].payload;
@@ -540,16 +548,20 @@ const Dashboard = () => {
           <p className="text-sm text-red-500">
             Perdas: {formatNumberBR(data.losses, { roundBeforeFormat: true })} kg
           </p>
-          {percentageChangeValue !== 0 && (
-            <div className="flex items-center text-sm mt-1">
-              <span className="mr-1">Variação:</span>
+          {/* Mostrar variação se existir e não for NaN */}
+          {percentageChangeValue !== undefined && 
+           percentageChangeValue !== null && 
+           !isNaN(percentageChangeValue) && 
+           percentageChangeValue !== 0 && (
+            <div className="flex items-center text-xs mt-1">
+              <span className="mr-1 text-muted-foreground">Variação:</span>
               {percentageChangeValue > 0 ? (
-                <span className="flex items-center text-destructive">
+                <span className="flex items-center text-red-600">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   +{percentageChangeValue.toFixed(1)}%
                 </span>
               ) : (
-                <span className="flex items-center text-success">
+                <span className="flex items-center text-emerald-600">
                   <TrendingDown className="h-3 w-3 mr-1" />
                   {percentageChangeValue.toFixed(1)}%
                 </span>
@@ -562,7 +574,7 @@ const Dashboard = () => {
     return null;
   };
   
-  // Custom tooltip formatter for Production/Sales chart
+  // Tooltip customizado melhorado para Produção vs Vendas
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -574,7 +586,7 @@ const Dashboard = () => {
         <div className="bg-background border border-border p-2 rounded-md shadow-md">
           <p className="font-medium">{dateLabel}</p>
           {payload.map((entry: any, index: number) => {
-            const isProduction = entry.name === "Produção";
+            const isProduction = entry.name === "Produção (kg)";
             const percentChange = isProduction ? data.productionChange : data.salesChange;
             
             return (
@@ -583,16 +595,20 @@ const Dashboard = () => {
                   {entry.name}: {formatNumberBR(entry.value, { roundBeforeFormat: true })} kg
                 </p>
                 
-                {percentChange !== 0 && (
-                  <div className="flex items-center text-xs ml-2">
-                    <span className="mr-1">Variação:</span>
+                {/* Mostrar variação se existir e não for NaN */}
+                {percentChange !== undefined && 
+                 percentChange !== null && 
+                 !isNaN(percentChange) && 
+                 percentChange !== 0 && (
+                  <div className="flex items-center text-xs ml-2 mt-1">
+                    <span className="mr-1 text-muted-foreground">Variação:</span>
                     {percentChange > 0 ? (
-                      <span className="flex items-center text-success">
+                      <span className="flex items-center text-emerald-600">
                         <TrendingUp className="h-3 w-3 mr-1" />
                         +{percentChange.toFixed(1)}%
                       </span>
                     ) : (
-                      <span className="flex items-center text-destructive">
+                      <span className="flex items-center text-red-600">
                         <TrendingDown className="h-3 w-3 mr-1" />
                         {percentChange.toFixed(1)}%
                       </span>
@@ -641,91 +657,104 @@ const Dashboard = () => {
           <StatsSection stats={statsForDisplay} changes={percentChanges} />
         )}
 
-        {/* Gráficos */}
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="col-span-2 animate-scale-in" style={{ animationDelay: "0.4s" }}>
-            <CardHeader>
-              <CardTitle>Produção x Vendas (kg)</CardTitle>
-              {dateRange?.from && (
-                <p className="text-sm text-muted-foreground">
-                  Período: {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} 
-                  {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}` : ''}
-                </p>
-              )}
-            </CardHeader>
-            <CardContent className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey={showDailyChart ? "day" : "month"} 
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend formatter={(value) => {
-                    return value === "production" ? "Produção" : "Vendas";
-                  }}/>
-                  <Line 
-                    type="monotone" 
-                    dataKey="production" 
-                    stroke="#3b82f6" 
-                    name="Produção" 
-                    strokeWidth={2} 
-                    activeDot={{ r: 8 }} 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="sales" 
-                    stroke="#10b981" 
-                    name="Vendas" 
-                    strokeWidth={2} 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          
-          <Card className="col-span-2 animate-scale-in" style={{ animationDelay: "0.45s" }}>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <AlertTriangle className="mr-2 h-5 w-5 text-red-500" />
-                Perdas (kg)
+        {/* Gráficos Corrigidos */}
+        <div className="grid gap-6 md:grid-cols-2 mb-6">
+          <Card className="group relative overflow-hidden backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 border border-white/20 dark:border-gray-800/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+            <CardHeader className="relative">
+              <CardTitle className="flex items-center gap-3 text-lg font-semibold">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
+                  <LayoutDashboard className="h-5 w-5" />
+                </div>
+                Produção vs Vendas
+                <span className="text-sm font-normal text-muted-foreground ml-auto">
+                  {showDailyChart ? 'Visão Diária' : 'Visão Mensal'}
+                </span>
               </CardTitle>
-              {dateRange?.from && (
-                <p className="text-sm text-muted-foreground">
-                  Período: {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} 
-                  {dateRange.to ? ` - ${format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}` : ''}
-                </p>
-              )}
             </CardHeader>
-            <CardContent className="h-80">
-              {lossesChartData.length > 0 ? (
+            <CardContent className="relative">
+              {/* Fundo gradiente REMOVIDO */}
+              <ChartContainer config={{}} className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={lossesChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                  <LineChart data={getChartData()}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis 
-                      dataKey={showDailyChart ? "day" : "month"} 
-                      tick={{ fontSize: 12 }}
+                      dataKey={showDailyChart ? "day" : "month"}
+                      className="text-xs"
+                      tick={{ fontSize: 11 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={70}
+                      interval={0}
                     />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip content={<LossesTooltip />} />
+                    <YAxis className="text-xs" tick={{ fontSize: 11 }} />
+                    <ChartTooltip content={<CustomTooltip />} />
+                    <Legend />
                     <Line 
                       type="monotone" 
-                      dataKey="losses" 
-                      stroke="#ea384c" 
-                      name="Perdas" 
-                      strokeWidth={2} 
-                      activeDot={{ r: 8 }} 
+                      dataKey="production" 
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      dot={{ r: 4, strokeWidth: 2, fill: '#3b82f6' }}
+                      activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#3b82f6' }}
+                      name="Produção (kg)" 
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="sales" 
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      dot={{ r: 4, strokeWidth: 2, fill: '#10b981' }}
+                      activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: '#10b981' }}
+                      name="Vendas (kg)" 
                     />
                   </LineChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="flex flex-col h-full items-center justify-center text-muted-foreground">
-                  <AlertTriangle className="h-10 w-10 mb-2 text-muted-foreground" />
-                  <p>Nenhum dado de perdas disponível para o período selecionado.</p>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="group relative overflow-hidden backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 border border-white/20 dark:border-gray-800/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+            <CardHeader className="relative">
+              <CardTitle className="flex items-center gap-3 text-lg font-semibold">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-pink-600 text-white shadow-lg">
+                  <TrendingDown className="h-5 w-5" />
                 </div>
-              )}
+                Perdas por Período
+                <span className="text-sm font-normal text-muted-foreground ml-auto">
+                  {showDailyChart ? 'Diário' : 'Mensal'}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="relative">
+              {/* Fundo gradiente REMOVIDO */}
+              <ChartContainer config={{}} className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={getLossesChartData()}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis 
+                      dataKey={showDailyChart ? "day" : "month"}
+                      className="text-xs"
+                      tick={{ fontSize: 11 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={70}
+                      interval={0}
+                    />
+                    <YAxis className="text-xs" tick={{ fontSize: 11 }} />
+                    <ChartTooltip content={<LossesTooltip />} />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="losses" 
+                      stroke="#ef4444"
+                      strokeWidth={3}
+                      dot={{ r: 4, strokeWidth: 2, fill: '#ef4444' }}
+                      activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: '#ef4444' }}
+                      name="Perdas (kg)" 
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </CardContent>
           </Card>
         </div>
