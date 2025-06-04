@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Material, MaterialBatch } from "../types";
-import { createLogEntry } from "./logService";
+import { logSystemEvent } from "./logService";
 
 // Materials
 export const fetchMaterials = async (): Promise<Material[]> => {
@@ -43,7 +43,16 @@ export const createMaterial = async (
   
   if (error) throw error;
   
-  const newMaterial = {
+  await logSystemEvent({
+    userId: userId!,
+    userDisplayName: userDisplayName!,
+    actionType: 'CREATE',
+    entityTable: 'materials',
+    entityId: data.id,
+    newData: data
+  });
+  
+  return {
     ...data,
     id: data.id,
     name: data.name,
@@ -54,17 +63,6 @@ export const createMaterial = async (
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
-  
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "CREATE",
-    entity_type: "materials",
-    entity_id: newMaterial.id,
-    details: { message: `Material '${newMaterial.name}' (ID: ${newMaterial.id}) criado.`, data: newMaterial }
-  });
-  
-  return newMaterial;
 };
 
 export const updateMaterial = async (
@@ -88,13 +86,13 @@ export const updateMaterial = async (
   
   if (error) throw error;
   
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "UPDATE",
-    entity_type: "materials",
-    entity_id: id,
-    details: { message: `Material (ID: ${id}) atualizado.`, changes: updates }
+  await logSystemEvent({
+    userId: userId!,
+    userDisplayName: userDisplayName!,
+    actionType: 'UPDATE',
+    entityTable: 'materials',
+    entityId: id,
+    oldData: { id, updates }
   });
 };
 
@@ -106,13 +104,13 @@ export const deleteMaterial = async (id: string, userId?: string, userDisplayNam
   
   if (error) throw error;
   
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "DELETE",
-    entity_type: "materials",
-    entity_id: id,
-    details: { message: `Material (ID: ${id}) excluído.` }
+  await logSystemEvent({
+    userId: userId!,
+    userDisplayName: userDisplayName!,
+    actionType: 'DELETE',
+    entityTable: 'materials',
+    entityId: id,
+    oldData: { id }
   });
 };
 

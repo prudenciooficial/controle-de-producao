@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Supplier } from "../types";
-import { createLogEntry } from "./logService";
+import { logSystemEvent } from "./logService";
 
 export const fetchSuppliers = async (): Promise<Supplier[]> => {
   const { data, error } = await supabase
@@ -40,7 +40,16 @@ export const createSupplier = async (
   
   if (error) throw error;
   
-  const newSupplier = {
+  await logSystemEvent({
+    userId: userId!,
+    userDisplayName: userDisplayName!,
+    actionType: 'CREATE',
+    entityTable: 'suppliers',
+    entityId: data.id,
+    newData: data
+  });
+  
+  return {
     ...data,
     id: data.id,
     name: data.name,
@@ -50,17 +59,6 @@ export const createSupplier = async (
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
-  
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "CREATE",
-    entity_type: "suppliers",
-    entity_id: newSupplier.id,
-    details: { message: `Fornecedor '${newSupplier.name}' (ID: ${newSupplier.id}) criado.`, data: newSupplier }
-  });
-  
-  return newSupplier;
 };
 
 export const updateSupplier = async (
@@ -83,13 +81,14 @@ export const updateSupplier = async (
   
   if (error) throw error;
   
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "UPDATE",
-    entity_type: "suppliers",
-    entity_id: id,
-    details: { message: `Fornecedor (ID: ${id}) atualizado.`, changes: updates }
+  await logSystemEvent({
+    userId: userId!,
+    userDisplayName: userDisplayName!,
+    actionType: 'UPDATE',
+    entityTable: 'suppliers',
+    entityId: id,
+    oldData: { id, ...updates },
+    newData: { id, ...updates }
   });
 };
 
@@ -105,12 +104,12 @@ export const deleteSupplier = async (
   
   if (error) throw error;
   
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "DELETE",
-    entity_type: "suppliers",
-    entity_id: id,
-    details: { message: `Fornecedor (ID: ${id}) excluído.` }
+  await logSystemEvent({
+    userId: userId!,
+    userDisplayName: userDisplayName!,
+    actionType: 'DELETE',
+    entityTable: 'suppliers',
+    entityId: id,
+    oldData: { id }
   });
 };

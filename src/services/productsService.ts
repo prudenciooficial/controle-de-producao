@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Product } from "../types";
-import { createLogEntry } from "./logService";
+import { logSystemEvent } from "./logService";
 
 export const fetchProducts = async (): Promise<Product[]> => {
   const { data, error } = await supabase
@@ -29,8 +29,8 @@ export const fetchProducts = async (): Promise<Product[]> => {
 
 export const createProduct = async (
   product: Omit<Product, "id" | "createdAt" | "updatedAt">,
-  userId?: string,
-  userDisplayName?: string
+  userId?: string | null,
+  userDisplayName?: string | null
 ): Promise<Product> => {
   const { data, error } = await supabase
     .from("products")
@@ -50,79 +50,128 @@ export const createProduct = async (
     .single();
 
   if (error) throw error;
-  const newProduct = {
-    ...product,
+
+  await logSystemEvent({
+    userId: userId,
+    userDisplayName: userDisplayName,
+    actionType: 'CREATE',
+    entityTable: 'products',
+    entityId: data.id,
+    newData: data
+  });
+
+  return {
+    ...data,
     id: data.id,
+    name: data.name,
+    description: data.description,
+    unitOfMeasure: data.unit_of_measure,
+    weightFactor: data.weight_factor === null ? undefined : data.weight_factor,
+    feculaConversionFactor: data.fecula_conversion_factor === null ? undefined : data.fecula_conversion_factor,
+    productionPredictionFactor: data.production_prediction_factor === null ? undefined : data.production_prediction_factor,
+    conservantConversionFactor: data.conservant_conversion_factor === null ? undefined : data.conservant_conversion_factor,
+    conservantUsageFactor: data.conservant_usage_factor === null ? undefined : data.conservant_usage_factor,
+    type: data.type === null ? undefined : data.type,
+    notes: data.notes === null ? undefined : data.notes,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };
-
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "CREATE",
-    entity_type: "products",
-    entity_id: newProduct.id,
-    details: { message: `Produto '${newProduct.name}' (ID: ${newProduct.id}) criado.`, data: newProduct }
-  });
-
-  return newProduct;
 };
 
 export const updateProduct = async (
   id: string,
   product: Partial<Product>,
-  userId?: string,
-  userDisplayName?: string
+  userId?: string | null,
+  userDisplayName?: string | null
 ): Promise<void> => {
-  const updates: { [key: string]: any } = {};
-  if (product.name !== undefined) updates.name = product.name;
-  if (product.description !== undefined) updates.description = product.description;
-  if (product.unitOfMeasure !== undefined) updates.unit_of_measure = product.unitOfMeasure;
-  if (product.weightFactor !== undefined) updates.weight_factor = product.weightFactor;
-  if (product.feculaConversionFactor !== undefined) updates.fecula_conversion_factor = product.feculaConversionFactor;
-  if (product.productionPredictionFactor !== undefined) updates.production_prediction_factor = product.productionPredictionFactor;
-  if (product.conservantConversionFactor !== undefined) updates.conservant_conversion_factor = product.conservantConversionFactor;
-  if (product.conservantUsageFactor !== undefined) updates.conservant_usage_factor = product.conservantUsageFactor;
-  if (product.type !== undefined) updates.type = product.type;
-  if (product.notes !== undefined) updates.notes = product.notes;
+  let productBeforeUpdate: any = { id };
+  try {
+    const { data: fetchedProduct, error: fetchError } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-  if (Object.keys(updates).length === 0) {
-    console.log("UpdateProduct: Nenhuma alteração fornecida para o produto ID:", id);
-    return;
+    if (fetchedProduct) {
+      productBeforeUpdate = fetchedProduct;
+    } else if (fetchError) {
+      console.warn(`Produto (ID: ${id}) não encontrado antes da atualização, ou erro ao buscar: ${fetchError.message}`);
+    }
+
+    const updates: { [key: string]: any } = {};
+    if (product.name !== undefined) updates.name = product.name;
+    if (product.description !== undefined) updates.description = product.description;
+    if (product.unitOfMeasure !== undefined) updates.unit_of_measure = product.unitOfMeasure;
+    if (product.weightFactor !== undefined) updates.weight_factor = product.weightFactor;
+    if (product.feculaConversionFactor !== undefined) updates.fecula_conversion_factor = product.feculaConversionFactor;
+    if (product.productionPredictionFactor !== undefined) updates.production_prediction_factor = product.productionPredictionFactor;
+    if (product.conservantConversionFactor !== undefined) updates.conservant_conversion_factor = product.conservantConversionFactor;
+    if (product.conservantUsageFactor !== undefined) updates.conservant_usage_factor = product.conservantUsageFactor;
+    if (product.type !== undefined) updates.type = product.type;
+    if (product.notes !== undefined) updates.notes = product.notes;
+
+    if (Object.keys(updates).length === 0) {
+      console.log("UpdateProduct: Nenhuma alteração fornecida para o produto ID:", id);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from("products")
+      .update(updates)
+      .eq("id", id);
+
+    if (updateError) throw updateError;
+
+    await logSystemEvent({
+      userId: userId,
+      userDisplayName: userDisplayName,
+      actionType: 'UPDATE',
+      entityTable: 'products',
+      entityId: id,
+      oldData: productBeforeUpdate,
+      newData: { id, ...updates }
+    });
+  } catch (error) {
+    console.error(`Erro ao atualizar produto (ID: ${id}):`, error);
+    throw error;
   }
-
-  const { error } = await supabase
-    .from("products")
-    .update(updates)
-    .eq("id", id);
-
-  if (error) throw error;
-
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "UPDATE",
-    entity_type: "products",
-    entity_id: id,
-    details: { message: `Produto (ID: ${id}) atualizado.`, changes: updates }
-  });
 };
 
-export const deleteProduct = async (id: string, userId?: string, userDisplayName?: string): Promise<void> => {
-  const { error } = await supabase
-    .from("products")
-    .delete()
-    .eq("id", id);
+export const deleteProduct = async (id: string, userId?: string | null, userDisplayName?: string | null): Promise<void> => {
+  let productToDeleteForLog: any = { id };
 
-  if (error) throw error;
+  try {
+    const { data: fetchedProduct, error: fetchError } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "DELETE",
-    entity_type: "products",
-    entity_id: id,
-    details: { message: `Produto (ID: ${id}) excluído.` }
-  });
+    if (fetchedProduct) {
+      productToDeleteForLog = fetchedProduct;
+    } else if (fetchError) {
+      console.warn(`Produto (ID: ${id}) não encontrado antes da deleção, ou erro ao buscar: ${fetchError.message}`);
+    }
+
+    const { error: deleteError } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    await logSystemEvent({
+      userId: userId,
+      userDisplayName: userDisplayName,
+      actionType: 'DELETE',
+      entityTable: 'products',
+      entityId: id,
+      oldData: productToDeleteForLog
+    });
+  } catch (error) {
+    console.error(`Erro ao deletar produto (ID: ${id}):`, error);
+    throw error;
+  }
 };

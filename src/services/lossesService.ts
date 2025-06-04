@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loss } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
 import type { DateRange } from "react-day-picker";
-import { createLogEntry } from "./logService";
+import { logSystemEvent } from "./logService";
 
 export const fetchLossesWithDetails = async (dateRange?: DateRange): Promise<Loss[]> => {
   let query = supabase
@@ -67,13 +67,13 @@ export const createLoss = async (
     updatedAt: new Date(data.updated_at)
   };
   
-  await createLogEntry({
-    user_id: userId,
-    user_description: userDisplayName,
-    action_type: "CREATE",
-    entity_type: "losses",
-    entity_id: newLoss.id,
-    details: { message: `Perda (ID: ${newLoss.id}) criada.`, data: newLoss }
+  await logSystemEvent({
+    userId: userId!,
+    userDisplayName: userDisplayName!,
+    actionType: 'CREATE',
+    entityTable: 'losses',
+    entityId: data.id,
+    newData: newLoss
   });
   
   return newLoss;
@@ -123,13 +123,14 @@ export const updateLoss = async (
     await endTransaction();
     console.log("Transaction committed successfully");
     
-    await createLogEntry({
-      user_id: userId,
-      user_description: userDisplayName,
-      action_type: "UPDATE",
-      entity_type: "losses",
-      entity_id: id,
-      details: { message: `Perda (ID: ${id}) atualizada.`, changes: updates }
+    await logSystemEvent({
+      userId: userId!,
+      userDisplayName: userDisplayName!,
+      actionType: 'UPDATE',
+      entityTable: 'losses',
+      entityId: id,
+      oldData: { id, ...loss },
+      newData: { id, ...updates }
     });
   } catch (error) {
     console.error("Error in update loss operation:", error);
@@ -175,13 +176,13 @@ export const deleteLoss = async (
     await endTransaction();
     console.log("Transaction committed successfully");
     
-    await createLogEntry({
-      user_id: userId,
-      user_description: userDisplayName,
-      action_type: "DELETE",
-      entity_type: "losses",
-      entity_id: id,
-      details: { message: `Perda (ID: ${id}) excluída.` }
+    await logSystemEvent({
+      userId: userId!,
+      userDisplayName: userDisplayName!,
+      actionType: 'DELETE',
+      entityTable: 'losses',
+      entityId: id,
+      oldData: { id }
     });
   } catch (error) {
     console.error("Error in delete loss operation:", error);

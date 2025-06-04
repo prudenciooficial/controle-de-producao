@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Sale, SaleItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
-import { createLogEntry } from "./logService";
+import { logSystemEvent } from "./logService";
 
 export const fetchSales = async (): Promise<Sale[]> => {
   console.log("Fetching sales...");
@@ -150,17 +150,13 @@ export const createSale = async (
     console.log("Transaction committed successfully");
     
     // Log the operation (non-blocking)
-    await createLogEntry({
-      user_id: userId,
-      user_description: userDisplayName,
-      action_type: "CREATE",
-      entity_type: "sales",
-      entity_id: saleId,
-      details: {
-        customer: sale.customerName,
-        type: sale.type,
-        items_count: sale.items.length
-      }
+    await logSystemEvent({
+      userId: userId!,
+      userDisplayName: userDisplayName!,
+      actionType: 'CREATE',
+      entityTable: 'sales',
+      entityId: saleId,
+      newData: saleData
     });
     
     // Fetch the inserted sale items to get their IDs
@@ -214,12 +210,25 @@ export const updateSale = async (
   userId?: string,
   userDisplayName?: string
 ): Promise<void> => {
+  let originalSaleDataForLog: any = { id }; // Fallback para o log
   try {
     await beginTransaction();
+
+    // Buscar dados da venda ANTES de qualquer modificação para oldData no log
+    const { data: fetchedSale, error: fetchInitialError } = await supabase
+      .from("sales")
+      .select("*, sale_items(*)") // Inclui itens para um log mais completo
+      .eq("id", id)
+      .single();
+
+    if (fetchedSale) {
+      originalSaleDataForLog = fetchedSale;
+    } else if (fetchInitialError) {
+      console.warn(`Sale (ID: ${id}) not found before update, or other fetch error: ${fetchInitialError.message}`);
+    }
     
     // Update basic sale info
     const updates: any = {};
-    
     if (sale.date) {
       updates.date = sale.date instanceof Date ? sale.date.toISOString() : sale.date;
     }
@@ -228,191 +237,109 @@ export const updateSale = async (
     if (sale.type) updates.type = sale.type;
     if (sale.notes !== undefined) updates.notes = sale.notes;
     
-    const { error } = await supabase
-      .from("sales")
-      .update(updates)
-      .eq("id", id);
+    if (Object.keys(updates).length > 0) {
+        const { error } = await supabase
+        .from("sales")
+        .update(updates)
+        .eq("id", id);
+        if (error) throw error;
+    }
     
-    if (error) throw error;
-    
-    // If there are items to update
+    // Se houver itens para atualizar
     if (sale.items && sale.items.length > 0) {
-      console.log(`Updating ${sale.items.length} sale items`);
+      let currentItemsForLogic: any[] = originalSaleDataForLog.sale_items || [];
       
-      // First, get current items to compare
-      const { data: currentItems, error: fetchError } = await supabase
-        .from("sale_items")
-        .select(`
-          *,
-          produced_items:produced_item_id (remaining_quantity)
-        `)
-        .eq("sale_id", id);
+      const currentItemIds = new Set(currentItemsForLogic.map(item => item.id));
+      const updatedItemIds = new Set(sale.items.filter(item => item.id).map(item => item.id!));
       
-      if (fetchError) throw fetchError;
-      
-      // Check which items need to be updated, which need to be deleted, and which are new
-      const currentItemIds = new Set(currentItems?.map(item => item.id) || []);
-      const updatedItemIds = new Set(sale.items.filter(item => item.id).map(item => item.id));
-      
-      // Items to delete: exist in current but not in updated
-      const itemsToDelete = currentItems?.filter(item => !updatedItemIds.has(item.id)) || [];
-      
-      // Items to update: exist in both
+      const itemsToDelete = currentItemsForLogic.filter(item => !updatedItemIds.has(item.id));
       const itemsToUpdate = sale.items.filter(item => item.id && currentItemIds.has(item.id));
-      
-      // Items to add: exist in updated but not in current
       const itemsToAdd = sale.items.filter(item => !item.id || !currentItemIds.has(item.id));
       
-      console.log(`Deleting ${itemsToDelete.length} items, updating ${itemsToUpdate.length} items, adding ${itemsToAdd.length} items`);
-      
-      // Process deletions
       for (const item of itemsToDelete) {
-        // Now delete the sale item
-        const { error: deleteError } = await supabase
-          .from("sale_items")
-          .delete()
-          .eq("id", item.id);
-        
+        const { error: deleteError } = await supabase.from("sale_items").delete().eq("id", item.id);
         if (deleteError) throw deleteError;
       }
       
-      // Process updates
       for (const itemUpdate of itemsToUpdate) {
-        if (!itemUpdate.id) continue; // Safety check
-        
-        const originalItem = currentItems?.find(ci => ci.id === itemUpdate.id);
-        
+        if (!itemUpdate.id) continue;
+        const originalItem = currentItemsForLogic.find(ci => ci.id === itemUpdate.id);
         if (originalItem) {
-          const quantityDiff = itemUpdate.quantity - originalItem.quantity;
-          
-          if (quantityDiff !== 0) {
-            // Update the sale item
-            const { error: updateError } = await supabase
-              .from("sale_items")
-              .update({
-                product_id: itemUpdate.productId || originalItem.product_id,
-                produced_item_id: itemUpdate.producedItemId || originalItem.produced_item_id,
-                quantity: itemUpdate.quantity,
-                unit_of_measure: itemUpdate.unitOfMeasure
-              })
-              .eq("id", itemUpdate.id);
-            
-            if (updateError) throw updateError;
-          }
+          const { error: updateError } = await supabase.from("sale_items").update({
+            product_id: itemUpdate.productId || originalItem.product_id,
+            produced_item_id: itemUpdate.producedItemId || originalItem.produced_item_id,
+            quantity: itemUpdate.quantity,
+            unit_of_measure: itemUpdate.unitOfMeasure
+          }).eq("id", itemUpdate.id);
+          if (updateError) throw updateError;
         }
       }
       
-      // Process additions
       for (const itemToAdd of itemsToAdd) {
-        // Add the new sale item
-        const { error: insertError } = await supabase
-          .from("sale_items")
-          .insert({
-            sale_id: id,
-            product_id: itemToAdd.productId,
-            produced_item_id: itemToAdd.producedItemId,
-            quantity: itemToAdd.quantity,
-            unit_of_measure: itemToAdd.unitOfMeasure
-          });
-        
+        const { error: insertError } = await supabase.from("sale_items").insert({
+          sale_id: id,
+          product_id: itemToAdd.productId,
+          produced_item_id: itemToAdd.producedItemId,
+          quantity: itemToAdd.quantity,
+          unit_of_measure: itemToAdd.unitOfMeasure
+        });
         if (insertError) throw insertError;
       }
     }
     
     await endTransaction();
-    await createLogEntry({
-      user_id: userId,
-      user_description: userDisplayName,
-      action_type: "UPDATE",
-      entity_type: "sales",
-      entity_id: id,
-      details: { message: `Venda (ID: ${id}) atualizada.`, changes: sale }
+    await logSystemEvent({
+      userId: userId!,
+      userDisplayName: userDisplayName!,
+      actionType: 'UPDATE',
+      entityTable: 'sales',
+      entityId: id,
+      oldData: originalSaleDataForLog, // Dados antes da atualização
+      newData: sale // O objeto 'sale' contém as atualizações que foram aplicadas
     });
   } catch (error) {
-    // Rollback on error
     await abortTransaction();
     throw error;
   }
 };
 
 export const deleteSale = async (id: string, userId?: string, userDisplayName?: string): Promise<void> => {
-  // The system is freezing during deletion, so let's add some error handling and improve the transaction flow
+  let saleToDeleteForLog: any = { id }; // Fallback para o log
   try {
-    console.log("Beginning deletion process for sale:", id);
-    
-    // Start a transaction
     await beginTransaction();
-    console.log("Transaction started");
-    
-    // Get the sale items to restore produced item quantities
-    // Esta busca por saleItemsData pode não ser mais estritamente necessária aqui
-    // se o único propósito era obter os dados para o estorno manual.
-    // const { data: saleItemsData, error: getSaleItemsError } = await supabase
-    //   .from("sale_items")
-    //   .select("*")
-    //   .eq("sale_id", id);
-    // 
-    // if (getSaleItemsError) {
-    //   console.error("Error getting sale items:", getSaleItemsError);
-    //   await abortTransaction();
-    //   throw getSaleItemsError;
-    // }
-    // 
-    // console.log(`Found ${saleItemsData?.length || 0} sale items to process`);
-    
-    // REMOVIDO: Loop para restaurar remaining quantities manualmente.
-    // O trigger after_sale_items_change cuidará do estorno quando os sale_items forem deletados.
-    
-    // console.log("All produced item quantities updated, now deleting sale items");
-    
-    // Delete sale items
-    const { error: saleItemsError } = await supabase
-      .from("sale_items")
-      .delete()
-      .eq("sale_id", id);
-    
-    if (saleItemsError) {
-      console.error("Error deleting sale items:", saleItemsError);
-      await abortTransaction();
-      throw saleItemsError;
+
+    // Buscar dados da venda ANTES de deletar para oldData no log
+    const { data: fetchedSale, error: fetchError } = await supabase
+      .from("sales")
+      .select("*, sale_items(*)") // Inclui itens para um log mais completo
+      .eq("id", id)
+      .single();
+
+    if (fetchedSale) {
+      saleToDeleteForLog = fetchedSale;
+    } else if (fetchError) {
+      console.warn(`Sale (ID: ${id}) not found before deletion, or other fetch error: ${fetchError.message}`);
     }
-    
-    console.log("Sale items deleted, now deleting the sale");
+
+    // Delete sale items
+    const { error: saleItemsError } = await supabase.from("sale_items").delete().eq("sale_id", id);
+    if (saleItemsError) { await abortTransaction(); throw saleItemsError; }
     
     // Delete the sale
-    const { error } = await supabase
-      .from("sales")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("sales").delete().eq("id", id);
+    if (error) { await abortTransaction(); throw error; }
     
-    if (error) {
-      console.error("Error deleting sale:", error);
-      await abortTransaction();
-      throw error;
-    }
-    
-    console.log("Sale deleted successfully, committing transaction");
-    
-    // Commit the transaction
     await endTransaction();
-    console.log("Transaction committed successfully");
-    await createLogEntry({
-      user_id: userId,
-      user_description: userDisplayName,
-      action_type: "DELETE",
-      entity_type: "sales",
-      entity_id: id,
-      details: { message: `Venda (ID: ${id}) excluída.` }
+    await logSystemEvent({
+      userId: userId!,
+      userDisplayName: userDisplayName!,
+      actionType: 'DELETE',
+      entityTable: 'sales',
+      entityId: id,
+      oldData: saleToDeleteForLog
     });
   } catch (error) {
-    // Rollback on error
-    console.error("Error in delete sale operation, rolling back:", error);
-    try {
-      await abortTransaction();
-      console.log("Transaction aborted successfully");
-    } catch (rollbackError) {
-      console.error("Error during rollback:", rollbackError);
-    }
+    await abortTransaction();
     throw error;
   }
 };

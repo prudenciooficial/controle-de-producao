@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Order, OrderItem } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
-import { createLogEntry } from "./logService";
+import { logSystemEvent } from "./logService";
 
 export const fetchOrders = async (): Promise<Order[]> => {
   // First, fetch the orders
@@ -141,13 +141,13 @@ export const createOrder = async (
     await endTransaction();
     
     // Log
-    await createLogEntry({
-      user_id: userId,
-      user_description: userDisplayName,
-      action_type: "CREATE",
-      entity_type: "orders",
-      entity_id: orderId,
-      details: { message: `Pedido '${order.invoiceNumber}' (ID: ${orderId}) criado.`, data: order }
+    await logSystemEvent({
+      userId: userId!,
+      userDisplayName: userDisplayName!,
+      actionType: 'CREATE',
+      entityTable: 'orders',
+      entityId: orderId,
+      newData: orderData
     });
     
     // Return the complete order
@@ -282,13 +282,14 @@ export const updateOrder = async (
     }
     
     await endTransaction();
-    await createLogEntry({
-      user_id: userId,
-      user_description: userDisplayName,
-      action_type: "UPDATE",
-      entity_type: "orders",
-      entity_id: id,
-      details: { message: `Pedido (ID: ${id}) atualizado.`, changes: updates }
+    await logSystemEvent({
+      userId: userId!,
+      userDisplayName: userDisplayName!,
+      actionType: 'UPDATE',
+      entityTable: 'orders',
+      entityId: id,
+      oldData: { id },
+      newData: updates
     });
   } catch (error) {
     await abortTransaction();
@@ -329,13 +330,13 @@ export const deleteOrder = async (id: string, userId?: string, userDisplayName?:
     // Commit the transaction
     await endTransaction();
     
-    await createLogEntry({
-      user_id: userId,
-      user_description: userDisplayName,
-      action_type: "DELETE",
-      entity_type: "orders",
-      entity_id: id,
-      details: { message: `Pedido (ID: ${id}) excluído.` }
+    await logSystemEvent({
+      userId: userId!,
+      userDisplayName: userDisplayName!,
+      actionType: 'DELETE',
+      entityTable: 'orders',
+      entityId: id,
+      oldData: { id }
     });
     
   } catch (error) {

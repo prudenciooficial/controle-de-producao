@@ -8,6 +8,8 @@ export interface FetchLogsResponse {
 
 // Função para buscar os logs do sistema com filtros e paginação
 export const fetchSystemLogs = async (filters: LogFilters): Promise<FetchLogsResponse> => {
+  console.log('fetchSystemLogs called with filters:', filters);
+  
   let query = supabase
     .from('system_logs')
     .select(`
@@ -23,19 +25,27 @@ export const fetchSystemLogs = async (filters: LogFilters): Promise<FetchLogsRes
       new_data
     `, { count: 'exact' });
 
+  // Debug: primeiro vamos testar sem filtros
+  console.log('Initial query built');
+
   if (filters.userId) {
+    console.log('Adding userId filter:', filters.userId);
     query = query.eq('user_id', filters.userId);
   }
   if (filters.entityTable) {
+    console.log('Adding entityTable filter:', filters.entityTable);
     query = query.eq('entity_table', filters.entityTable);
   }
   if (filters.actionType) {
+    console.log('Adding actionType filter:', filters.actionType);
     query = query.eq('action_type', filters.actionType);
   }
   if (filters.dateFrom) {
+    console.log('Adding dateFrom filter:', filters.dateFrom);
     query = query.gte('created_at', filters.dateFrom);
   }
   if (filters.dateTo) {
+    console.log('Adding dateTo filter:', filters.dateTo);
     const nextDay = new Date(filters.dateTo);
     nextDay.setDate(nextDay.getDate() + 1);
     query = query.lt('created_at', nextDay.toISOString().split('T')[0]);
@@ -46,9 +56,11 @@ export const fetchSystemLogs = async (filters: LogFilters): Promise<FetchLogsRes
   if (filters.page && filters.pageSize) {
     const from = (filters.page - 1) * filters.pageSize;
     const to = from + filters.pageSize - 1;
+    console.log('Adding pagination:', { from, to });
     query = query.range(from, to);
   }
 
+  console.log('Executing query...');
   const { data, error, count } = await query;
 
   if (error) {
@@ -56,19 +68,25 @@ export const fetchSystemLogs = async (filters: LogFilters): Promise<FetchLogsRes
     throw new Error(error.message || 'Falha ao buscar logs do sistema.');
   }
 
-  const logs: SystemLog[] = (data || []).map(item => ({
-    id: item.id,
-    created_at: item.created_at,
-    user_id: item.user_id,
-    user_display_name: item.user_display_name,
-    action_type: item.action_type as LogActionType,
-    entity_schema: item.entity_schema,
-    entity_table: item.entity_table,
-    entity_id: item.entity_id,
-    old_data: (typeof item.old_data === 'object' && item.old_data !== null) ? item.old_data as Record<string, any> : null,
-    new_data: (typeof item.new_data === 'object' && item.new_data !== null) ? item.new_data as Record<string, any> : null,
-  }));
+  console.log('Query result:', { data, count });
 
+  const logs: SystemLog[] = (data || []).map(item => {
+    console.log('Processing log item:', item);
+    return {
+      id: item.id,
+      created_at: item.created_at,
+      user_id: item.user_id,
+      user_display_name: item.user_display_name,
+      action_type: item.action_type as 'INSERT' | 'UPDATE' | 'DELETE',
+      entity_schema: item.entity_schema,
+      entity_table: item.entity_table,
+      entity_id: item.entity_id,
+      old_data: (typeof item.old_data === 'object' && item.old_data !== null) ? item.old_data as Record<string, any> : null,
+      new_data: (typeof item.new_data === 'object' && item.new_data !== null) ? item.new_data as Record<string, any> : null,
+    };
+  });
+
+  console.log('Processed logs:', logs);
   return { logs, count: count || 0 };
 };
 

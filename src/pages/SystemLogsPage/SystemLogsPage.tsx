@@ -7,6 +7,7 @@ import {
   fetchLogEntityTables,
   type FetchLogsResponse
 } from '@/services/logsService';
+import { logSystemEvent } from '@/services/logService';
 import { type SystemLog, type LogFilters, type UserSelectItem, type EntityTableSelectItem } from '@/types/logs';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,10 +16,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, TestTube } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -113,14 +116,164 @@ export default function SystemLogsPage() {
     setFilters(prev => ({ ...prev, page: newPage }));
   };
 
+  const handleTestQuery = async () => {
+    try {
+      console.log('=== TESTE DE CONSULTA DIRETA ===');
+      
+      // Primeiro teste: consulta simples
+      console.log('1. Testando consulta básica...');
+      const { data: basicData, error: basicError } = await supabase
+        .from('system_logs')
+        .select('*')
+        .limit(5);
+      
+      if (basicError) {
+        console.error('Erro na consulta básica:', basicError);
+        toast({
+          title: "Erro na consulta básica",
+          description: `Erro: ${basicError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('2. Consulta básica bem-sucedida:', basicData);
+      
+      // Segundo teste: consulta com count
+      console.log('3. Testando consulta com count...');
+      const { data: countData, error: countError, count } = await supabase
+        .from('system_logs')
+        .select('id', { count: 'exact' })
+        .limit(5);
+      
+      if (countError) {
+        console.error('Erro na consulta com count:', countError);
+      } else {
+        console.log('4. Consulta com count bem-sucedida:', { data: countData, count });
+      }
+      
+      // Terceiro teste: verificar se o usuário atual pode inserir
+      console.log('5. Testando permissões do usuário atual...');
+      console.log('Usuário atual:', user);
+      
+      toast({
+        title: "Consulta direta realizada",
+        description: `Encontrados ${basicData?.length || 0} registros. Total estimado: ${count || 'N/A'}. Verifique o console para detalhes.`,
+      });
+      
+    } catch (error) {
+      console.error('Erro inesperado na consulta:', error);
+      toast({
+        title: "Erro inesperado",
+        description: "Verifique o console para mais detalhes",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTestLog = async () => {
+    try {
+      console.log('=== TESTE DE CRIAÇÃO DE LOG ===');
+      console.log('Usuário atual:', user);
+      
+      const testData = {
+        message: 'Este é um log de teste',
+        timestamp: new Date().toISOString(),
+        user: user?.email,
+        test_id: 'test-' + Date.now()
+      };
+      
+      console.log('Dados do teste:', testData);
+      
+      await logSystemEvent({
+        userId: user?.id,
+        userDisplayName: user?.user_metadata?.full_name || user?.email || 'Usuário Teste',
+        actionType: 'OTHER',
+        entityTable: 'test_logs',
+        entityId: 'test-' + Date.now(),
+        newData: testData
+      });
+      
+      console.log('Log de teste criado com sucesso!');
+      
+      toast({
+        title: "Log de teste criado",
+        description: "Um log de teste foi registrado com sucesso!",
+      });
+      
+      // Recarregar os logs automaticamente
+      console.log('Recarregando logs...');
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Erro ao criar log de teste:', error);
+      toast({
+        title: "Erro",
+        description: `Falha ao criar log de teste: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getActionLabel = (log: SystemLog): string => {
+    const { action_type, new_data, old_data } = log;
+    
+    // Verificar se há contexto adicional nos dados
+    const originalAction = new_data?._log_context?.original_action || old_data?._log_context?.original_action;
+    
+    if (originalAction) {
+      switch (originalAction) {
+        case 'CREATE': return 'Criação';
+        case 'LOGIN': return 'Login';
+        case 'LOGOUT': return 'Logout';
+        case 'OTHER': return 'Teste/Outro';
+        default: return originalAction;
+      }
+    }
+    
+    // Fallback para os tipos padrão do banco
+    switch (action_type) {
+      case 'INSERT': return 'Inserção';
+      case 'UPDATE': return 'Atualização';
+      case 'DELETE': return 'Exclusão';
+      default: return action_type;
+    }
+  };
+
   const formatLogDetails = (log: SystemLog): string => {
     const { old_data, new_data, action_type } = log;
 
-    if (action_type === 'INSERT' && new_data) {
-      const entries = Object.entries(new_data)
-        .map(([key, value]) => `  ${key}: ${JSON.stringify(value)}`)
-        .join('\n');
-      return `Adicionado:\n${entries}`;
+    // Verificar se há contexto adicional nos dados
+    const getOriginalAction = () => {
+      if (new_data && new_data._log_context?.original_action) {
+        return new_data._log_context.original_action;
+      }
+      if (old_data && old_data._log_context?.original_action) {
+        return old_data._log_context.original_action;
+      }
+      return action_type;
+    };
+
+    const originalAction = getOriginalAction();
+
+    if (action_type === 'INSERT') {
+      if (originalAction === 'CREATE' && new_data) {
+        const entries = Object.entries(new_data)
+          .filter(([key]) => key !== '_log_context') // Filtrar dados de contexto interno
+          .map(([key, value]) => `  ${key}: ${JSON.stringify(value)}`)
+          .join('\n');
+        return `Criado:\n${entries}`;
+      } else if (originalAction === 'LOGIN' && new_data) {
+        return `Login realizado:\n  Email: ${new_data.email}\n  Horário: ${new_data.login_time}`;
+      } else if (originalAction === 'LOGOUT' && new_data) {
+        return `Logout realizado:\n  Email: ${new_data.email}\n  Horário: ${new_data.logout_time}`;
+      } else if (originalAction === 'OTHER' && new_data) {
+        const entries = Object.entries(new_data)
+          .filter(([key]) => key !== '_log_context')
+          .map(([key, value]) => `  ${key}: ${JSON.stringify(value)}`)
+          .join('\n');
+        return `Ação especial:\n${entries}`;
+      }
     }
     
     if (action_type === 'DELETE' && old_data) {
@@ -131,24 +284,17 @@ export default function SystemLogsPage() {
     }
 
     if (action_type === 'UPDATE' && old_data && new_data) {
-      const changes = Object.keys(new_data) // Iterar sobre as chaves de new_data pode ser suficiente
+      const changes = Object.keys(new_data)
         .map(key => {
           const oldValue = old_data[key];
           const newValue = new_data[key];
           
-          // Compara os valores após a serialização para JSON para tratar objetos e arrays
           if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
             return `  ${key}: ${JSON.stringify(oldValue)} -> ${JSON.stringify(newValue)}`;
           }
           return null;
         })
-        .filter(Boolean); // Remove entradas nulas (campos não alterados)
-
-      // Considerar também chaves que podem ter sido removidas (presentes em old_data mas não em new_data)
-      // Ou chaves que foram adicionadas (presentes em new_data mas não em old_data)
-      // A lógica atual cobre bem as modificações de valores existentes e adição de novas chaves.
-      // Para remoção de chaves em um UPDATE, seria preciso iterar old_data.keys() e verificar se não existem em new_data.
-      // Por simplicidade e foco no que é mais comum em logs (mudança de valores ou adição), manteremos assim por ora.
+        .filter(Boolean);
 
       if (changes.length > 0) {
         return `Alterações:\n${changes.join('\n')}`;
@@ -175,6 +321,23 @@ export default function SystemLogsPage() {
           <p className="text-muted-foreground">
             Acompanhe todas as alterações realizadas no sistema.
           </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleTestQuery}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            🔍 Consultar Tabela
+          </Button>
+          <Button 
+            onClick={handleTestLog}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <TestTube className="h-4 w-4" />
+            Testar Log
+          </Button>
         </div>
       </div>
 
@@ -264,7 +427,7 @@ export default function SystemLogsPage() {
                     <TableRow key={log.id}>
                       <TableCell>{format(new Date(log.created_at), 'dd/MM/yy HH:mm:ss', { locale: ptBR })}</TableCell>
                       <TableCell>{log.user_display_name || log.user_id || 'N/A'}</TableCell>
-                      <TableCell>{log.action_type}</TableCell>
+                      <TableCell>{getActionLabel(log)}</TableCell>
                       <TableCell>{log.entity_table || 'N/A'}</TableCell>
                       <TableCell>{log.entity_id || 'N/A'}</TableCell>
                       <TableCell className="text-xs max-w-sm break-words whitespace-pre-wrap" title={formatLogDetails(log)}>

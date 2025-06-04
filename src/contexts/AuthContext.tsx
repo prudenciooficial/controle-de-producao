@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { logSystemEvent } from '@/services/logService';
 
 // Estruturas de permissões para referência (devem ser consistentes com UserPermissionsDialog)
 interface ModuleActions {
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -77,6 +78,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           title: "Login realizado",
           description: "Bem-vindo ao sistema!",
         });
+        
+        // Log do login
+        if (data.user) {
+          await logSystemEvent({
+            userId: data.user.id,
+            userDisplayName: data.user.user_metadata?.full_name || data.user.email || 'Usuário',
+            actionType: 'LOGIN',
+            entityTable: 'auth_sessions',
+            entityId: data.session?.access_token?.substring(0, 10) || 'unknown',
+            newData: {
+              email: data.user.email,
+              login_time: new Date().toISOString()
+            }
+          });
+        }
       }
 
       return { error };
@@ -128,6 +144,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
+      
+      // Log do logout antes de fazer o signOut
+      if (user) {
+        await logSystemEvent({
+          userId: user.id,
+          userDisplayName: user.user_metadata?.full_name || user.email || 'Usuário',
+          actionType: 'LOGOUT',
+          entityTable: 'auth_sessions',
+          entityId: 'logout-' + Date.now(),
+          oldData: {
+            email: user.email,
+            logout_time: new Date().toISOString()
+          }
+        });
+      }
+      
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);

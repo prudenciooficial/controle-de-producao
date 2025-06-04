@@ -518,31 +518,37 @@ export type Database = {
         Row: {
           action_type: string
           created_at: string
-          details: Json
           entity_id: string | null
-          entity_type: string | null
+          entity_schema: string
+          entity_table: string
           id: string
-          user_description: string | null
+          new_data: Json | null
+          old_data: Json | null
+          user_display_name: string | null
           user_id: string | null
         }
         Insert: {
           action_type: string
           created_at?: string
-          details: Json
           entity_id?: string | null
-          entity_type?: string | null
+          entity_schema?: string
+          entity_table: string
           id?: string
-          user_description?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          user_display_name?: string | null
           user_id?: string | null
         }
         Update: {
           action_type?: string
           created_at?: string
-          details?: Json
           entity_id?: string | null
-          entity_type?: string | null
+          entity_schema?: string
+          entity_table?: string
           id?: string
-          user_description?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          user_display_name?: string | null
           user_id?: string | null
         }
         Relationships: []
