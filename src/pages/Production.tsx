@@ -369,6 +369,11 @@ const Production = () => {
       addProductionBatch(productionBatchPayload);
       toast({ title: "Produção Registrada", description: `Lote de produção ${data.batchNumber} registrado com sucesso.` });
       
+      // Refresh automático para sincronizar dados
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      
       form.reset({
         productionDate: today, 
         batchNumber: generateSuggestedBatchNumber(productionBatches), // Sugestão no reset
@@ -378,7 +383,7 @@ const Production = () => {
         producedItems: [{ productId: "", quantity: 0 }], 
         usedMaterials: [{ materialBatchId: "", quantity: 0 }],
       });
-      setIsDistributeSectionVisible(false); 
+      setIsDistributeSectionVisible(false);
     } catch (error) {
       toast({ variant: "destructive", title: "Erro ao registrar produção", description: error instanceof Error ? error.message : "Ocorreu um erro ao registrar a produção." });
     }

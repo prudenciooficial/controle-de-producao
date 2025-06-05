@@ -228,6 +228,11 @@ const Orders = () => {
       
       addOrder(order);
       
+      // Refresh automático para sincronizar dados
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      
       // Show conversion notification if applicable
       if (hasConversions) {
         toast({

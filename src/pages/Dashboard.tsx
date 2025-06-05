@@ -783,7 +783,7 @@ const Dashboard = () => {
                         <TableRow key={product.name} className="hover:bg-muted/50">
                           <TableCell className="font-medium align-middle">{product.name}</TableCell>
                           <TableCell className="align-middle">{formatNumberBR(product.total)}</TableCell>
-                          <TableCell className="align-middle">{product.unitOfMeasure}</TableCell>
+                          <TableCell className="align-middle">{product.unitOfMeasure === 'kg' ? 'unidades' : product.unitOfMeasure}</TableCell>
                           <TableCell className="text-right align-middle">
                             <Button 
                               variant="outline" 
@@ -837,7 +837,7 @@ const Dashboard = () => {
                               <TableRow key={material.name} className="hover:bg-muted/50">
                                 <TableCell className="font-medium align-middle">{material.name}</TableCell>
                                 <TableCell className="align-middle">{formatNumberBR(material.total)}</TableCell>
-                                <TableCell className="align-middle">{material.unitOfMeasure}</TableCell>
+                                <TableCell className="align-middle">{material.unitOfMeasure === 'kg' ? 'unidades' : material.unitOfMeasure}</TableCell>
                                 <TableCell className="text-right align-middle">
                                   <Button 
                                     variant="outline" 

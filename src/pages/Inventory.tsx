@@ -219,7 +219,7 @@ const Inventory = () => {
                             <TableRow key={product.name}>
                               <TableCell className="font-medium">{product.name}</TableCell>
                               <TableCell>{product.total}</TableCell>
-                              <TableCell>{product.unitOfMeasure}</TableCell>
+                              <TableCell>{product.unitOfMeasure === 'kg' ? 'unidades' : product.unitOfMeasure}</TableCell>
                               <TableCell className="text-right">
                                 <Button 
                                   variant="outline" 

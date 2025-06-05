@@ -46,7 +46,6 @@ import {
   Calendar,
   TrendingUp,
   Zap,
-  Filter,
   Plus,
   Sparkles
 } from "lucide-react";
@@ -167,6 +166,10 @@ const ProductionHistory = () => {
       setIsDeleting(true);
       await deleteProductionBatch(id);
       toast({ title: "Registro Excluído", description: "O registro de produção foi excluído com sucesso." });
+      
+      // Refresh automático para sincronizar dados
+      await refetchProductionBatches();
+      
     } catch (error) {
       console.error("Erro ao excluir produção:", error);
       toast({
@@ -368,7 +371,10 @@ const ProductionHistory = () => {
                 <Package className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
+                <CardTitle 
+                  className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300 cursor-pointer hover:underline"
+                  onClick={() => openDetailsDialog(batch)}
+                >
                   {batch.batchNumber}
                 </CardTitle>
                 <div className="flex items-center gap-2 mt-1">
@@ -505,7 +511,7 @@ const ProductionHistory = () => {
                     {item.productName}
                   </span>
                   <Badge variant="outline" className="text-xs">
-                    {formatNumberBR(item.quantity)} {item.unitOfMeasure}
+                    {formatNumberBR(item.quantity)} {item.unitOfMeasure === 'kg' ? 'unidades' : item.unitOfMeasure}
                   </Badge>
                 </div>
               ))}
@@ -634,10 +640,6 @@ const ProductionHistory = () => {
                 className="pl-10 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400"
               />
             </div>
-            <Button variant="outline" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-900/20">
-              <Filter className="h-4 w-4 mr-2" />
-              Filtros
-            </Button>
           </div>
           
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">

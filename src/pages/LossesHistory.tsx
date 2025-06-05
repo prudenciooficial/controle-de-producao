@@ -97,6 +97,11 @@ const LossesHistory = () => {
       setIsDeleting(true);
       await deleteLoss(id);
       toast({ title: "Registro Excluído", description: "O registro de perda foi excluído com sucesso." });
+      
+      // Refresh automático para sincronizar dados
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error("Erro ao excluir perda:", error);
       toast({
@@ -131,6 +136,11 @@ const LossesHistory = () => {
       setShowEditDialog(false);
       setSelectedLoss(null);
       toast({ title: "Registro Atualizado", description: "O registro de perda foi atualizado com sucesso." });
+      
+      // Refresh automático para sincronizar dados
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error("Erro ao atualizar perda:", error);
       toast({

@@ -89,6 +89,11 @@ const Losses = () => {
       
       await addLoss(loss);
       
+      // Refresh automático para sincronizar dados
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      
       // Reset form
       form.reset({
         date: getTodayDateString(),
