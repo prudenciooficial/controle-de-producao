@@ -38,7 +38,6 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Edit, Trash, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -47,7 +46,6 @@ const materialFormSchema = z.object({
   name: z.string().min(2, { message: "Nome deve ter no mínimo 2 caracteres" }),
   type: z.string().min(1, { message: "Tipo é obrigatório" }),
   unitOfMeasure: z.string().min(1, { message: "Unidade de medida é obrigatória" }),
-  description: z.string().optional(),
 });
 
 type MaterialFormValues = z.infer<typeof materialFormSchema>;
@@ -68,7 +66,6 @@ const MaterialsTable = () => {
       name: "",
       type: "",
       unitOfMeasure: "kg",
-      description: "",
     },
   });
   
@@ -78,7 +75,6 @@ const MaterialsTable = () => {
       name: "",
       type: "",
       unitOfMeasure: "kg",
-      description: "",
     },
   });
   
@@ -109,12 +105,18 @@ const MaterialsTable = () => {
   const handleAdd = async (data: MaterialFormValues) => {
     try {
       setLoading(true);
+      
+      // Generate a unique code based on name and timestamp
+      const timestamp = Date.now().toString().slice(-6);
+      const namePrefix = data.name.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X');
+      const uniqueCode = `${namePrefix}${timestamp}`;
+      
       await addMaterial({
         name: data.name,
-        code: "", // Set empty code since we're removing this field
+        code: uniqueCode,
         type: data.type as "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro",
         unitOfMeasure: data.unitOfMeasure,
-        description: data.description,
+        description: "",
       });
 
       toast({
@@ -147,10 +149,8 @@ const MaterialsTable = () => {
       setLoading(true);
       await updateMaterial(selectedMaterial, {
         name: data.name,
-        code: "", // Set empty code since we're removing this field
         type: data.type as "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro",
         unitOfMeasure: data.unitOfMeasure,
-        description: data.description,
       });
 
       toast({
@@ -208,12 +208,11 @@ const MaterialsTable = () => {
   };
   
   const openEditDialog = (material: Material) => {
-    // Set the form values - removed code field
+    // Set the form values - removed code and description fields
     editForm.reset({
       name: material.name,
       type: material.type,
       unitOfMeasure: material.unitOfMeasure,
-      description: material.description || "",
     });
     
     // Set the selected material and open the dialog
@@ -372,24 +371,6 @@ const MaterialsTable = () => {
                 )}
               />
               
-              <FormField
-                control={addForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Descrição do material (opcional)"
-                        className="resize-none"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
               <DialogFooter>
                 <Button 
                   type="button" 
@@ -487,24 +468,6 @@ const MaterialsTable = () => {
                         <SelectItem value="unidade">unidade</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Descrição do material (opcional)"
-                        className="resize-none"
-                        {...field}
-                      />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -433,7 +433,9 @@ const OrdersHistory = () => {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                    className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 ${
+                      isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
@@ -619,36 +621,42 @@ const OrdersHistory = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in p-6">
+    <div className="space-y-6 animate-fade-in p-2 md:p-6">
       {/* Header */}
       <div className="flex flex-col space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate(-1)} className="hover:bg-orange-50 dark:hover:bg-orange-900/20">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate(-1)} 
+              className="hover:bg-orange-50 dark:hover:bg-orange-900/20 flex-shrink-0"
+              size={isMobile ? "sm" : "default"}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent truncate">
                 Histórico de Pedidos
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm md:text-base">
                 Gerencie e visualize todos os registros de pedidos
               </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            {hasPermission('orders', 'create') && (
+          {hasPermission('orders', 'create') && (
+            <div className="flex-shrink-0 w-full md:w-auto">
               <Button 
                 onClick={() => navigate('/pedidos')} 
-                className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 shadow-lg hover:shadow-xl transition-all duration-300 w-full md:w-auto"
+                size={isMobile ? "sm" : "default"}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Pedido
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Statistics Cards */}

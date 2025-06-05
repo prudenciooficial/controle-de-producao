@@ -446,7 +446,37 @@ const Production = () => {
                   </div>
                   <div className={cn("grid grid-cols-2 gap-6", isMobile && "grid-cols-1")}>
                     <FormField control={form.control} name="mixDate" render={({ field }) => (<FormItem><FormLabel>Data da Mexida</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="mixCount" render={({ field }) => (<FormItem><FormLabel>Quantidade de Mexidas</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="mixCount" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Quantidade de Mexidas</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0"
+                            value={field.value === 0 ? "" : field.value}
+                            onChange={e => {
+                              const inputValue = e.target.value;
+                              if (inputValue === "") {
+                                field.onChange(null);
+                              } else {
+                                const value = parseInt(inputValue, 10) || 0;
+                                field.onChange(value);
+                              }
+                            }}
+                            onBlur={e => {
+                              const inputValue = e.target.value;
+                              if (inputValue === "") {
+                                field.onChange(0);
+                              } else {
+                                const value = parseInt(inputValue, 10) || 0;
+                                field.onChange(value);
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
                   <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Alguma observação relevante sobre a produção..." {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </CardContent>
@@ -462,11 +492,41 @@ const Production = () => {
                        <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeProducedItem(index)}><Trash className="h-4 w-4" /></Button>
                       <div className={cn("grid grid-cols-2 gap-4 items-end", isMobile && "grid-cols-1")}>
                         <FormField control={form.control} name={`producedItems.${index}.productId`} render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Produto</FormLabel><Combobox options={products.map(p => ({ value: p.id, label: `${p.name} (${p.unitOfMeasure})`}))} value={field.value} onValueChange={field.onChange} placeholder="Selecione um produto" searchPlaceholder="Buscar produto..." notFoundMessage="Nenhum produto encontrado."/><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name={`producedItems.${index}.quantity`} render={({ field }) => (<FormItem><FormLabel>Quantidade Produzida</FormLabel><FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name={`producedItems.${index}.quantity`} render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Quantidade Produzida</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                placeholder="0"
+                                value={field.value == null || field.value === 0 ? "" : field.value}
+                                onChange={e => {
+                                  const inputValue = e.target.value;
+                                  if (inputValue === "") {
+                                    field.onChange(null);
+                                  } else {
+                                    const value = parseFloat(inputValue) || 0;
+                                    field.onChange(value);
+                                  }
+                                }}
+                                onBlur={e => {
+                                  const inputValue = e.target.value;
+                                  if (inputValue === "") {
+                                    field.onChange(0);
+                                  } else {
+                                    const value = parseFloat(inputValue) || 0;
+                                    field.onChange(value);
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
                       </div>
                     </Card>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendProducedItem({ productId: "", quantity: 0 })} className="mt-4 w-full"><Plus className="mr-2 h-4 w-4" /> Adicionar Produto</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendProducedItem({ productId: "", quantity: null as any })} className="mt-4 w-full"><Plus className="mr-2 h-4 w-4" /> Adicionar Produto</Button>
                   {(() => {
                     const piValues = form.watch("producedItems");
                     if (piValues && piValues.length > 0) {
@@ -516,14 +576,44 @@ const Production = () => {
                                 const uInfo = conservantUsages.find(u => u.materialBatchId === selMatBatchId);
                                 const calcQty = uInfo ? uInfo.quantity : 0;
                                 return (<FormItem><FormLabel>Quantidade Utilizada (Calculada)</FormLabel><FormControl><Input type="number" value={calcQty.toFixed(3)} readOnly className="bg-muted/50 cursor-default"/></FormControl>{globalConservantUsageFactor !== null && watchedMixCount > 0 && matBatchDetails && (<FormDescription>Base: {watchedMixCount} mexida(s) &times; {globalConservantUsageFactor.toFixed(3)} {matBatchDetails.unitOfMeasure}/mexida</FormDescription>)}<FormMessage /></FormItem>);
-                              } else return (<FormItem><FormLabel>Quantidade Utilizada</FormLabel><FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>);
+                              } else return (
+                                <FormItem>
+                                  <FormLabel>Quantidade Utilizada</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      placeholder="0"
+                                      value={field.value == null || field.value === 0 ? "" : field.value}
+                                      onChange={e => {
+                                        const inputValue = e.target.value;
+                                        if (inputValue === "") {
+                                          field.onChange(null);
+                                        } else {
+                                          const value = parseFloat(inputValue) || 0;
+                                          field.onChange(value);
+                                        }
+                                      }}
+                                      onBlur={e => {
+                                        const inputValue = e.target.value;
+                                        if (inputValue === "") {
+                                          field.onChange(0);
+                                        } else {
+                                          const value = parseFloat(inputValue) || 0;
+                                          field.onChange(value);
+                                        }
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              );
                             }} />
                         </div>
                          {(() => { if (selMatBatchId && matBatchDetails) return (<FormDescription className="mt-2 text-xs">Lote selecionado: {matBatchDetails.materialName} / {matBatchDetails.batchNumber} {' - '} Disponível: {matBatchDetails.remainingQuantity} {matBatchDetails.unitOfMeasure}</FormDescription>); return null; })()}
                       </Card>
                     );
                   })}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendUsedMaterial({ materialBatchId: "", quantity: 0 })} className="mt-4 w-full"><Plus className="mr-2 h-4 w-4" /> Adicionar Insumo</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendUsedMaterial({ materialBatchId: "", quantity: null as any })} className="mt-4 w-full"><Plus className="mr-2 h-4 w-4" /> Adicionar Insumo</Button>
                   
                   {shouldShowMixFieldsSection && (
                     <>

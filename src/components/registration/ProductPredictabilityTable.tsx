@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { Button } from "@/components/ui/button";
@@ -68,14 +67,24 @@ const ProductPredictabilityTable = () => {
   };
   
   const handleInputChange = (id: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setEditableProducts(prev => 
-      prev.map(product => 
-        product.id === id 
-          ? { ...product, weightFactor: numValue } 
-          : product
-      )
-    );
+    if (value === "") {
+      setEditableProducts(prev => 
+        prev.map(product => 
+          product.id === id 
+            ? { ...product, weightFactor: 0 } 
+            : product
+        )
+      );
+    } else {
+      const numValue = parseFloat(value) || 0;
+      setEditableProducts(prev => 
+        prev.map(product => 
+          product.id === id 
+            ? { ...product, weightFactor: numValue } 
+            : product
+        )
+      );
+    }
   };
   
   const handleSave = async (id: string) => {
@@ -152,7 +161,7 @@ const ProductPredictabilityTable = () => {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={product.weightFactor}
+                      value={product.weightFactor === 0 ? "" : product.weightFactor}
                       onChange={e => handleInputChange(product.id, e.target.value)}
                       className="w-24"
                     />

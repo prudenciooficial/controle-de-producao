@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
@@ -21,6 +21,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Combobox } from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { format, addYears } from "date-fns";
 
 // Schema for form validation
 const ordersFormSchema = z.object({
@@ -32,8 +33,8 @@ const ordersFormSchema = z.object({
     z.object({
       materialId: z.string().nonempty({ message: "Material é obrigatório" }),
       quantity: z
-        .number()
-        .positive({ message: "Quantidade deve ser maior que zero" }),
+        .union([z.number(), z.null()])
+        .refine((val) => val != null && val > 0, { message: "Quantidade deve ser maior que zero" }),
       batchNumber: z.string().nonempty({ message: "Lote é obrigatório" }),
       expiryDate: z.string().optional(),
       hasReport: z.boolean().default(false),
@@ -77,12 +78,11 @@ const Orders = () => {
             title: "Erro ao buscar fator",
             description: "Não foi possível buscar o fator de conversão de conservante.",
           });
-          setConservantConversionFactor(1); // Fallback para 1 em caso de erro
+          setConservantConversionFactor(1);
         } else if (data) {
           setConservantConversionFactor(data.conservant_conversion_factor);
         } else {
-          // Caso não haja erro mas não haja data (improvável com .single())
-           setConservantConversionFactor(1); // Fallback
+           setConservantConversionFactor(1);
            toast({
             title: "Fator não encontrado",
             description: "Fator de conversão de conservante não encontrado. Usando valor padrão (1).",
@@ -95,7 +95,7 @@ const Orders = () => {
           title: "Erro inesperado",
           description: "Ocorreu um erro ao buscar o fator de conversão.",
         });
-        setConservantConversionFactor(1); // Fallback
+        setConservantConversionFactor(1);
       } finally {
         setIsLoadingFactor(false);
       }
@@ -114,9 +114,9 @@ const Orders = () => {
       items: [
         { 
           materialId: "", 
-          quantity: 0, 
+          quantity: null as any, 
           batchNumber: "", 
-          expiryDate: undefined, 
+          expiryDate: "", 
           hasReport: false 
         }
       ],
@@ -142,18 +142,14 @@ const Orders = () => {
   const handleQuantityChange = (itemIndex: number, value: number, materialId: string) => {
     const material = getMaterialDetails(materialId);
     
-    if (material?.type === "Conservante") {
+    if (material?.type === "Conservante" && value > 0) {
       const convertedQty = value * (conservantConversionFactor || 1);
       
       setConservantConversions(prev => {
         const filtered = prev.filter(c => c.itemIndex !== itemIndex);
-        if (value > 0) {
-          return [...filtered, { itemIndex, originalQty: value, convertedQty }];
-        }
-        return filtered;
+        return [...filtered, { itemIndex, originalQty: value, convertedQty }];
       });
     } else {
-      // Remove any existing conversion for this item if it's not conservant
       setConservantConversions(prev => prev.filter(c => c.itemIndex !== itemIndex));
     }
   };
@@ -175,10 +171,8 @@ const Orders = () => {
         throw new Error(`Fornecedor não encontrado: ${data.supplierId}`);
       }
       
-      // Check if there are conservant conversions to notify user
       const hasConversions = conservantConversions.length > 0;
       
-      // Prepare order items with additional data
       const orderItems = data.items.map((item, index) => {
         const material = getMaterialDetails(item.materialId);
         
@@ -186,37 +180,34 @@ const Orders = () => {
           throw new Error(`Insumo não encontrado: ${item.materialId}`);
         }
 
-        let finalQuantity = item.quantity;
+        // Ensure quantity is a valid number
+        const quantity = item.quantity || 0;
+        let finalQuantity = quantity;
         let finalUnitOfMeasure = material.unitOfMeasure;
 
         if (material.type === "Conservante") {
           const conversion = conservantConversions.find(c => c.itemIndex === index);
           if (conversion) {
             finalQuantity = conversion.convertedQty;
-            finalUnitOfMeasure = "kg"; // Unidade de medida para conservante é sempre KG no estoque
+            finalUnitOfMeasure = "kg";
           } else {
-            // Isso não deveria acontecer se handleQuantityChange estiver funcionando corretamente
-            // e o item for de fato um conservante com quantidade > 0.
-            // Poderia logar um aviso ou usar a quantidade original como fallback, 
-            // mas idealmente a conversão deve existir.
             console.warn(`Conversão não encontrada para o conservante no índice ${index}. Usando quantidade original.`);
           }
         }
         
         return {
-          id: Math.random().toString(36).substring(2, 15), // Considerar UUID mais robusto se necessário
+          id: Math.random().toString(36).substring(2, 15),
           materialId: item.materialId,
           materialName: material.name,
           materialType: material.type,
           quantity: finalQuantity,
           unitOfMeasure: finalUnitOfMeasure,
           batchNumber: item.batchNumber,
-          expiryDate: item.expiryDate ? parseDateString(item.expiryDate) : undefined, // Consistência na conversão da data
+          expiryDate: item.expiryDate ? parseDateString(item.expiryDate) : undefined,
           hasReport: item.hasReport,
         };
       });
       
-      // Create and add order
       const order = {
         date: parseDateString(data.date),
         invoiceNumber: data.invoiceNumber,
@@ -228,12 +219,10 @@ const Orders = () => {
       
       addOrder(order);
       
-      // Refresh automático para sincronizar dados
       setTimeout(() => {
         window.location.reload();
       }, 1500);
       
-      // Show conversion notification if applicable
       if (hasConversions) {
         toast({
           title: "Conversão Automática Aplicada",
@@ -241,7 +230,6 @@ const Orders = () => {
         });
       }
       
-      // Reset form
       form.reset({
         date: getTodayDateString(),
         invoiceNumber: "",
@@ -250,16 +238,16 @@ const Orders = () => {
         items: [
           { 
             materialId: "", 
-            quantity: 0, 
+            quantity: null as any, 
             batchNumber: "", 
-            expiryDate: undefined, 
+            expiryDate: "", 
             hasReport: false 
           }
         ],
       });
 
-      setActiveTabId(ORDER_TABS[0].id); // Reset para a primeira aba
-      setConservantConversions([]); // Clear conversions
+      setActiveTabId(ORDER_TABS[0].id);
+      setConservantConversions([]);
     } catch (error) {
       console.error("Erro ao registrar pedido:", error);
       toast({
@@ -273,8 +261,7 @@ const Orders = () => {
   const handleNext = async () => {
     const currentTabIndex = ORDER_TABS.findIndex(tab => tab.id === activeTabId);
     const currentTabFields = ORDER_TABS[currentTabIndex].fields;
-    // @ts-ignore
-    const isValid = await form.trigger(currentTabFields);
+    const isValid = await form.trigger(currentTabFields as any);
     if (isValid && currentTabIndex < ORDER_TABS.length - 1) {
       setActiveTabId(ORDER_TABS[currentTabIndex + 1].id);
     }
@@ -288,6 +275,45 @@ const Orders = () => {
   };
 
   const currentTabIndex = ORDER_TABS.findIndex(tab => tab.id === activeTabId);
+
+  const suggestExpiryDate = (entryDate: string) => {
+    if (!entryDate) return "";
+    try {
+      const entryDateTime = new Date(entryDate);
+      const suggestedDate = addYears(entryDateTime, 1);
+      return format(suggestedDate, "yyyy-MM-dd");
+    } catch (error) {
+      console.error("Error calculating suggested expiry date:", error);
+      return "";
+    }
+  };
+
+  const watchedDate = form.watch("date");
+
+  useEffect(() => {
+    if (watchedDate) {
+      const suggestedDate = suggestExpiryDate(watchedDate);
+      if (suggestedDate) {
+        const currentItems = form.getValues("items");
+        currentItems.forEach((item, index) => {
+          if (!item.expiryDate) {
+            form.setValue(`items.${index}.expiryDate`, suggestedDate);
+          }
+        });
+      }
+    }
+  }, [watchedDate, form]);
+
+  const handleAppendItem = () => {
+    const suggestedDate = watchedDate ? suggestExpiryDate(watchedDate) : "";
+    append({ 
+      materialId: "", 
+      quantity: null as any, 
+      batchNumber: "", 
+      expiryDate: suggestedDate, 
+      hasReport: false 
+    });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -310,7 +336,6 @@ const Orders = () => {
               ))}
             </TabsList>
 
-            {/* Aba de Informações do Pedido */}
             <TabsContent value="orderInfo" forceMount className={cn(activeTabId !== "orderInfo" && "hidden")}>
               <Card>
                 <CardHeader>
@@ -375,7 +400,6 @@ const Orders = () => {
               </Card>
             </TabsContent>
 
-            {/* Aba de Insumos Recebidos */}
             <TabsContent value="orderItems" forceMount className={cn(activeTabId !== "orderItems" && "hidden")}>
               <Card>
                 <CardHeader>
@@ -383,7 +407,6 @@ const Orders = () => {
                   <CardDescription>Liste os insumos recebidos, lotes e validades.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Show conversion alert if there are conservant items */}
                   {conservantConversions.length > 0 && (
                     <Alert>
                       <Info className="h-4 w-4" />
@@ -441,12 +464,27 @@ const Orders = () => {
                                   <Input 
                                     type="number" 
                                     placeholder="0" 
-                                    {...field} 
+                                    value={field.value == null || field.value === 0 ? "" : field.value}
                                     onChange={e => {
-                                      const value = parseFloat(e.target.value) || 0;
-                                      field.onChange(value);
-                                      handleQuantityChange(index, value, form.watch(`items.${index}.materialId`));
-                                    }} 
+                                      const inputValue = e.target.value;
+                                      if (inputValue === "") {
+                                        field.onChange(null);
+                                        handleQuantityChange(index, 0, form.watch(`items.${index}.materialId`));
+                                      } else {
+                                        const value = parseFloat(inputValue) || 0;
+                                        field.onChange(value);
+                                        handleQuantityChange(index, value, form.watch(`items.${index}.materialId`));
+                                      }
+                                    }}
+                                    onBlur={e => {
+                                      const inputValue = e.target.value;
+                                      if (inputValue === "") {
+                                        field.onChange(0);
+                                      } else {
+                                        const value = parseFloat(inputValue) || 0;
+                                        field.onChange(value);
+                                      }
+                                    }}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -472,8 +510,21 @@ const Orders = () => {
                           name={`items.${index}.expiryDate`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Data de Validade (Opcional)</FormLabel>
-                              <FormControl><Input type="date" {...field} /></FormControl>
+                              <FormLabel>
+                                Data de Validade (Opcional)
+                                {watchedDate && (
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    (Sugerida: {suggestExpiryDate(watchedDate)})
+                                  </span>
+                                )}
+                              </FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="date" 
+                                  {...field} 
+                                  placeholder={watchedDate ? suggestExpiryDate(watchedDate) : ""}
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -492,7 +543,13 @@ const Orders = () => {
                       </div>
                     </Card>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => append({ materialId: "", quantity: 0, batchNumber: "", expiryDate: undefined, hasReport: false })} className="mt-4 w-full">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleAppendItem} 
+                    className="mt-4 w-full"
+                  >
                     <Plus className="mr-2 h-4 w-4" /> Adicionar Insumo
                   </Button>
                 </CardContent>
@@ -500,7 +557,6 @@ const Orders = () => {
             </TabsContent>
           </Tabs>
 
-          {/* Botões de Navegação e Submissão */}
           <div className="flex justify-between mt-8">
             {currentTabIndex > 0 && (
               <Button type="button" variant="outline" onClick={handlePrevious} className="md:w-auto">

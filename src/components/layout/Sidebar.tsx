@@ -4,7 +4,7 @@ import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Searc
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SidebarProps {
@@ -175,9 +175,12 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
           side="left" 
           className="w-64 p-0 bg-sidebar border-r-0 border-sidebar-border text-sidebar-foreground flex flex-col"
         >
-          <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
-            <h1 className="text-xl font-bold">Sistema de Produção</h1>
-          </div>
+          <SheetHeader className="h-16 border-b border-sidebar-border px-6 flex flex-row items-center justify-start">
+            <SheetTitle className="text-xl font-bold text-sidebar-foreground">Sistema de Produção</SheetTitle>
+            <SheetDescription className="sr-only">
+              Menu de navegação do sistema de controle de produção
+            </SheetDescription>
+          </SheetHeader>
           {sidebarContent(true)}
           {sidebarLogo(true)}
         </SheetContent>

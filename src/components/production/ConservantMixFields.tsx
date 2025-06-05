@@ -1,4 +1,3 @@
-
 import React from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -69,12 +68,26 @@ export const ConservantMixFields: React.FC<ConservantMixFieldsProps> = ({
                 <FormLabel className="text-xs">Mexidas Atribuídas</FormLabel>
                 <Input
                   type="number"
-                  value={usage.assignedMixes}
-                  onChange={(e) => onMixCountChange(usage.materialBatchId, parseInt(e.target.value) || 0)}
+                  value={usage.assignedMixes === 0 ? "" : usage.assignedMixes}
+                  onChange={(e) => {
+                    const inputValue = e.target.value;
+                    if (inputValue === "") {
+                      onMixCountChange(usage.materialBatchId, 0);
+                    } else {
+                      const value = parseInt(inputValue) || 0;
+                      onMixCountChange(usage.materialBatchId, value);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const inputValue = e.target.value;
+                    if (inputValue === "") {
+                      onMixCountChange(usage.materialBatchId, 0);
+                    }
+                  }}
                   max={usage.maxMixes}
                   min={0}
                   className="h-8"
-                  disabled={index === 0 && conservantUsages.length > 1} // Primeiro lote é auto-calculado
+                  disabled={index === 0 && conservantUsages.length > 1}
                 />
                 {index === 0 && conservantUsages.length > 1 && (
                   <p className="text-xs text-muted-foreground mt-1">

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { Button } from "@/components/ui/button";
@@ -166,17 +165,6 @@ const ProductsTable = () => {
                 className="col-span-3"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Descrição
-              </Label>
-              <Input
-                id="description"
-                value={newProduct.description || ""}
-                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -217,17 +205,6 @@ const ProductsTable = () => {
                   id="edit-unitOfMeasure"
                   value={selectedProduct.unitOfMeasure}
                   onChange={(e) => setSelectedProduct({ ...selectedProduct, unitOfMeasure: e.target.value })}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-description" className="text-right">
-                  Descrição
-                </Label>
-                <Input
-                  id="edit-description"
-                  value={selectedProduct.description || ""}
-                  onChange={(e) => setSelectedProduct({ ...selectedProduct, description: e.target.value })}
                   className="col-span-3"
                 />
               </div>

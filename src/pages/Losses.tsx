@@ -213,7 +213,31 @@ const Losses = () => {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Quantidade Perdida (kg)</FormLabel>
-                              <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  placeholder="0.00"
+                                  value={field.value == null || field.value === 0 ? "" : field.value}
+                                  onChange={e => {
+                                    const inputValue = e.target.value;
+                                    if (inputValue === "") {
+                                      field.onChange(null);
+                                    } else {
+                                      const value = parseFloat(inputValue) || 0;
+                                      field.onChange(value);
+                                    }
+                                  }}
+                                  onBlur={e => {
+                                    const inputValue = e.target.value;
+                                    if (inputValue === "") {
+                                      field.onChange(0);
+                                    } else {
+                                      const value = parseFloat(inputValue) || 0;
+                                      field.onChange(value);
+                                    }
+                                  }}
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}

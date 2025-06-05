@@ -187,11 +187,22 @@ const CalcTable = () => {
                   id="fecula-conversion"
                   type="number"
                   step="0.01"
-                  value={factors.feculaConversionFactor}
-                  onChange={(e) => setFactors({
-                    ...factors,
-                    feculaConversionFactor: parseFloat(e.target.value) || 0
-                  })}
+                  value={factors.feculaConversionFactor === 0 ? "" : factors.feculaConversionFactor}
+                  onChange={(e) => {
+                    const inputValue = e.target.value;
+                    if (inputValue === "") {
+                      setFactors({
+                        ...factors,
+                        feculaConversionFactor: 0
+                      });
+                    } else {
+                      const value = parseFloat(inputValue) || 0;
+                      setFactors({
+                        ...factors,
+                        feculaConversionFactor: value
+                      });
+                    }
+                  }}
                 />
                 <p className="text-sm text-muted-foreground">
                   Fator para converter a quantidade de fécula em kg.
@@ -204,11 +215,22 @@ const CalcTable = () => {
                   id="production-prediction"
                   type="number"
                   step="0.01"
-                  value={factors.productionPredictionFactor}
-                  onChange={(e) => setFactors({
-                    ...factors,
-                    productionPredictionFactor: parseFloat(e.target.value) || 0
-                  })}
+                  value={factors.productionPredictionFactor === 0 ? "" : factors.productionPredictionFactor}
+                  onChange={(e) => {
+                    const inputValue = e.target.value;
+                    if (inputValue === "") {
+                      setFactors({
+                        ...factors,
+                        productionPredictionFactor: 0
+                      });
+                    } else {
+                      const value = parseFloat(inputValue) || 0;
+                      setFactors({
+                        ...factors,
+                        productionPredictionFactor: value
+                      });
+                    }
+                  }}
                 />
                 <p className="text-sm text-muted-foreground">
                   Fator para calcular a quantidade prevista de kg a serem produzidos.
@@ -221,11 +243,22 @@ const CalcTable = () => {
                   id="conservant-conversion"
                   type="number"
                   step="0.01"
-                  value={factors.conservantConversionFactor}
-                  onChange={(e) => setFactors({
-                    ...factors,
-                    conservantConversionFactor: parseFloat(e.target.value) || 0
-                  })}
+                  value={factors.conservantConversionFactor === 0 ? "" : factors.conservantConversionFactor}
+                  onChange={(e) => {
+                    const inputValue = e.target.value;
+                    if (inputValue === "") {
+                      setFactors({
+                        ...factors,
+                        conservantConversionFactor: 0
+                      });
+                    } else {
+                      const value = parseFloat(inputValue) || 0;
+                      setFactors({
+                        ...factors,
+                        conservantConversionFactor: value
+                      });
+                    }
+                  }}
                 />
                 <p className="text-sm text-muted-foreground">
                   Fator para converter caixas de conservante em kg.
@@ -238,11 +271,22 @@ const CalcTable = () => {
                   id="conservant-usage"
                   type="number"
                   step="0.01"
-                  value={factors.conservantUsageFactor}
-                  onChange={(e) => setFactors({
-                    ...factors,
-                    conservantUsageFactor: parseFloat(e.target.value) || 0
-                  })}
+                  value={factors.conservantUsageFactor === 0 ? "" : factors.conservantUsageFactor}
+                  onChange={(e) => {
+                    const inputValue = e.target.value;
+                    if (inputValue === "") {
+                      setFactors({
+                        ...factors,
+                        conservantUsageFactor: 0
+                      });
+                    } else {
+                      const value = parseFloat(inputValue) || 0;
+                      setFactors({
+                        ...factors,
+                        conservantUsageFactor: value
+                      });
+                    }
+                  }}
                 />
                 <p className="text-sm text-muted-foreground">
                   Quantidade de conservante em kg necessária por mexida.

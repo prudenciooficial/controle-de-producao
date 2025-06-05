@@ -395,7 +395,9 @@ const ProductionHistory = () => {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-green-50 dark:hover:bg-green-900/20 ${
+                      isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
@@ -554,33 +556,39 @@ const ProductionHistory = () => {
     <div className="space-y-6 animate-fade-in p-6">
       {/* Header */}
       <div className="flex flex-col space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate(-1)} className="hover:bg-blue-50 dark:hover:bg-blue-900/20">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate(-1)} 
+              className="hover:bg-green-50 dark:hover:bg-green-900/20 flex-shrink-0"
+              size={isMobile ? "sm" : "default"}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent truncate">
                 Histórico de Produção
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm md:text-base">
                 Gerencie e visualize todos os registros de produção
               </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            {hasPermission('production', 'create') && (
+          {hasPermission('production', 'create') && (
+            <div className="flex-shrink-0 w-full md:w-auto">
               <Button 
-                onClick={() => navigate('/production')} 
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                onClick={() => navigate('/producao')} 
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-300 w-full md:w-auto"
+                size={isMobile ? "sm" : "default"}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Produção
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Statistics Cards */}

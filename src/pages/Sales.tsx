@@ -368,7 +368,29 @@ const Sales = () => {
                               <FormItem>
                                 <FormLabel>Quantidade</FormLabel>
                                 <FormControl>
-                                  <Input type="number" placeholder="0" {...formField} onChange={e => formField.onChange(parseFloat(e.target.value) || 0)} />
+                                  <Input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formField.value == null || formField.value === 0 ? "" : formField.value}
+                                    onChange={e => {
+                                      const inputValue = e.target.value;
+                                      if (inputValue === "") {
+                                        formField.onChange(null);
+                                      } else {
+                                        const value = parseFloat(inputValue) || 0;
+                                        formField.onChange(value);
+                                      }
+                                    }}
+                                    onBlur={e => {
+                                      const inputValue = e.target.value;
+                                      if (inputValue === "") {
+                                        formField.onChange(0);
+                                      } else {
+                                        const value = parseFloat(inputValue) || 0;
+                                        formField.onChange(value);
+                                      }
+                                    }}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -382,7 +404,7 @@ const Sales = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => append({ producedItemId: "", quantity: 0 })}
+                    onClick={() => append({ producedItemId: "", quantity: null as any })}
                     className="mt-4 w-full"
                   >
                     <Plus className="mr-2 h-4 w-4" />
