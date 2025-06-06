@@ -21,6 +21,7 @@ import Losses from "./pages/Losses";
 import LossesHistory from "./pages/LossesHistory";
 import Traceability from "./pages/Traceability";
 import Registration from "./pages/Registration";
+import Consultation from "./pages/Consultation";
 import Users from "./pages/Users";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -63,6 +64,7 @@ const AppContent = () => {
                   <Route path="/perdas/historico" element={<LossesHistory />} />
                   <Route path="/rastreabilidade" element={<Traceability />} />
                   <Route path="/cadastro" element={<Registration />} />
+                  <Route path="/consulta" element={<Consultation />} />
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
                   <Route path="*" element={<NotFound />} />

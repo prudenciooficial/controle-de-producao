@@ -181,61 +181,61 @@ export const InventoryDetailsDialog = React.memo(function InventoryDetailsDialog
   const StatsSummary = useMemo(() => {
     return () => (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 border-blue-200 dark:border-blue-800">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-600">Total Lotes</p>
-                <p className="text-2xl font-bold text-blue-900">{summaryStats.totalBatches}</p>
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Lotes</p>
+                <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{summaryStats.totalBatches}</p>
               </div>
-              <Archive className="h-8 w-8 text-blue-600" />
+              <Archive className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 border-purple-200 dark:border-purple-800">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600">Quantidade</p>
-                <p className="text-2xl font-bold text-purple-900">{summaryStats.totalQuantity.toFixed(1)}</p>
-                <p className="text-xs text-purple-600">{summaryStats.unitOfMeasure}</p>
+                <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Quantidade</p>
+                <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">{summaryStats.totalQuantity.toFixed(1)}</p>
+                <p className="text-xs text-purple-600 dark:text-purple-400">{summaryStats.unitOfMeasure}</p>
               </div>
-              <Scale className="h-8 w-8 text-purple-600" />
+              <Scale className="h-8 w-8 text-purple-600 dark:text-purple-400" />
             </div>
           </CardContent>
         </Card>
 
-        {materialStats && (
+        {type === "material" && (
           <>
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 border-green-200 dark:border-green-800">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-green-600">Com Laudo</p>
-                    <p className="text-2xl font-bold text-green-900">{materialStats.withReport}</p>
-                    <p className="text-xs text-green-600">
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400">Com Laudo</p>
+                    <p className="text-2xl font-bold text-green-900 dark:text-green-100">{materialStats.withReport}</p>
+                    <p className="text-xs text-green-600 dark:text-green-400">
                       {((materialStats.withReport / summaryStats.totalBatches) * 100).toFixed(0)}%
                     </p>
                   </div>
-                  <FileCheck className="h-8 w-8 text-green-600" />
+                  <FileCheck className="h-8 w-8 text-green-600 dark:text-green-400" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/50 dark:to-orange-900/30 border-orange-200 dark:border-orange-800">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-orange-600">Alertas</p>
-                    <p className="text-2xl font-bold text-orange-900">
+                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Alertas</p>
+                    <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
                       {materialStats.expired + materialStats.expiringSoon}
                     </p>
-                    <p className="text-xs text-orange-600">
+                    <p className="text-xs text-orange-600 dark:text-orange-400">
                       {materialStats.expired} vencidos
                     </p>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-orange-600" />
+                  <AlertTriangle className="h-8 w-8 text-orange-600 dark:text-orange-400" />
                 </div>
               </CardContent>
             </Card>
@@ -259,9 +259,9 @@ export const InventoryDetailsDialog = React.memo(function InventoryDetailsDialog
           <CardContent className="p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 bg-gray-50 rounded-lg flex items-center justify-center">
+                <div className="h-10 w-10 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex items-center justify-center">
                   {type === "product" ? (
-                    <Package className="h-5 w-5 text-gray-600" />
+                    <Package className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                   ) : (
                     getMaterialTypeIcon(batch.materialType)
                   )}

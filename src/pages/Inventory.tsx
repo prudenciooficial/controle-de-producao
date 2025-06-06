@@ -273,15 +273,15 @@ const Inventory = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0 }}
         >
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-300">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 border-blue-200 dark:border-blue-800 hover:shadow-lg transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-600">Total de Tipos</p>
-                  <p className="text-3xl font-bold text-blue-900">{stats.totalTypes}</p>
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total de Tipos</p>
+                  <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{stats.totalTypes}</p>
                 </div>
-                <div className="h-12 w-12 bg-blue-200 rounded-lg flex items-center justify-center">
-                  {type === 'products' ? <PackageCheck className="h-6 w-6 text-blue-600" /> : <Package className="h-6 w-6 text-blue-600" />}
+                <div className="h-12 w-12 bg-blue-200 dark:bg-blue-800/50 rounded-lg flex items-center justify-center">
+                  {type === 'products' ? <PackageCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" /> : <Package className="h-6 w-6 text-blue-600 dark:text-blue-400" />}
                 </div>
               </div>
             </CardContent>
@@ -293,15 +293,15 @@ const Inventory = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:shadow-lg transition-all duration-300">
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 border-green-200 dark:border-green-800 hover:shadow-lg transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-600">Total de Lotes</p>
-                  <p className="text-3xl font-bold text-green-900">{stats.totalBatches}</p>
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Total de Lotes</p>
+                  <p className="text-3xl font-bold text-green-900 dark:text-green-100">{stats.totalBatches}</p>
                 </div>
-                <div className="h-12 w-12 bg-green-200 rounded-lg flex items-center justify-center">
-                  <Archive className="h-6 w-6 text-green-600" />
+                <div className="h-12 w-12 bg-green-200 dark:bg-green-800/50 rounded-lg flex items-center justify-center">
+                  <Archive className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>
@@ -313,37 +313,37 @@ const Inventory = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:shadow-lg transition-all duration-300">
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 border-purple-200 dark:border-purple-800 hover:shadow-lg transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-purple-600">Quantidade Total</p>
-                  <p className="text-3xl font-bold text-purple-900">{stats.totalQuantity.toFixed(0)} kg</p>
+                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Quantidade Total</p>
+                  <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">{stats.totalQuantity.toFixed(0)} kg</p>
                 </div>
-                <div className="h-12 w-12 bg-purple-200 rounded-lg flex items-center justify-center">
-                  <Scale className="h-6 w-6 text-purple-600" />
+                <div className="h-12 w-12 bg-purple-200 dark:bg-purple-800/50 rounded-lg flex items-center justify-center">
+                  <Scale className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {type === 'materials' && (
+        {(stats.expiredItems > 0 || stats.expiringSoon > 0) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 hover:shadow-lg transition-all duration-300">
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/50 dark:to-orange-900/30 border-orange-200 dark:border-orange-800 hover:shadow-lg transition-all duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-orange-600">Alertas</p>
-                    <p className="text-3xl font-bold text-orange-900">{stats.expiredItems + stats.expiringSoon}</p>
-                    <p className="text-xs text-orange-600">{stats.expiredItems} vencidos, {stats.expiringSoon} próximos</p>
+                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Alertas</p>
+                    <p className="text-3xl font-bold text-orange-900 dark:text-orange-100">{stats.expiredItems + stats.expiringSoon}</p>
+                    <p className="text-xs text-orange-600 dark:text-orange-400">{stats.expiredItems} vencidos, {stats.expiringSoon} próximos</p>
                   </div>
-                  <div className="h-12 w-12 bg-orange-200 rounded-lg flex items-center justify-center">
-                    <AlertTriangle className="h-6 w-6 text-orange-600" />
+                  <div className="h-12 w-12 bg-orange-200 dark:bg-orange-800/50 rounded-lg flex items-center justify-center">
+                    <AlertTriangle className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                   </div>
                 </div>
               </CardContent>
@@ -366,8 +366,8 @@ const Inventory = () => {
           <CardContent className="p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center">
-                  <PackageCheck className="h-6 w-6 text-blue-600" />
+                <div className="h-12 w-12 bg-blue-50 dark:bg-blue-950/50 rounded-lg flex items-center justify-center">
+                  <PackageCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg">{product.name}</h3>
@@ -564,7 +564,7 @@ const Inventory = () => {
                             transition={{ delay: typeIndex * 0.2 }}
                             className="space-y-4"
                           >
-                            <div className={`flex items-center justify-between p-4 rounded-lg bg-gradient-to-r ${typeConfig.gradientClass} border ${typeConfig.color.split(' ')[2]}`}>
+                            <div className={`flex items-center justify-between p-4 rounded-lg bg-gradient-to-r ${typeConfig.gradientClass} border border-${typeConfig.color.split(' ')[2]} dark:border-opacity-30`}>
                               <div className="flex items-center space-x-3">
                                 <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${typeConfig.color}`}>
                                   {typeConfig.icon}
