@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -362,8 +363,16 @@ const Production = () => {
       }
       
       const productionBatchPayload = {
-        batchNumber: data.batchNumber, productionDate: parseDateString(data.productionDate), mixDay: data.mixDate,
-        mixCount: data.mixCount, notes: data.notes, producedItems: producedItemsData, usedMaterials: usedMaterialsPayload,
+        batchNumber: data.batchNumber, 
+        productionDate: parseDateString(data.productionDate), 
+        mixDay: data.mixDate,
+        mixCount: data.mixCount, 
+        notes: data.notes, 
+        producedItems: producedItemsData, 
+        usedMaterials: usedMaterialsPayload,
+        // Adicionar campos obrigatórios
+        isMixOnly: false,
+        status: 'production_complete' as const,
       };
       
       addProductionBatch(productionBatchPayload);
@@ -672,3 +681,4 @@ const Production = () => {
 };
 
 export default Production;
+

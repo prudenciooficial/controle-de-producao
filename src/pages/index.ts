@@ -1,3 +1,4 @@
+
 export { default as Dashboard } from "./Dashboard";
 export { default as Registration } from "./Registration";
 export { default as Production } from "./Production";
@@ -10,4 +11,3 @@ export { default as Losses } from "./Losses";
 export { default as LossesHistory } from "./LossesHistory";
 export { default as Traceability } from "./Traceability";
 export { default as Inventory } from "./Inventory";
-export { default as Consultation } from "./Consultation"; 

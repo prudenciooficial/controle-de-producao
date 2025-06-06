@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -95,9 +94,9 @@ const fetchProductionBatchById = async (id: string): Promise<ProductionBatch> =>
     usedMaterials: usedMaterials,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
-    // Novos campos
+    // Novos campos - usar valores padrão para compatibilidade
     isMixOnly: data.is_mix_only || false,
-    mixProductionBatchId: data.mix_production_batch_id,
+    mixProductionBatchId: data.mix_production_batch_id || null,
     status: data.status || 'production_complete'
   };
 };
@@ -130,9 +129,9 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
       usedMaterials: usedMaterials,
       createdAt: new Date(batch.created_at),
       updatedAt: new Date(batch.updated_at),
-      // Novos campos
+      // Novos campos - usar valores padrão para compatibilidade
       isMixOnly: batch.is_mix_only || false,
-      mixProductionBatchId: batch.mix_production_batch_id,
+      mixProductionBatchId: batch.mix_production_batch_id || null,
       status: batch.status || 'production_complete'
     });
   }
@@ -170,7 +169,7 @@ export const fetchAvailableMixes = async (): Promise<ProductionBatch[]> => {
       createdAt: new Date(batch.created_at),
       updatedAt: new Date(batch.updated_at),
       isMixOnly: batch.is_mix_only || false,
-      mixProductionBatchId: batch.mix_production_batch_id,
+      mixProductionBatchId: batch.mix_production_batch_id || null,
       status: batch.status || 'mix_only'
     });
   }
@@ -190,18 +189,24 @@ export const createProductionBatch = async (
     console.log(`[ProductionService] Creating production batch: ${batch.batchNumber}`);
     
     // Insert the production batch
+    const batchInsertData: any = {
+      batch_number: batch.batchNumber,
+      production_date: batch.productionDate.toISOString(),
+      mix_day: batch.mixDay,
+      mix_count: batch.mixCount,
+      notes: batch.notes,
+      is_mix_only: batch.isMixOnly || false,
+      status: batch.status || 'production_complete'
+    };
+
+    // Adicionar mix_production_batch_id apenas se fornecido
+    if (batch.mixProductionBatchId) {
+      batchInsertData.mix_production_batch_id = batch.mixProductionBatchId;
+    }
+
     const { data: batchData, error: batchError } = await supabase
       .from("production_batches")
-      .insert({
-        batch_number: batch.batchNumber,
-        production_date: batch.productionDate.toISOString(),
-        mix_day: batch.mixDay,
-        mix_count: batch.mixCount,
-        notes: batch.notes,
-        is_mix_only: batch.isMixOnly || false,
-        mix_production_batch_id: batch.mixProductionBatchId || null,
-        status: batch.status || 'production_complete'
-      })
+      .insert(batchInsertData)
       .select()
       .single();
     
