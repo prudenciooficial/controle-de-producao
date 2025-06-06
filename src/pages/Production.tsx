@@ -15,13 +15,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox } from "@/components/ui/combobox";
 import { ConservantMixFields } from "@/components/production/ConservantMixFields";
-import { History, Plus, Trash, Package, Factory, ClipboardList, FlaskConical } from "lucide-react";
+import { History, Plus, Trash, Package, Factory, ClipboardList, FlaskConical, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAvailableMixBatches } from "@/services/mixService";
+import { fetchAvailableMixBatches, fetchMixBatches } from "@/services/mixService";
 import type { MixBatch } from "@/types/mix";
 import {
   AlertDialog,
@@ -105,7 +105,16 @@ const generateSuggestedBatchNumber = (
 };
 
 const Production = () => {
-  const { products, materialBatches, addProductionBatch, productionBatches, isLoading } = useData();
+  const { 
+    products, 
+    materialBatches, 
+    addProductionBatch, 
+    productionBatches, 
+    isLoading,
+    refetchProductionBatches,
+    refetchMaterialBatches,
+    refetchProducts
+  } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
@@ -127,14 +136,26 @@ const Production = () => {
     const fetchMixes = async () => {
       setIsLoadingMixes(true);
       try {
+        console.log("🔄 Buscando mexidas disponíveis...");
         const mixes = await fetchAvailableMixBatches();
+        console.log("✅ Mexidas carregadas:", mixes.length, "mexidas encontradas");
+        console.log("📋 Mexidas:", mixes);
         setAvailableMixes(mixes);
+        
+        if (mixes.length === 0) {
+          console.warn("⚠️ Nenhuma mexida disponível encontrada");
+          toast({ 
+            variant: "default", 
+            title: "Aviso", 
+            description: "Nenhuma mexida disponível encontrada. Você precisa criar uma mexida primeiro." 
+          });
+        }
       } catch (error) {
-        console.error("Erro ao buscar mexidas:", error);
+        console.error("❌ Erro ao buscar mexidas:", error);
         toast({ 
           variant: "destructive", 
           title: "Erro ao carregar mexidas", 
-          description: "Não foi possível carregar as mexidas disponíveis." 
+          description: "Não foi possível carregar as mexidas disponíveis. Verifique a conexão com o banco de dados." 
         });
       } finally {
         setIsLoadingMixes(false);
@@ -321,9 +342,29 @@ const Production = () => {
     }
   }, [conservantUsages, form]);
 
-  const onSubmit = (data: ProductionFormValues) => {
+  const onSubmit = async (data: ProductionFormValues) => {
     if (!hasPermission('production', 'create')) {
       toast({ variant: "destructive", title: "Acesso Negado", description: "Você não tem permissão para registrar novas produções." });
+      return;
+    }
+
+    // Validação extra: verificar se há mexidas disponíveis
+    if (isLoadingMixes) {
+      toast({ variant: "destructive", title: "Aguarde", description: "Aguarde o carregamento das mexidas." });
+      return;
+    }
+
+    if (availableMixes.length === 0) {
+      toast({ 
+        variant: "destructive", 
+        title: "Nenhuma mexida disponível", 
+        description: "Você precisa criar uma mexida antes de registrar a produção." 
+      });
+      return;
+    }
+
+    if (!data.mixProductionBatchId) {
+      toast({ variant: "destructive", title: "Mexida obrigatória", description: "Selecione uma mexida antes de continuar." });
       return;
     }
 
@@ -381,13 +422,32 @@ const Production = () => {
         status: undefined as any, // VALOR UNDEFINED PARA EVITAR CONSTRAINT
       } as Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">;
       
-      addProductionBatch(productionBatchPayload);
+      await addProductionBatch(productionBatchPayload);
       toast({ title: "Produção Registrada", description: `Lote de produção ${data.batchNumber} registrado com sucesso.` });
       
-      // Refresh automático para sincronizar dados - COMENTADO TEMPORARIAMENTE PARA DEBUG
-      // setTimeout(() => {
-      //   window.location.reload();
-      // }, 1500);
+      // Refresh dos dados do contexto primeiro para sincronização rápida
+      try {
+        console.log("🔄 Atualizando dados do contexto...");
+        await Promise.all([
+          refetchProductionBatches(),
+          refetchMaterialBatches()
+        ]);
+        console.log("✅ Dados do contexto atualizados com sucesso");
+        
+        // Atualizar também as mexidas disponíveis
+        console.log("🔄 Atualizando mexidas disponíveis...");
+        const updatedMixes = await fetchAvailableMixBatches();
+        setAvailableMixes(updatedMixes);
+        console.log("✅ Mexidas atualizadas:", updatedMixes.length, "mexidas disponíveis");
+      } catch (error) {
+        console.error("❌ Erro ao atualizar dados do contexto:", error);
+      }
+      
+      // Refresh automático da página para sincronização completa
+      setTimeout(() => {
+        console.log("🔄 Recarregando página para sincronização completa...");
+        window.location.reload();
+      }, 2000);
       
       form.reset({
         productionDate: today, 
@@ -443,6 +503,36 @@ const Production = () => {
           <Button variant="outline" onClick={() => navigate("/producao/historico")}>
             <History className="mr-2 h-4 w-4" /> Histórico de Produção
           </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={async () => {
+              try {
+                console.log("🔍 Verificando mexidas no banco...");
+                const allMixes = await fetchMixBatches();
+                console.log("📊 Total de mexidas no banco:", allMixes.length);
+                console.log("📋 Todas as mexidas:", allMixes);
+                
+                const availableMixesFromDB = allMixes.filter(mix => mix.status === 'available');
+                console.log("✅ Mexidas disponíveis:", availableMixesFromDB.length);
+                console.log("📋 Mexidas disponíveis:", availableMixesFromDB);
+                
+                toast({
+                  title: "Debug - Mexidas no Banco",
+                  description: `Total: ${allMixes.length} | Disponíveis: ${availableMixesFromDB.length}`,
+                });
+              } catch (error) {
+                console.error("❌ Erro ao verificar mexidas:", error);
+                toast({
+                  variant: "destructive",
+                  title: "Erro ao verificar mexidas",
+                  description: error instanceof Error ? error.message : "Erro desconhecido"
+                });
+              }
+            }}
+          >
+            🔍 Debug Mexidas
+          </Button>
         </div>
       </div>
 
@@ -472,17 +562,41 @@ const Production = () => {
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
                           <FormLabel>Mexida</FormLabel>
-                          <Combobox
-                            options={availableMixes.map(mix => ({ 
-                              value: mix.id, 
-                              label: `${mix.batchNumber} - ${new Date(mix.mixDate).toLocaleDateString()} (${mix.mixCount} mexidas)`
-                            }))}
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            placeholder="Selecione uma mexida"
-                            searchPlaceholder="Buscar mexida..."
-                            notFoundMessage="Nenhuma mexida disponível."
-                          />
+                          {isLoadingMixes ? (
+                            <div className="flex items-center justify-center p-4 border rounded-md">
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              <span className="text-sm text-muted-foreground">Carregando mexidas...</span>
+                            </div>
+                          ) : availableMixes.length === 0 ? (
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex items-center justify-center p-4 border border-dashed rounded-md">
+                                <AlertTriangle className="h-4 w-4 text-yellow-500 mr-2" />
+                                <span className="text-sm text-muted-foreground">Nenhuma mexida disponível</span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate("/mexida")}
+                                className="w-full"
+                              >
+                                <FlaskConical className="mr-2 h-4 w-4" />
+                                Criar Nova Mexida
+                              </Button>
+                            </div>
+                          ) : (
+                            <Combobox
+                              options={availableMixes.map(mix => ({ 
+                                value: mix.id, 
+                                label: `${mix.batchNumber} - ${new Date(mix.mixDate).toLocaleDateString()} (${mix.mixCount} mexidas)`
+                              }))}
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Selecione uma mexida"
+                              searchPlaceholder="Buscar mexida..."
+                              notFoundMessage="Nenhuma mexida disponível."
+                            />
+                          )}
                           <FormMessage />
                           {selectedMixDetails && (
                             <FormDescription className="text-xs">
@@ -678,7 +792,20 @@ const Production = () => {
           <div className="flex justify-between mt-8 p-0">
             {currentTabIndex > 0 && (<Button type="button" variant="outline" onClick={handlePrevious} className="md:w-auto">Voltar</Button>)}
             {currentTabIndex < TABS.length - 1 && (<Button type="button" onClick={handleNext} className="ml-auto md:w-auto">Avançar</Button>)}
-            {currentTabIndex === TABS.length - 1 && (<Button type="submit" disabled={form.formState.isSubmitting} className="ml-auto md:w-auto">{form.formState.isSubmitting ? "Salvando..." : "Salvar Produção"}</Button>)}
+            {currentTabIndex === TABS.length - 1 && (
+              <Button 
+                type="submit" 
+                disabled={
+                  form.formState.isSubmitting || 
+                  isLoadingMixes || 
+                  availableMixes.length === 0 || 
+                  !form.watch("mixProductionBatchId")
+                } 
+                className="ml-auto md:w-auto"
+              >
+                {form.formState.isSubmitting ? "Salvando..." : "Salvar Produção"}
+              </Button>
+            )}
           </div>
         </form>
       </Form>

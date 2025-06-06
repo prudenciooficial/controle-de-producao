@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
 import { logSystemEvent } from "./logService";
-import { markMixAsUsed } from "./mixService";
+import { markMixAsUsed, markMixAsAvailable } from "./mixService";
 
 const fetchProducedItems = async (productionBatchId: string): Promise<ProducedItem[]> => {
   // Updated query to include the product name from products table
@@ -84,10 +84,9 @@ const fetchProductionBatchById = async (id: string): Promise<ProductionBatch> =>
   ]);
 
   return {
-    ...data,
     id: data.id,
     batchNumber: data.batch_number,
-    productionDate: data.production_date,
+    productionDate: new Date(data.production_date),
     mixDay: data.mix_day || "1",
     mixCount: data.mix_count || 1,
     notes: data.notes || "",
@@ -97,7 +96,7 @@ const fetchProductionBatchById = async (id: string): Promise<ProductionBatch> =>
     updatedAt: new Date(data.updated_at),
     isMixOnly: false,
     mixProductionBatchId: data.mix_batch_id,
-    status: data.status || 'complete'
+    status: data.status as 'complete' | 'rework' || 'complete'
   } as ProductionBatch;
 };
 
@@ -495,9 +494,10 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
   try {
     await beginTransaction();
 
+    // Buscar os dados da produção antes de excluir (incluindo mix_batch_id)
     const { data: fetchedBatch, error: fetchError } = await supabase
       .from("production_batches")
-      .select("*, mix_batch_id")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -564,6 +564,13 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
     if (usedMaterialsDeleteError) { 
       await abortTransaction(); 
       throw usedMaterialsDeleteError; 
+    }
+
+    // Free the associated mix if it exists
+    if (fetchedBatch?.mix_batch_id) {
+      console.log(`[ProductionService] Liberando mexida: ${fetchedBatch.mix_batch_id}`);
+      await markMixAsAvailable(fetchedBatch.mix_batch_id);
+      console.log(`[ProductionService] Mexida liberada com sucesso!`);
     }
 
     // Delete the production batch

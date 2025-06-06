@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { MixBatch, UsedMaterialMix } from "../types/mix";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -511,6 +510,15 @@ export const markMixAsUsed = async (mixBatchId: string): Promise<void> => {
   const { error } = await supabase
     .from("mix_batches")
     .update({ status: 'used' })
+    .eq("id", mixBatchId);
+    
+  if (error) throw error;
+};
+
+export const markMixAsAvailable = async (mixBatchId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("mix_batches")
+    .update({ status: 'available' })
     .eq("id", mixBatchId);
     
   if (error) throw error;
