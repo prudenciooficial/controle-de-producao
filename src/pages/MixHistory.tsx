@@ -165,8 +165,82 @@ const MixHistory = () => {
       return;
     }
 
+    // Validar se todos os insumos são válidos
+    const invalidMaterials = usedMaterials.filter(material => 
+      !material.materialBatchId || material.quantity <= 0
+    );
+
+    if (invalidMaterials.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Dados Inválidos",
+        description: "Todos os insumos devem ter um lote selecionado e quantidade maior que zero.",
+      });
+      return;
+    }
+
+    // Validar quantidades disponíveis (considerando que o estoque será ajustado por diferença)
+    const validationErrors: string[] = [];
+    
+    // Criar mapas de quantidades antigas e novas por lote
+    const oldMaterialsMap = new Map<string, number>();
+    const newMaterialsMap = new Map<string, number>();
+    
+    // Mapear materiais antigos
+    if (selectedMix.usedMaterials) {
+      for (const oldMaterial of selectedMix.usedMaterials) {
+        const currentQuantity = oldMaterialsMap.get(oldMaterial.materialBatchId) || 0;
+        oldMaterialsMap.set(oldMaterial.materialBatchId, currentQuantity + oldMaterial.quantity);
+      }
+    }
+    
+    // Mapear novos materiais
+    for (const newMaterial of usedMaterials) {
+      if (newMaterial.materialBatchId) {
+        const currentQuantity = newMaterialsMap.get(newMaterial.materialBatchId) || 0;
+        newMaterialsMap.set(newMaterial.materialBatchId, currentQuantity + newMaterial.quantity);
+      }
+    }
+    
+    // Verificar se há estoque suficiente para cada lote
+    for (const [materialBatchId, newQuantity] of newMaterialsMap.entries()) {
+      const batch = availableMaterialBatches.find(b => b.id === materialBatchId);
+      if (!batch) {
+        const material = usedMaterials.find(m => m.materialBatchId === materialBatchId);
+        validationErrors.push(`Lote do insumo ${material?.materialName || 'desconhecido'} não encontrado`);
+        continue;
+      }
+      
+      const oldQuantity = oldMaterialsMap.get(materialBatchId) || 0;
+      const difference = newQuantity - oldQuantity;
+      
+      // Se a diferença for positiva, estamos consumindo mais estoque
+      if (difference > 0) {
+        const availableForConsumption = batch.remainingQuantity;
+        if (difference > availableForConsumption) {
+          validationErrors.push(
+            `${batch.materialName} (${batch.batchNumber}): quantidade adicional solicitada ${difference} kg excede o disponível ${availableForConsumption} kg`
+          );
+        }
+      }
+      // Se a diferença for negativa, estamos restaurando estoque (sempre permitido)
+    }
+
+    if (validationErrors.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Quantidade Insuficiente",
+        description: validationErrors.join(". "),
+      });
+      return;
+    }
+
     try {
       setIsSaving(true);
+      
+      console.log(`[MixHistory] Atualizando mexida ${selectedMix.id}`);
+      console.log(`[MixHistory] Insumos originais:`, selectedMix.usedMaterials);
+      console.log(`[MixHistory] Novos insumos:`, usedMaterials);
       
       // Preparar dados dos insumos atualizados
       const updatedMixData = {
@@ -187,7 +261,7 @@ const MixHistory = () => {
       await updateMixBatch(selectedMix.id, updatedMixData);
       toast({ 
         title: "Mexida Atualizada", 
-        description: "A mexida foi atualizada com sucesso." 
+        description: "A mexida foi atualizada com sucesso e o estoque foi ajustado corretamente." 
       });
       await loadMixBatches(); // Refresh data
       setShowEditDialog(false);
@@ -688,10 +762,12 @@ const MixHistory = () => {
                     <div>
                       <Label htmlFor={`material-${index}`}>Insumo</Label>
                       <Combobox
-                        options={availableMaterialBatches.map(batch => ({
-                          value: batch.id,
-                          label: `${batch.materialName} / ${batch.batchNumber} (${batch.remainingQuantity} ${batch.unitOfMeasure})`
-                        }))}
+                        options={availableMaterialBatches.map(batch => {
+                          return {
+                            value: batch.id,
+                            label: `${batch.materialName} / ${batch.batchNumber} (${batch.remainingQuantity} ${batch.unitOfMeasure} disponível)`
+                          };
+                        })}
                         value={material.materialBatchId}
                         onValueChange={(value) => {
                           const selectedBatch = availableMaterialBatches.find(b => b.id === value);
@@ -726,12 +802,63 @@ const MixHistory = () => {
                         ))}
                         placeholder="0.000"
                       />
+                      {(() => {
+                        if (material.materialBatchId) {
+                          const batch = availableMaterialBatches.find(b => b.id === material.materialBatchId);
+                          if (batch) {
+                            // Calcular quantidades totais antigas e novas para este lote
+                            const oldTotalForThisBatch = selectedMix?.usedMaterials
+                              .filter(m => m.materialBatchId === batch.id)
+                              .reduce((sum, m) => sum + m.quantity, 0) || 0;
+                            
+                            const newTotalForThisBatch = usedMaterials
+                              .filter(m => m.materialBatchId === batch.id)
+                              .reduce((sum, m) => sum + m.quantity, 0);
+                            
+                            const difference = newTotalForThisBatch - oldTotalForThisBatch;
+                            
+                            // Se a diferença for positiva, verificar se há estoque suficiente
+                            if (difference > 0) {
+                              const isExceeding = difference > batch.remainingQuantity;
+                              return (
+                                <div className={`mt-1 text-xs ${isExceeding ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                  {isExceeding ? (
+                                    `⚠️ Consumo adicional ${difference} kg excede o disponível (${batch.remainingQuantity} ${batch.unitOfMeasure})`
+                                  ) : (
+                                    `Consumo adicional: ${difference} kg de ${batch.remainingQuantity} ${batch.unitOfMeasure} disponível`
+                                  )}
+                                </div>
+                              );
+                            } else if (difference < 0) {
+                              return (
+                                <div className="mt-1 text-xs text-green-600">
+                                  ✓ Restaurando ${Math.abs(difference)} kg ao estoque
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  Sem alteração no estoque
+                                </div>
+                              );
+                            }
+                          }
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                   
                   {material.materialBatchId && (
                     <div className="mt-2 text-xs text-muted-foreground">
                       Lote: {material.batchNumber} - Tipo: {material.materialType}
+                      {(() => {
+                        const originalMaterial = selectedMix?.usedMaterials.find(m => m.materialBatchId === material.materialBatchId);
+                        if (originalMaterial) {
+                          return ` - Quantidade original: ${originalMaterial.quantity} ${material.unitOfMeasure}`;
+                        }
+                        return '';
+                      })()}
                     </div>
                   )}
                 </Card>

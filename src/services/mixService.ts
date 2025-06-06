@@ -123,7 +123,9 @@ export const createMixBatch = async (
       .from("mix_batches")
       .insert({
         batch_number: batch.batchNumber,
-        mix_date: batch.mixDate.toISOString().split('T')[0],
+        mix_date: batch.mixDate instanceof Date 
+          ? batch.mixDate.toISOString().split('T')[0] 
+          : String(batch.mixDate),
         mix_day: batch.mixDay,
         mix_count: batch.mixCount,
         notes: batch.notes,
@@ -247,6 +249,8 @@ export const updateMixBatch = async (
   try {
     await beginTransaction();
     
+    console.log(`[UpdateMixBatch] Iniciando atualização da mexida ${id}`);
+    
     // Fetch existing data for logging
     const { data: fetchedExistingBatch, error: fetchError } = await supabase
       .from("mix_batches")
@@ -256,18 +260,22 @@ export const updateMixBatch = async (
 
     if (fetchedExistingBatch) {
       existingBatchData = fetchedExistingBatch;
+      console.log(`[UpdateMixBatch] Mexida existente: ${existingBatchData.batch_number}`);
     }
 
     // Update mix batch
     const batchUpdates: any = {};
     if (batch.batchNumber !== undefined) batchUpdates.batch_number = batch.batchNumber;
-    if (batch.mixDate !== undefined) batchUpdates.mix_date = batch.mixDate.toISOString().split('T')[0];
+    if (batch.mixDate !== undefined) batchUpdates.mix_date = batch.mixDate instanceof Date 
+      ? batch.mixDate.toISOString().split('T')[0] 
+      : String(batch.mixDate);
     if (batch.mixDay !== undefined) batchUpdates.mix_day = batch.mixDay;
     if (batch.mixCount !== undefined) batchUpdates.mix_count = batch.mixCount;
     if (batch.notes !== undefined) batchUpdates.notes = batch.notes;
     if (batch.status !== undefined) batchUpdates.status = batch.status;
 
     if (Object.keys(batchUpdates).length > 0) {
+      console.log(`[UpdateMixBatch] Atualizando dados da mexida:`, batchUpdates);
       const { error: batchUpdateError } = await supabase
         .from("mix_batches")
         .update(batchUpdates)
@@ -280,7 +288,9 @@ export const updateMixBatch = async (
 
     // Update used materials if provided
     if (batch.usedMaterials && batch.usedMaterials.length > 0) {
-      // Get existing used materials to restore stock
+      console.log(`[UpdateMixBatch] Atualizando insumos utilizados...`);
+      
+      // Get existing used materials with full details
       const { data: existingUsedMaterials, error: fetchUsedError } = await supabase
         .from("used_materials_mix")
         .select("material_batch_id, quantity")
@@ -291,13 +301,45 @@ export const updateMixBatch = async (
         throw fetchUsedError;
       }
       
-      // Restore stock from existing used materials
+      console.log(`[UpdateMixBatch] Insumos originais encontrados:`, existingUsedMaterials);
+      
+      // NOVA LÓGICA: Calcular as diferenças por lote de material
+      // Primeiro, construir um mapa dos materiais antigos e novos
+      const oldMaterialsMap = new Map<string, number>();
+      const newMaterialsMap = new Map<string, number>();
+      
+      // Mapear materiais antigos
       if (existingUsedMaterials && existingUsedMaterials.length > 0) {
-        for (const existingMaterial of existingUsedMaterials) {
+        for (const oldMaterial of existingUsedMaterials) {
+          oldMaterialsMap.set(oldMaterial.material_batch_id, oldMaterial.quantity);
+        }
+      }
+      
+      // Mapear novos materiais
+      for (const newMaterial of batch.usedMaterials) {
+        const currentQuantity = newMaterialsMap.get(newMaterial.materialBatchId) || 0;
+        newMaterialsMap.set(newMaterial.materialBatchId, currentQuantity + newMaterial.quantity);
+      }
+      
+      console.log(`[UpdateMixBatch] Mapa de materiais antigos:`, Object.fromEntries(oldMaterialsMap));
+      console.log(`[UpdateMixBatch] Mapa de materiais novos:`, Object.fromEntries(newMaterialsMap));
+      
+      // Calcular ajustes necessários para cada lote de material
+      const allMaterialBatchIds = new Set([...oldMaterialsMap.keys(), ...newMaterialsMap.keys()]);
+      
+      for (const materialBatchId of allMaterialBatchIds) {
+        const oldQuantity = oldMaterialsMap.get(materialBatchId) || 0;
+        const newQuantity = newMaterialsMap.get(materialBatchId) || 0;
+        const difference = newQuantity - oldQuantity; // Diferença que precisa ser ajustada
+        
+        console.log(`[UpdateMixBatch] Material ${materialBatchId}: Antigo=${oldQuantity}, Novo=${newQuantity}, Diferença=${difference}`);
+        
+        if (difference !== 0) {
+          // Buscar estoque atual
           const { data: currentBatch, error: fetchCurrentError } = await supabase
             .from("material_batches")
-            .select('remaining_quantity')
-            .eq('id', existingMaterial.material_batch_id)
+            .select('remaining_quantity, batch_number')
+            .eq('id', materialBatchId)
             .single();
           
           if (fetchCurrentError || !currentBatch) {
@@ -305,23 +347,36 @@ export const updateMixBatch = async (
             throw new Error(`Erro ao buscar lote atual: ${fetchCurrentError?.message}`);
           }
           
-          const restoredQuantity = currentBatch.remaining_quantity + existingMaterial.quantity;
+          // Calcular novo estoque: estoque_atual - diferença
+          // Se diferença > 0: consumir mais estoque
+          // Se diferença < 0: restaurar estoque
+          const newStockQuantity = currentBatch.remaining_quantity - difference;
           
-          const { error: stockRestoreError } = await supabase
+          console.log(`[UpdateMixBatch] Ajustando estoque do lote ${currentBatch.batch_number}: ${currentBatch.remaining_quantity} → ${newStockQuantity} (diferença: ${difference > 0 ? '-' : '+'}${Math.abs(difference)})`);
+          
+          // Verificar se o estoque não ficará negativo
+          if (newStockQuantity < 0) {
+            await abortTransaction();
+            throw new Error(`Estoque insuficiente para o lote ${currentBatch.batch_number}. Disponível: ${currentBatch.remaining_quantity}, Necessário: ${difference}`);
+          }
+          
+          // Atualizar estoque
+          const { error: stockUpdateError } = await supabase
             .from("material_batches")
             .update({ 
-              remaining_quantity: restoredQuantity
+              remaining_quantity: newStockQuantity
             })
-            .eq('id', existingMaterial.material_batch_id);
+            .eq('id', materialBatchId);
           
-          if (stockRestoreError) {
+          if (stockUpdateError) {
             await abortTransaction();
-            throw new Error(`Erro ao restaurar estoque: ${stockRestoreError.message}`);
+            throw new Error(`Erro ao atualizar estoque: ${stockUpdateError.message}`);
           }
         }
       }
       
       // Delete existing used materials
+      console.log(`[UpdateMixBatch] Removendo registros antigos de insumos utilizados...`);
       const { error: deleteUsedError } = await supabase
         .from("used_materials_mix")
         .delete()
@@ -332,8 +387,11 @@ export const updateMixBatch = async (
         throw deleteUsedError;
       }
       
-      // Insert updated used materials and consume new stock
+      // Insert updated used materials
+      console.log(`[UpdateMixBatch] Inserindo novos registros de insumos...`);
       for (const material of batch.usedMaterials) {
+        console.log(`[UpdateMixBatch] Inserindo insumo: ${material.materialName}, Quantidade: ${material.quantity}`);
+        
         // Insert used material record
         const { error: materialError } = await supabase
           .from("used_materials_mix")
@@ -349,36 +407,12 @@ export const updateMixBatch = async (
           await abortTransaction();
           throw materialError;
         }
-        
-        // Consume new stock
-        const { data: currentMaterialBatch, error: fetchCurrentMaterialError } = await supabase
-          .from("material_batches")
-          .select('remaining_quantity')
-          .eq('id', material.materialBatchId)
-          .single();
-        
-        if (fetchCurrentMaterialError || !currentMaterialBatch) {
-          await abortTransaction();
-          throw new Error(`Erro ao buscar lote de material: ${fetchCurrentMaterialError?.message}`);
-        }
-        
-        const newConsumedQuantity = currentMaterialBatch.remaining_quantity - material.quantity;
-        
-        const { error: stockConsumeError } = await supabase
-          .from("material_batches")
-          .update({ 
-            remaining_quantity: newConsumedQuantity
-          })
-          .eq('id', material.materialBatchId);
-        
-        if (stockConsumeError) {
-          await abortTransaction();
-          throw new Error(`Erro ao consumir estoque: ${stockConsumeError.message}`);
-        }
       }
     }
 
     await endTransaction();
+    
+    console.log(`[UpdateMixBatch] Mexida atualizada com sucesso: ${id}`);
     
     if (userId && userDisplayName) {
       await logSystemEvent({

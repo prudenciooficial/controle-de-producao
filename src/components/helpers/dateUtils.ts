@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for handling dates with timezone considerations
  */
@@ -26,7 +25,7 @@ export function formatDateString(date: Date): string {
  * Parses a date string safely, accounting for timezone differences
  */
 export function parseDateString(dateString: string): Date {
-  // Parse the date without time component to avoid timezone shifts
+  // Parse the date using UTC to avoid timezone shifts
   const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day);
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0)); // 12h UTC para evitar mudanças de dia
 }

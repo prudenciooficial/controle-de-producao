@@ -687,7 +687,7 @@ const ProductionHistory = () => {
                 {search ? 'Tente ajustar sua busca' : 'Não há registros de produção ainda'}
               </p>
               {hasPermission('production', 'create') && !search && (
-                <Button onClick={() => navigate('/production')}>
+                <Button onClick={() => navigate('/producao')}>
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Primeira Produção
                 </Button>

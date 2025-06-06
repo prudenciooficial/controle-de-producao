@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox } from "@/components/ui/combobox";
 import { ConservantMixFields } from "@/components/production/ConservantMixFields";
-import { History, Plus, Trash, Package, Factory, ClipboardList, FlaskConical, Loader2, AlertTriangle } from "lucide-react";
+import { History, Plus, Trash, Package, Factory, ClipboardList, FlaskConical, Loader2, AlertTriangle, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -503,36 +503,6 @@ const Production = () => {
           <Button variant="outline" onClick={() => navigate("/producao/historico")}>
             <History className="mr-2 h-4 w-4" /> Histórico de Produção
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={async () => {
-              try {
-                console.log("🔍 Verificando mexidas no banco...");
-                const allMixes = await fetchMixBatches();
-                console.log("📊 Total de mexidas no banco:", allMixes.length);
-                console.log("📋 Todas as mexidas:", allMixes);
-                
-                const availableMixesFromDB = allMixes.filter(mix => mix.status === 'available');
-                console.log("✅ Mexidas disponíveis:", availableMixesFromDB.length);
-                console.log("📋 Mexidas disponíveis:", availableMixesFromDB);
-                
-                toast({
-                  title: "Debug - Mexidas no Banco",
-                  description: `Total: ${allMixes.length} | Disponíveis: ${availableMixesFromDB.length}`,
-                });
-              } catch (error) {
-                console.error("❌ Erro ao verificar mexidas:", error);
-                toast({
-                  variant: "destructive",
-                  title: "Erro ao verificar mexidas",
-                  description: error instanceof Error ? error.message : "Erro desconhecido"
-                });
-              }
-            }}
-          >
-            🔍 Debug Mexidas
-          </Button>
         </div>
       </div>
 
@@ -588,7 +558,7 @@ const Production = () => {
                             <Combobox
                               options={availableMixes.map(mix => ({ 
                                 value: mix.id, 
-                                label: `${mix.batchNumber} - ${new Date(mix.mixDate).toLocaleDateString()} (${mix.mixCount} mexidas)`
+                                label: `${mix.batchNumber} (${mix.mixCount} mexidas)`
                               }))}
                               value={field.value}
                               onValueChange={field.onChange}
@@ -600,7 +570,7 @@ const Production = () => {
                           <FormMessage />
                           {selectedMixDetails && (
                             <FormDescription className="text-xs">
-                              Mexida selecionada: {selectedMixDetails.batchNumber} - {selectedMixDetails.mixCount} mexidas - {new Date(selectedMixDetails.mixDate).toLocaleDateString()}
+                              Mexida selecionada: {selectedMixDetails.batchNumber} - {selectedMixDetails.mixCount} mexidas
                             </FormDescription>
                           )}
                         </FormItem>
