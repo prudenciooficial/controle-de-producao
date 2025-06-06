@@ -4,51 +4,43 @@ import { MixBatch, UsedMaterialMix } from "../types/mix";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
 import { logSystemEvent } from "./logService";
 
-// Temporary simplified implementation until database types are regenerated
 const fetchUsedMaterialsMix = async (mixBatchId: string): Promise<UsedMaterialMix[]> => {
-  try {
-    // Use any type temporarily to bypass TypeScript errors
-    const { data, error } = await (supabase as any)
-      .from("used_materials_mix")
-      .select(`
-        *,
-        material_batches:material_batch_id (
-          batch_number,
-          materials:material_id (
-            name,
-            type
-          )
+  const { data, error } = await supabase
+    .from("used_materials_mix")
+    .select(`
+      *,
+      material_batches:material_batch_id (
+        batch_number,
+        materials:material_id (
+          name,
+          type
         )
-      `)
-      .eq("mix_batch_id", mixBatchId);
+      )
+    `)
+    .eq("mix_batch_id", mixBatchId);
 
-    if (error) {
-      console.error("Error fetching used materials mix:", error);
-      throw error;
-    }
-
-    return data?.map((material: any) => ({
-      id: material.id,
-      materialBatchId: material.material_batch_id,
-      materialName: material.material_batches?.materials?.name || '',
-      materialType: material.material_batches?.materials?.type || '',
-      batchNumber: material.material_batches?.batch_number || '',
-      quantity: material.quantity,
-      unitOfMeasure: material.unit_of_measure,
-      mixCountUsed: material.mix_count_used,
-      createdAt: new Date(material.created_at),
-      updatedAt: new Date(material.updated_at)
-    })) || [];
-  } catch (error) {
-    console.error("Error in fetchUsedMaterialsMix:", error);
-    return [];
+  if (error) {
+    console.error("Error fetching used materials mix:", error);
+    throw error;
   }
+
+  return data.map(material => ({
+    id: material.id,
+    materialBatchId: material.material_batch_id,
+    materialName: material.material_batches.materials.name,
+    materialType: material.material_batches.materials.type,
+    batchNumber: material.material_batches.batch_number,
+    quantity: material.quantity,
+    unitOfMeasure: material.unit_of_measure,
+    mixCountUsed: material.mix_count_used,
+    createdAt: new Date(material.created_at),
+    updatedAt: new Date(material.updated_at)
+  }));
 };
 
 export const fetchMixBatches = async (): Promise<MixBatch[]> => {
   try {
-    // Use any type temporarily to bypass TypeScript errors
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("mix_batches")
       .select("*")
       .order("created_at", { ascending: false });
@@ -56,7 +48,7 @@ export const fetchMixBatches = async (): Promise<MixBatch[]> => {
     if (error) throw error;
 
     const batches = await Promise.all(
-      (data || []).map(async (batch: any) => {
+      data.map(async (batch) => {
         const usedMaterials = await fetchUsedMaterialsMix(batch.id);
 
         return {
@@ -83,8 +75,7 @@ export const fetchMixBatches = async (): Promise<MixBatch[]> => {
 
 export const fetchAvailableMixBatches = async (): Promise<MixBatch[]> => {
   try {
-    // Use any type temporarily to bypass TypeScript errors
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("mix_batches")
       .select("*")
       .eq("status", "available")
@@ -93,7 +84,7 @@ export const fetchAvailableMixBatches = async (): Promise<MixBatch[]> => {
     if (error) throw error;
 
     const batches = await Promise.all(
-      (data || []).map(async (batch: any) => {
+      data.map(async (batch) => {
         const usedMaterials = await fetchUsedMaterialsMix(batch.id);
 
         return {
@@ -128,8 +119,8 @@ export const createMixBatch = async (
     
     console.log(`[MixService] Creating mix batch: ${batch.batchNumber}`);
     
-    // Insert the mix batch using any type temporarily
-    const { data: batchData, error: batchError } = await (supabase as any)
+    // Insert the mix batch
+    const { data: batchData, error: batchError } = await supabase
       .from("mix_batches")
       .insert({
         batch_number: batch.batchNumber,
@@ -165,8 +156,8 @@ export const createMixBatch = async (
       
       console.log(`[MixService] Stock BEFORE: ${materialBatchBefore.remaining_quantity} for batch ${materialBatchBefore.batch_number}`);
       
-      // Insert used material record using any type temporarily
-      const { error: materialError } = await (supabase as any)
+      // Insert used material record
+      const { error: materialError } = await supabase
         .from("used_materials_mix")
         .insert({
           mix_batch_id: batchData.id,
@@ -257,8 +248,8 @@ export const updateMixBatch = async (
   try {
     await beginTransaction();
     
-    // Fetch existing data for logging using any type temporarily
-    const { data: fetchedExistingBatch, error: fetchError } = await (supabase as any)
+    // Fetch existing data for logging
+    const { data: fetchedExistingBatch, error: fetchError } = await supabase
       .from("mix_batches")
       .select("*")
       .eq("id", id)
@@ -278,7 +269,7 @@ export const updateMixBatch = async (
     if (batch.status !== undefined) batchUpdates.status = batch.status;
 
     if (Object.keys(batchUpdates).length > 0) {
-      const { error: batchUpdateError } = await (supabase as any)
+      const { error: batchUpdateError } = await supabase
         .from("mix_batches")
         .update(batchUpdates)
         .eq("id", id);
@@ -290,8 +281,8 @@ export const updateMixBatch = async (
 
     // Update used materials if provided
     if (batch.usedMaterials && batch.usedMaterials.length > 0) {
-      // Get existing used materials to restore stock using any type temporarily
-      const { data: existingUsedMaterials, error: fetchUsedError } = await (supabase as any)
+      // Get existing used materials to restore stock
+      const { data: existingUsedMaterials, error: fetchUsedError } = await supabase
         .from("used_materials_mix")
         .select("material_batch_id, quantity")
         .eq("mix_batch_id", id);
@@ -331,8 +322,8 @@ export const updateMixBatch = async (
         }
       }
       
-      // Delete existing used materials using any type temporarily
-      const { error: deleteUsedError } = await (supabase as any)
+      // Delete existing used materials
+      const { error: deleteUsedError } = await supabase
         .from("used_materials_mix")
         .delete()
         .eq("mix_batch_id", id);
@@ -344,8 +335,8 @@ export const updateMixBatch = async (
       
       // Insert updated used materials and consume new stock
       for (const material of batch.usedMaterials) {
-        // Insert used material record using any type temporarily
-        const { error: materialError } = await (supabase as any)
+        // Insert used material record
+        const { error: materialError } = await supabase
           .from("used_materials_mix")
           .insert({
             mix_batch_id: id,
@@ -421,8 +412,8 @@ export const deleteMixBatch = async (
   try {
     await beginTransaction();
 
-    // Fetch the batch before deleting for logging using any type temporarily
-    const { data: fetchedBatch, error: fetchError } = await (supabase as any)
+    // Fetch the batch before deleting for logging
+    const { data: fetchedBatch, error: fetchError } = await supabase
       .from("mix_batches")
       .select("*")
       .eq("id", id)
@@ -432,8 +423,8 @@ export const deleteMixBatch = async (
       batchToDeleteForLog = fetchedBatch;
     }
 
-    // Get used materials to restore stock using any type temporarily
-    const { data: usedMaterialsToRestore, error: fetchUsedError } = await (supabase as any)
+    // Get used materials to restore stock
+    const { data: usedMaterialsToRestore, error: fetchUsedError } = await supabase
       .from("used_materials_mix")
       .select("material_batch_id, quantity")
       .eq("mix_batch_id", id);
@@ -473,8 +464,8 @@ export const deleteMixBatch = async (
       }
     }
 
-    // Delete used materials using any type temporarily
-    const { error: usedMaterialsDeleteError } = await (supabase as any)
+    // Delete used materials (CASCADE will handle this, but being explicit)
+    const { error: usedMaterialsDeleteError } = await supabase
       .from("used_materials_mix")
       .delete()
       .eq("mix_batch_id", id);
@@ -483,8 +474,8 @@ export const deleteMixBatch = async (
       throw usedMaterialsDeleteError; 
     }
 
-    // Delete the mix batch using any type temporarily
-    const { error: batchError } = await (supabase as any)
+    // Delete the mix batch
+    const { error: batchError } = await supabase
       .from("mix_batches")
       .delete()
       .eq("id", id);
@@ -517,8 +508,7 @@ export const deleteMixBatch = async (
 };
 
 export const markMixAsUsed = async (mixBatchId: string): Promise<void> => {
-  // Use any type temporarily to bypass TypeScript errors
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("mix_batches")
     .update({ status: 'used' })
     .eq("id", mixBatchId);

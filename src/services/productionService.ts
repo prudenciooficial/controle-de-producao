@@ -160,12 +160,10 @@ export const createProductionBatch = async (
     
     console.log(`[ProductionService] Creating production batch: ${batch.batchNumber}`);
     console.log(`[ProductionService] Mix batch ID: ${batch.mixProductionBatchId}`);
-    console.log(`[ProductionService] Status to be set: ${batch.status}`);
     
     // Validate that mix exists and is available
     if (batch.mixProductionBatchId) {
-      // Use any type temporarily to bypass TypeScript errors
-      const { data: mixBatch, error: mixError } = await (supabase as any)
+      const { data: mixBatch, error: mixError } = await supabase
         .from("mix_batches")
         .select("status")
         .eq("id", batch.mixProductionBatchId)
@@ -189,7 +187,7 @@ export const createProductionBatch = async (
       mix_day: batch.mixDay,
       mix_count: batch.mixCount,
       notes: batch.notes,
-      status: batch.status === 'complete' ? 'complete' : 'rework', // Ensure valid status
+      status: batch.status || 'complete',
       mix_batch_id: batch.mixProductionBatchId || null
     };
 
