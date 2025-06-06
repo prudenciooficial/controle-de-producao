@@ -330,8 +330,8 @@ const SalesHistory = () => {
   const SaleCard = ({ sale, index }: { sale: Sale; index: number }) => {
     const status = getStatusBadge(sale);
     const saleDate = new Date(sale.date);
-    
-    return (
+  
+  return (
       <Card className="group relative overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-xl hover:shadow-green-500/10 dark:hover:shadow-green-400/10 transition-all duration-500 hover:-translate-y-2">
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -519,9 +519,9 @@ const SalesHistory = () => {
               className="hover:bg-green-50 dark:hover:bg-green-900/20 flex-shrink-0"
               size={isMobile ? "sm" : "default"}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent truncate">
                 Histórico de Vendas
@@ -529,9 +529,9 @@ const SalesHistory = () => {
               <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm md:text-base">
                 Gerencie e visualize todos os registros de vendas
               </p>
-            </div>
-          </div>
-          
+        </div>
+      </div>
+      
           {hasPermission('sales', 'create') && (
             <div className="flex-shrink-0 w-full md:w-auto">
               <Button 
@@ -596,13 +596,13 @@ const SalesHistory = () => {
           <div className="flex items-center gap-4 flex-1">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
+            <Input
                 placeholder="Buscar por nota, cliente ou produto..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-400 text-sm"
-              />
-            </div>
+            />
+          </div>
           </div>
           
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -655,8 +655,8 @@ const SalesHistory = () => {
         <Card className="shadow-xl border-gray-200/50 dark:border-gray-700/50">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
+          <Table>
+            <TableHeader>
                   <TableRow className="bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-700/50">
                     <TableHead className="font-semibold whitespace-nowrap">Nota Fiscal</TableHead>
                     <TableHead className="font-semibold whitespace-nowrap">Data</TableHead>
@@ -665,19 +665,19 @@ const SalesHistory = () => {
                     <TableHead className="font-semibold whitespace-nowrap">Produtos</TableHead>
                     <TableHead className="font-semibold whitespace-nowrap">Quantidade Total</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
                   {filteredSales.map((sale) => (
                     <TableRow key={sale.id} className="hover:bg-green-50/50 dark:hover:bg-green-900/10 transition-colors">
                       <TableCell className="font-medium whitespace-nowrap text-sm">{sale.invoiceNumber}</TableCell>
                       <TableCell className="whitespace-nowrap text-sm">{new Date(sale.date).toLocaleDateString()}</TableCell>
                       <TableCell className="whitespace-nowrap text-sm">{sale.customerName}</TableCell>
-                      <TableCell>
+                    <TableCell>
                         <Badge variant="secondary" className={`${getSaleTypeColor(sale.type)} text-xs whitespace-nowrap`}>
-                          {sale.type}
-                        </Badge>
-                      </TableCell>
+                        {sale.type}
+                      </Badge>
+                    </TableCell>
                       <TableCell className="min-w-[150px]">
                         <div className="flex flex-wrap gap-1">
                           {sale.items.slice(0, isMobile ? 1 : 2).map((item, idx) => (
@@ -691,46 +691,46 @@ const SalesHistory = () => {
                             </Badge>
                           )}
                         </div>
-                      </TableCell>
+                    </TableCell>
                       <TableCell className="font-medium whitespace-nowrap text-sm">
-                        {calculateTotalWeightInKg(sale).toFixed(2)} kg
-                      </TableCell>
+                      {calculateTotalWeightInKg(sale).toFixed(2)} kg
+                    </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-green-50 dark:hover:bg-green-900/20 ${
                               isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                             }`}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => { setSelectedSale(sale); setShowDetailsDialog(true); }}>
-                              <Eye className="mr-2 h-4 w-4" />
+                            <Eye className="mr-2 h-4 w-4" />
                               Ver Detalhes
-                            </DropdownMenuItem>
-                            {hasPermission('sales', 'update') && (
+                          </DropdownMenuItem>
+                          {hasPermission('sales', 'update') && (
                               <DropdownMenuItem onClick={() => { setSelectedSale(sale); setShowEditDialog(true); }}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                            )}
-                            {hasPermission('sales', 'delete') && (
-                              <DropdownMenuItem 
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                          )}
+                          {hasPermission('sales', 'delete') && (
+                            <DropdownMenuItem
                                 onClick={() => { setSelectedSale(sale); setShowDeleteDialog(true); }}
                                 className="text-red-600 dark:text-red-400"
-                              >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                   ))}
-                </TableBody>
-              </Table>
+            </TableBody>
+          </Table>
             </div>
             
             {filteredSales.length === 0 && (
@@ -744,8 +744,8 @@ const SalesHistory = () => {
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </CardContent>
+      </Card>
       )}
 
       {/* Delete Dialog */}
@@ -784,19 +784,19 @@ const SalesHistory = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
+      
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+            <DialogHeader>
             <DialogTitle className="text-lg md:text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
               Detalhes da Venda - NF {selectedSale?.invoiceNumber}
-            </DialogTitle>
+              </DialogTitle>
             <DialogDescription className="text-sm">
               Informações completas do registro de venda
-            </DialogDescription>
-          </DialogHeader>
-          
+              </DialogDescription>
+            </DialogHeader>
+            
           {selectedSale && (
             <div className="space-y-6">
               {/* Basic Info */}
@@ -808,7 +808,7 @@ const SalesHistory = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+              <div>
                     <Label className="text-sm">Data da Venda</Label>
                     <p className="font-medium text-sm md:text-base">{format(new Date(selectedSale.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
                   </div>
@@ -825,7 +825,7 @@ const SalesHistory = () => {
                   <div>
                     <Label className="text-sm">Peso Total</Label>
                     <p className="font-medium text-sm md:text-base">{formatNumberBR(calculateTotalWeightInKg(selectedSale))} kg</p>
-                  </div>
+                </div>
                 </CardContent>
               </Card>
 
@@ -839,30 +839,30 @@ const SalesHistory = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
                           <TableHead className="text-sm">Produto</TableHead>
                           <TableHead className="text-sm">Lote</TableHead>
                           <TableHead className="text-sm">Quantidade</TableHead>
                           <TableHead className="text-sm">Unidade</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                         {selectedSale.items.map((item, index) => (
                           <TableRow key={index}>
                             <TableCell className="font-medium text-sm">{item.productName}</TableCell>
                             <TableCell className="text-sm">{item.batchNumber}</TableCell>
                             <TableCell className="text-sm">{formatNumberBR(item.quantity)}</TableCell>
                             <TableCell className="text-sm">{item.unitOfMeasure === 'kg' ? 'unidades' : item.unitOfMeasure}</TableCell>
-                          </TableRow>
+                        </TableRow>
                         ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  </TableBody>
+                </Table>
+              </div>
                 </CardContent>
               </Card>
-
+              
               {/* Notes */}
               {selectedSale.notes && (
                 <Card>
@@ -884,7 +884,7 @@ const SalesHistory = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -961,7 +961,7 @@ const SalesHistory = () => {
                     placeholder="Adicione observações sobre esta venda..."
                     className="text-sm"
                   />
-                </div>
+              </div>
               </CardContent>
             </Card>
 
@@ -977,14 +977,14 @@ const SalesHistory = () => {
                 <div className="space-y-4">
                   {editedItems.map((item, index) => (
                     <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
-                      <div>
+              <div>
                         <Label className="text-sm">Produto</Label>
-                        <Input
+                <Input
                           value={item.productName}
                           disabled
                           className="text-sm"
-                        />
-                      </div>
+                />
+              </div>
                       <div>
                         <Label className="text-sm">Lote</Label>
                         <Input
@@ -992,28 +992,28 @@ const SalesHistory = () => {
                           disabled
                           className="text-sm"
                         />
-                      </div>
+            </div>
                       <div>
                         <Label className="text-sm">Quantidade</Label>
-                        <Input
-                          type="number"
-                          value={item.quantity}
+                            <Input
+                              type="number"
+                              value={item.quantity}
                           onChange={(e) => updateItemQuantity(index, parseFloat(e.target.value) || 0)}
                           className="text-sm"
                         />
-                      </div>
+                          </div>
                       <div className="flex items-end md:items-center">
-                        <Button
+                          <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleRemoveItem(index)}
+                            onClick={() => handleRemoveItem(index)}
                           className="text-red-600 w-full md:w-auto"
-                        >
+                          >
                           <Trash className="h-4 w-4" />
                           <span className="ml-2 md:hidden">Remover</span>
-                        </Button>
-                      </div>
-                    </div>
+                          </Button>
+                </div>
+            </div>
                   ))}
                 </div>
               </CardContent>
@@ -1029,7 +1029,7 @@ const SalesHistory = () => {
               Cancelar
             </Button>
             <Button 
-              onClick={handleEdit} 
+              onClick={handleEdit}
               disabled={isSubmitting}
               className="w-full sm:w-auto"
             >

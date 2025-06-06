@@ -51,7 +51,7 @@ export const InventoryDetailsDialog = React.memo(function InventoryDetailsDialog
   // Format expiry date as a string (memoized)
   const formatExpiryDate = useMemo(() => {
     return (date: Date | undefined) => {
-      if (!date) return "N/A";
+    if (!date) return "N/A";
       return new Date(date).toLocaleDateString('pt-BR');
     };
   }, []);
@@ -69,16 +69,16 @@ export const InventoryDetailsDialog = React.memo(function InventoryDetailsDialog
           daysLeft: null
         };
       }
-      
-      const today = new Date();
+    
+    const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const expiry = new Date(expiryDate);
+    const expiry = new Date(expiryDate);
       expiry.setHours(0, 0, 0, 0);
       
-      const diffTime = expiry.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 0) {
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
         return {
           badge: <Badge variant="destructive" className="flex items-center gap-1">
             <AlertTriangle className="h-3 w-3" />
@@ -105,7 +105,7 @@ export const InventoryDetailsDialog = React.memo(function InventoryDetailsDialog
           status: "critical",
           daysLeft: diffDays
         };
-      } else if (diffDays <= 30) {
+    } else if (diffDays <= 30) {
         return {
           badge: <Badge className="bg-orange-500 text-white flex items-center gap-1">
             <Calendar className="h-3 w-3" />
@@ -114,7 +114,7 @@ export const InventoryDetailsDialog = React.memo(function InventoryDetailsDialog
           status: "warning",
           daysLeft: diffDays
         };
-      } else {
+    } else {
         return {
           badge: <Badge variant="outline" className="flex items-center gap-1">
             <CheckCircle className="h-3 w-3 text-green-600" />

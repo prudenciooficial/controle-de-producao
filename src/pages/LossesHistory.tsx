@@ -78,13 +78,13 @@ const LossesHistory = () => {
       notes: ""
     }
   });
-
+  
   // Filtered losses with search and filters
   const filteredLosses = useMemo(() => {
     return losses.filter(loss => {
       const matchesSearch = 
-        loss.batchNumber.toLowerCase().includes(search.toLowerCase()) ||
-        loss.machine.toLowerCase().includes(search.toLowerCase()) ||
+      loss.batchNumber.toLowerCase().includes(search.toLowerCase()) ||
+      loss.machine.toLowerCase().includes(search.toLowerCase()) ||
         loss.productType.toLowerCase().includes(search.toLowerCase());
       
       const matchesMachine = machineFilter === "all" || loss.machine === machineFilter;
@@ -236,7 +236,7 @@ const LossesHistory = () => {
         return "bg-gray-500";
     }
   };
-
+  
   const LossCard = ({ loss, index }: { loss: Loss; index: number }) => (
     <Card 
       key={loss.id} 
@@ -255,10 +255,10 @@ const LossesHistory = () => {
           <Badge 
             className={`${getMachineColor(loss.machine)} text-white text-xs`}
           >
-            {loss.machine}
-          </Badge>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+                            {loss.machine}
+                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -266,31 +266,31 @@ const LossesHistory = () => {
                   isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                 }`}
               >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => openDetailsDialog(loss)}>
-                <Eye className="mr-2 h-4 w-4" />
+                                <Eye className="mr-2 h-4 w-4" />
                 Ver Detalhes
-              </DropdownMenuItem>
-              {hasPermission('losses', 'update') && (
+                              </DropdownMenuItem>
+                              {hasPermission('losses', 'update') && (
                 <DropdownMenuItem onClick={() => openEditDialog(loss)}>
-                  <PencilIcon className="mr-2 h-4 w-4" />
-                  Editar
-                </DropdownMenuItem>
-              )}
-              {hasPermission('losses', 'delete') && (
-                <DropdownMenuItem 
-                  onClick={() => openDeleteDialog(loss)}
+                                  <PencilIcon className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                              )}
+                              {hasPermission('losses', 'delete') && (
+                                <DropdownMenuItem
+                                  onClick={() => openDeleteDialog(loss)}
                   className="text-red-600 focus:text-red-600"
-                >
-                  <Trash className="mr-2 h-4 w-4" />
-                  Excluir
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                                >
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -530,19 +530,19 @@ const LossesHistory = () => {
           )}
         </>
       )}
-
+      
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+            <DialogHeader>
             <DialogTitle className="text-lg md:text-xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
               Detalhes da Perda - Lote {selectedLoss?.batchNumber}
-            </DialogTitle>
+              </DialogTitle>
             <DialogDescription className="text-sm">
               Informações completas do registro de perda
-            </DialogDescription>
-          </DialogHeader>
-          
+              </DialogDescription>
+            </DialogHeader>
+            
           {selectedLoss && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -553,14 +553,14 @@ const LossesHistory = () => {
                     <div><strong>Data:</strong> {format(new Date(selectedLoss.date), "dd/MM/yyyy", { locale: ptBR })}</div>
                     <div><strong>Máquina:</strong> {selectedLoss.machine}</div>
                     <div><strong>Produto:</strong> {selectedLoss.productType}</div>
-                  </div>
                 </div>
-                
+              </div>
+              
                 <div>
                   <h4 className="font-semibold text-sm mb-2">Quantidade</h4>
                   <div className="space-y-2 text-sm">
                     <div><strong>Quantidade:</strong> {selectedLoss.quantity.toLocaleString()} {selectedLoss.unitOfMeasure}</div>
-                  </div>
+                </div>
                 </div>
               </div>
               
@@ -594,9 +594,9 @@ const LossesHistory = () => {
               </Button>
             )}
           </DialogFooter>
-        </DialogContent>
+          </DialogContent>
       </Dialog>
-
+      
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -612,20 +612,20 @@ const LossesHistory = () => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleEditSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="batchNumber"
-                  render={({ field }) => (
-                    <FormItem>
+              <FormField
+                control={form.control}
+                name="batchNumber"
+                render={({ field }) => (
+                  <FormItem>
                       <FormLabel>Lote de Produção</FormLabel>
-                      <FormControl>
+                    <FormControl>
                         <Input {...field} placeholder="Ex: PROD-2024-001" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
                 <FormField
                   control={form.control}
                   name="machine"
@@ -674,7 +674,7 @@ const LossesHistory = () => {
                     </FormItem>
                   )}
                 />
-                
+              
                 <FormField
                   control={form.control}
                   name="quantity"
@@ -685,7 +685,7 @@ const LossesHistory = () => {
                         <Input 
                           type="number" 
                           step="0.01"
-                          {...field}
+                          {...field} 
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
@@ -716,11 +716,11 @@ const LossesHistory = () => {
               <DialogFooter className="flex flex-col sm:flex-row gap-2">
                 <DialogClose asChild>
                   <Button type="button" variant="outline" className="w-full sm:w-auto">
-                    Cancelar
-                  </Button>
+                  Cancelar
+                </Button>
                 </DialogClose>
                 <Button 
-                  type="submit" 
+                  type="submit"
                   disabled={isUpdating}
                   className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
                 >
@@ -732,7 +732,7 @@ const LossesHistory = () => {
           </Form>
         </DialogContent>
       </Dialog>
-
+      
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="max-w-[95vw] sm:max-w-md">
@@ -744,7 +744,7 @@ const LossesHistory = () => {
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
             <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={() => selectedLoss && handleDelete(selectedLoss.id)}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"

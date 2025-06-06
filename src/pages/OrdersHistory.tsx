@@ -46,8 +46,8 @@ import {
   Package2,
   Plus,
   Sparkles,
-  Check,
-  X,
+  Check, 
+  X, 
   AlertCircle,
   MinusCircle,
   Calendar,
@@ -240,8 +240,8 @@ const OrdersHistory = () => {
     try {
       setIsDeleting(true);
       await deleteOrder(id);
-      setShowDeleteDialog(false);
-      toast({ title: "Pedido excluído", description: "O pedido foi excluído com sucesso." });
+    setShowDeleteDialog(false);
+    toast({ title: "Pedido excluído", description: "O pedido foi excluído com sucesso." });
       
       // Refresh automático para sincronizar dados
       setTimeout(() => {
@@ -391,8 +391,8 @@ const OrdersHistory = () => {
     const healthMetrics = getOrderHealthMetrics(order);
     const orderDate = new Date(order.date);
     const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
-    
-    return (
+  
+  return (
       <Card className="group relative overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 dark:hover:shadow-orange-400/10 transition-all duration-500 hover:-translate-y-2">
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -632,9 +632,9 @@ const OrdersHistory = () => {
               className="hover:bg-orange-50 dark:hover:bg-orange-900/20 flex-shrink-0"
               size={isMobile ? "sm" : "default"}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent truncate">
                 Histórico de Pedidos
@@ -642,9 +642,9 @@ const OrdersHistory = () => {
               <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm md:text-base">
                 Gerencie e visualize todos os registros de pedidos
               </p>
-            </div>
-          </div>
-          
+        </div>
+      </div>
+      
           {hasPermission('orders', 'create') && (
             <div className="flex-shrink-0 w-full md:w-auto">
               <Button 
@@ -726,13 +726,13 @@ const OrdersHistory = () => {
           <div className="flex items-center gap-4 flex-1">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
+            <Input
                 placeholder="Buscar por nota, fornecedor ou insumo..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 dark:focus:border-orange-400"
-              />
-            </div>
+            />
+          </div>
           </div>
           
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -784,8 +784,8 @@ const OrdersHistory = () => {
         // Table view
         <Card className="shadow-xl border-gray-200/50 dark:border-gray-700/50">
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
+          <Table>
+            <TableHeader>
                 <TableRow className="bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-700/50">
                   <TableHead className="font-semibold">Data</TableHead>
                   <TableHead className="font-semibold">Nota Fiscal</TableHead>                
@@ -795,9 +795,9 @@ const OrdersHistory = () => {
                   <TableHead className="font-semibold">Status Laudos</TableHead>
                   <TableHead className="font-semibold">Status Validade</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
                 {filteredOrders.map((order) => {
                   const status = getStatusBadge(order);
                   const healthMetrics = getOrderHealthMetrics(order);
@@ -809,8 +809,8 @@ const OrdersHistory = () => {
                         {format(new Date(order.date), "dd/MM/yyyy")}
                       </TableCell>
                       <TableCell className="font-medium">{order.invoiceNumber}</TableCell>
-                      <TableCell>{order.supplierName}</TableCell>
-                      <TableCell>
+                    <TableCell>{order.supplierName}</TableCell>
+                    <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {order.items.slice(0, 2).map((item, idx) => (
                             <Badge key={idx} variant="outline" className="text-xs">
@@ -826,15 +826,15 @@ const OrdersHistory = () => {
                       </TableCell>
                       <TableCell className="font-medium">
                         {formatNumberBR(totalQuantity)}
-                      </TableCell>
-                      <TableCell>
+                    </TableCell>
+                    <TableCell>
                         <div className="flex items-center gap-1">
                           <Badge variant={healthMetrics.reportStatus === 'Ótimo' ? 'default' : healthMetrics.reportStatus === 'Bom' ? 'secondary' : 'destructive'} className="text-xs">
                             <FileCheck className="h-2 w-2 mr-1" />
                             {healthMetrics.reportPercentage.toFixed(0)}%
                           </Badge>
                         </div>
-                      </TableCell>
+                    </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Badge variant={healthMetrics.validityStatus === 'Ótimo' ? 'default' : healthMetrics.validityStatus === 'Bom' ? 'secondary' : 'destructive'} className="text-xs">
@@ -844,40 +844,40 @@ const OrdersHistory = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openDetailsDialog(order)}>
-                              <Eye className="mr-2 h-4 w-4" />
+                            <Eye className="mr-2 h-4 w-4" />
                               Ver Detalhes
-                            </DropdownMenuItem>
-                            {hasPermission('orders', 'update') && (
+                          </DropdownMenuItem>
+                          {hasPermission('orders', 'update') && (
                               <DropdownMenuItem onClick={() => openEditDialog(order)}>
                                 <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                            )}
-                            {hasPermission('orders', 'delete') && (
-                              <DropdownMenuItem 
+                              Editar
+                            </DropdownMenuItem>
+                          )}
+                          {hasPermission('orders', 'delete') && (
+                            <DropdownMenuItem
                                 onClick={() => openDeleteDialog(order)}
                                 className="text-red-600 dark:text-red-400"
-                              >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                   );
                 })}
-              </TableBody>
-            </Table>
+            </TableBody>
+          </Table>
             
             {filteredOrders.length === 0 && (
               <div className="text-center py-12">
@@ -890,8 +890,8 @@ const OrdersHistory = () => {
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </CardContent>
+      </Card>
       )}
 
       {/* Delete Dialog */}
@@ -930,19 +930,19 @@ const OrdersHistory = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
+      
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+            <DialogHeader>
             <DialogTitle className="text-xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
               Detalhes do Pedido - NF {selectedOrder?.invoiceNumber}
-            </DialogTitle>
-            <DialogDescription>
+              </DialogTitle>
+              <DialogDescription>
               Informações completas do registro de pedido
-            </DialogDescription>
-          </DialogHeader>
-          
+              </DialogDescription>
+            </DialogHeader>
+            
           {selectedOrder && (
             <div className="space-y-6">
               {/* Basic Info */}
@@ -954,19 +954,19 @@ const OrdersHistory = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
-                  <div>
+              <div>
                     <Label>Data do Pedido</Label>
                     <p className="font-medium">{format(new Date(selectedOrder.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
                   </div>
-                  <div>
+                <div>
                     <Label>Fornecedor</Label>
                     <p className="font-medium">{selectedOrder.supplierName}</p>
-                  </div>
+                </div>
                   <div>
                     <Label>Nota Fiscal</Label>
                     <p className="font-medium">{selectedOrder.invoiceNumber}</p>
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <Label>Total de Insumos</Label>
                     <p className="font-medium">{selectedOrder.items.length} tipos</p>
                   </div>
@@ -1041,19 +1041,19 @@ const OrdersHistory = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
                         <TableHead>Material</TableHead>
-                        <TableHead>Lote</TableHead>
-                        <TableHead>Quantidade</TableHead>
+                      <TableHead>Lote</TableHead>
+                      <TableHead>Quantidade</TableHead>
                         <TableHead>Unidade</TableHead>
-                        <TableHead>Validade</TableHead>
+                      <TableHead>Validade</TableHead>
                         <TableHead>Status Validade</TableHead>
-                        <TableHead>Laudo</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                      <TableHead>Laudo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                       {selectedOrder.items.map((item, index) => {
                         const expiryStatus = getExpiryStatus(item.expiryDate);
                         const reportStatus = getReportStatus(item.hasReport);
@@ -1061,13 +1061,13 @@ const OrdersHistory = () => {
                         return (
                           <TableRow key={index}>
                             <TableCell className="font-medium">{item.materialName}</TableCell>
-                            <TableCell>{item.batchNumber}</TableCell>
+                        <TableCell>{item.batchNumber}</TableCell>
                             <TableCell>{formatNumberBR(item.quantity)}</TableCell>
-                            <TableCell>{item.unitOfMeasure}</TableCell>
-                            <TableCell>
+                        <TableCell>{item.unitOfMeasure}</TableCell>
+                        <TableCell>
                               {item.expiryDate ? format(new Date(item.expiryDate), "dd/MM/yyyy") : "Não informado"}
-                            </TableCell>
-                            <TableCell>
+                        </TableCell>
+                        <TableCell>
                               <Badge variant={expiryStatus.variant} className="text-xs">
                                 <Calendar className="h-2 w-2 mr-1" />
                                 {expiryStatus.label}
@@ -1078,15 +1078,15 @@ const OrdersHistory = () => {
                                 {item.hasReport ? <FileCheck className="h-2 w-2 mr-1" /> : <AlertTriangle className="h-2 w-2 mr-1" />}
                                 {reportStatus.label}
                               </Badge>
-                            </TableCell>
-                          </TableRow>
+                        </TableCell>
+                      </TableRow>
                         );
                       })}
-                    </TableBody>
-                  </Table>
+                  </TableBody>
+                </Table>
                 </CardContent>
               </Card>
-
+              
               {/* Notes */}
               {selectedOrder.notes && (
                 <Card>
@@ -1108,7 +1108,7 @@ const OrdersHistory = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1172,43 +1172,43 @@ const OrdersHistory = () => {
                 <div className="space-y-4">
                   {editedItems.map((item, index) => (
                     <div key={index} className="grid grid-cols-4 gap-4 p-4 border rounded-lg">
-                      <div>
+              <div>
                         <Label>Material</Label>
                         <Input
                           value={item.materialName}
                           disabled
-                        />
-                      </div>
+                />
+              </div>
                       <div>
                         <Label>Lote</Label>
-                        <Input
-                          value={item.batchNumber}
-                          onChange={(e) => {
-                            const updated = [...editedItems];
-                            updated[index] = { ...updated[index], batchNumber: e.target.value };
-                            setEditedItems(updated);
-                          }}
+                          <Input
+                            value={item.batchNumber}
+                            onChange={(e) => {
+                              const updated = [...editedItems];
+                              updated[index] = { ...updated[index], batchNumber: e.target.value };
+                              setEditedItems(updated);
+                            }}
                         />
                       </div>
                       <div>
                         <Label>Quantidade</Label>
-                        <Input
-                          type="number"
-                          value={item.quantity}
+                            <Input
+                              type="number"
+                              value={item.quantity}
                           onChange={(e) => updateItemQuantity(index, parseFloat(e.target.value) || 0)}
-                        />
+                            />
                       </div>
                       <div className="flex items-end">
-                        <Button
-                          variant="outline"
+                            <Button
+                              variant="outline"
                           size="sm"
                           onClick={() => handleRemoveItem(index)}
                           className="text-red-600"
                         >
                           <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+                            </Button>
+                          </div>
+                          </div>
                   ))}
                 </div>
               </CardContent>

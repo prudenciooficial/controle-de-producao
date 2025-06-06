@@ -45,11 +45,6 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       icon: ScrollText,
       permissionCheck: canViewSystemLogs,
     },
-    {
-      name: "Consulta",
-      path: "/consulta",
-      icon: FileSearch,
-    },
   ]);
 
   useEffect(() => {
