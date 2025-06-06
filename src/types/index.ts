@@ -1,3 +1,4 @@
+
 import { DateRange } from "react-day-picker";
 
 export interface ProductionBatch {
@@ -14,9 +15,9 @@ export interface ProductionBatch {
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
-  isMixOnly: boolean;
-  mixProductionBatchId?: string;
-  status: 'mix_only' | 'production_complete' | 'rework';
+  isMixOnly: boolean; // Deprecated but kept for backward compatibility
+  mixProductionBatchId?: string; // Now references mix_batches table
+  status: 'complete' | 'rework';
 }
 
 export interface ProducedItem {
@@ -37,9 +38,9 @@ export interface UsedMaterial {
   batchNumber: string;
   quantity: number;
   unitOfMeasure: string;
-  mixCountUsed?: number;  // Added for conservante tracking
-  createdAt?: Date;  // Made optional with ?
-  updatedAt?: Date;  // Made optional with ?
+  mixCountUsed?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Sale {
@@ -110,8 +111,8 @@ export interface Product {
   weightFactor?: number;
   feculaConversionFactor?: number;
   productionPredictionFactor?: number;
-  conservantConversionFactor?: number;  // Added
-  conservantUsageFactor?: number;       // Added
+  conservantConversionFactor?: number;
+  conservantUsageFactor?: number;
   type?: string;
   notes?: string;
   createdAt: Date;
@@ -172,25 +173,23 @@ export interface DashboardStats {
   totalFeculaInventoryKg?: number;
 }
 
-// Interface para as configurações globais
 export interface GlobalSettings {
   id: string;
   fecula_conversion_factor: number;
   production_prediction_factor: number;
   conservant_conversion_factor: number;
   conservant_usage_factor: number;
-  created_at?: string; // ou Date, dependendo de como você lida com datas
-  updated_at?: string; // ou Date
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Interface para entradas de log do sistema
 export interface LogEntry {
   id: string;
-  created_at: string; // ou Date
+  created_at: string;
   user_id?: string;
-  user_description?: string; // Ex: email do usuário
-  action_type: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'OTHER'; // Tipos de ação
-  entity_type?: string; // Ex: 'products', 'sales', 'users'
-  entity_id?: string;   // ID do registro afetado
-  details: string | Record<string, any>; // Mensagem descritiva ou objeto JSON com detalhes
+  user_description?: string;
+  action_type: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'OTHER';
+  entity_type?: string;
+  entity_id?: string;
+  details: string | Record<string, any>;
 }

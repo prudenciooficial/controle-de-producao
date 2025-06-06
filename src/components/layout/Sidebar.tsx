@@ -44,8 +44,8 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       icon: Factory, 
       module: "production",
       subItems: [
-        { name: "Adicionar Mexidas", path: "/mexida", icon: FlaskConical },
-        { name: "Adicionar Produção", path: "/producao", icon: Factory }
+        { name: "Mexidas", path: "/mexida", icon: FlaskConical },
+        { name: "Produção", path: "/producao", icon: Factory }
       ]
     },
     { name: "Vendas", path: "/vendas", icon: ShoppingCart, module: "sales" },

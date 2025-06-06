@@ -196,6 +196,42 @@ export type Database = {
         }
         Relationships: []
       }
+      mix_batches: {
+        Row: {
+          batch_number: string
+          created_at: string | null
+          id: string
+          mix_count: number
+          mix_date: string
+          mix_day: string
+          notes: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string | null
+          id?: string
+          mix_count?: number
+          mix_date: string
+          mix_day: string
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string | null
+          id?: string
+          mix_count?: number
+          mix_date?: string
+          mix_day?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           batch_number: string
@@ -365,10 +401,9 @@ export type Database = {
           batch_number: string
           created_at: string
           id: string
-          is_mix_only: boolean
+          mix_batch_id: string | null
           mix_count: number
           mix_day: string
-          mix_production_batch_id: string | null
           notes: string | null
           production_date: string
           status: string
@@ -378,10 +413,9 @@ export type Database = {
           batch_number: string
           created_at?: string
           id?: string
-          is_mix_only?: boolean
+          mix_batch_id?: string | null
           mix_count: number
           mix_day: string
-          mix_production_batch_id?: string | null
           notes?: string | null
           production_date: string
           status?: string
@@ -391,10 +425,9 @@ export type Database = {
           batch_number?: string
           created_at?: string
           id?: string
-          is_mix_only?: boolean
+          mix_batch_id?: string | null
           mix_count?: number
           mix_day?: string
-          mix_production_batch_id?: string | null
           notes?: string | null
           production_date?: string
           status?: string
@@ -402,18 +435,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "production_batches_mix_production_batch_id_fkey"
-            columns: ["mix_production_batch_id"]
+            foreignKeyName: "production_batches_mix_batch_id_fkey"
+            columns: ["mix_batch_id"]
             isOneToOne: false
-            referencedRelation: "production_batches"
+            referencedRelation: "mix_batches"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "production_batches_mix_production_batch_id_fkey"
-            columns: ["mix_production_batch_id"]
-            isOneToOne: false
-            referencedRelation: "v_production_summary"
-            referencedColumns: ["production_batch_id"]
           },
         ]
       }
@@ -695,6 +721,61 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_production_summary"
             referencedColumns: ["production_batch_id"]
+          },
+        ]
+      }
+      used_materials_mix: {
+        Row: {
+          created_at: string | null
+          id: string
+          material_batch_id: string
+          mix_batch_id: string
+          mix_count_used: number | null
+          quantity: number
+          unit_of_measure: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          material_batch_id: string
+          mix_batch_id: string
+          mix_count_used?: number | null
+          quantity?: number
+          unit_of_measure?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          material_batch_id?: string
+          mix_batch_id?: string
+          mix_count_used?: number | null
+          quantity?: number
+          unit_of_measure?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "used_materials_mix_material_batch_id_fkey"
+            columns: ["material_batch_id"]
+            isOneToOne: false
+            referencedRelation: "material_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "used_materials_mix_material_batch_id_fkey"
+            columns: ["material_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_material_stock"
+            referencedColumns: ["batch_id"]
+          },
+          {
+            foreignKeyName: "used_materials_mix_mix_batch_id_fkey"
+            columns: ["mix_batch_id"]
+            isOneToOne: false
+            referencedRelation: "mix_batches"
+            referencedColumns: ["id"]
           },
         ]
       }
