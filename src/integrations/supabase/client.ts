@@ -2,65 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
+const SUPABASE_URL = "https://cvctmbxotzxdzjvokdjv.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2Y3RtYnhvdHp4ZHpqdm9rZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NDIyNDUsImV4cCI6MjA2MjIxODI0NX0.PaBOri64cpaDnCTu-96U1plfw78Q_y_RYiqE1BJ66uc";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
-});
-
-// Global error handler for JWT expired
-let jwtErrorHandler: ((error: any) => boolean) | null = null;
-
-export const setJWTErrorHandler = (handler: (error: any) => boolean) => {
-  jwtErrorHandler = handler;
-};
-
-// Interceptor para capturar erros de JWT
-const originalFrom = supabase.from;
-supabase.from = function<T = any>(relation: string) {
-  const table = originalFrom.call(this, relation);
-  
-  // Interceptar métodos que fazem queries
-  const interceptMethod = (methodName: string, originalMethod: any) => {
-    return function(...args: any[]) {
-      const result = originalMethod.apply(this, args);
-      
-      // Se o resultado tem um método then (é uma Promise), interceptar
-      if (result && typeof result.then === 'function') {
-        return result.catch((error: any) => {
-          // Verificar se é erro de JWT expirado
-          if (jwtErrorHandler && jwtErrorHandler(error)) {
-            // Se foi tratado pelo handler, não propagar o erro
-            console.log('🔒 Erro de JWT interceptado pelo handler global');
-            return Promise.reject(error); // Ainda rejeita para que o código chamador saiba que houve erro
-          }
-          // Se não é erro de JWT ou não há handler, propagar normalmente
-          return Promise.reject(error);
-        });
-      }
-      
-      return result;
-    };
-  };
-  
-  // Interceptar métodos principais
-  if (table.select) table.select = interceptMethod('select', table.select.bind(table));
-  if (table.insert) table.insert = interceptMethod('insert', table.insert.bind(table));
-  if (table.update) table.update = interceptMethod('update', table.update.bind(table));
-  if (table.delete) table.delete = interceptMethod('delete', table.delete.bind(table));
-  if (table.upsert) table.upsert = interceptMethod('upsert', table.upsert.bind(table));
-  
-  return table as any;
-};
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

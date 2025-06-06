@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, setJWTErrorHandler } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logSystemEvent } from '@/services/logService';
 import { SessionExpiredModal } from '@/components/ui/SessionExpiredModal';
@@ -81,9 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Registrar handler global para JWT expirado
-    setJWTErrorHandler(checkJWTError);
-    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -111,8 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       subscription.unsubscribe();
-      // Limpar handler global
-      setJWTErrorHandler(null);
     };
   }, []);
 
