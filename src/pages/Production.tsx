@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox } from "@/components/ui/combobox";
 import { ConservantMixFields } from "@/components/production/ConservantMixFields";
-import { History, Plus, Trash, Package, Factory, ClipboardList, FlaskConical } from "lucide-react";
+import { History, Plus, Trash, Package, Factory, ClipboardList, FlaskConical, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -23,6 +23,7 @@ import { getTodayDateString, parseDateString } from "@/components/helpers/dateUt
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAvailableMixBatches } from "@/services/mixService";
 import type { MixBatch } from "@/types/mix";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,16 +122,25 @@ const Production = () => {
   const previousConservantCountRef = React.useRef(0);
   const [availableMixes, setAvailableMixes] = useState<MixBatch[]>([]);
   const [isLoadingMixes, setIsLoadingMixes] = useState<boolean>(true);
+  const [mixLoadError, setMixLoadError] = useState<string | null>(null);
 
   // useEffect para buscar mexidas disponíveis
   React.useEffect(() => {
     const fetchMixes = async () => {
       setIsLoadingMixes(true);
+      setMixLoadError(null);
       try {
+        console.log('[Production] Fetching available mixes...');
         const mixes = await fetchAvailableMixBatches();
+        console.log('[Production] Available mixes loaded:', mixes.length, mixes);
         setAvailableMixes(mixes);
+        
+        if (mixes.length === 0) {
+          setMixLoadError("Nenhuma mexida disponível encontrada. Registre uma mexida primeiro.");
+        }
       } catch (error) {
-        console.error("Erro ao buscar mexidas:", error);
+        console.error("[Production] Error loading mixes:", error);
+        setMixLoadError("Erro ao carregar mexidas disponíveis.");
         toast({ 
           variant: "destructive", 
           title: "Erro ao carregar mexidas", 
@@ -144,11 +154,12 @@ const Production = () => {
     fetchMixes();
   }, [toast]);
 
-  // useEffect para buscar fatores globais (posição original)
+  // useEffect para buscar fatores globais
   React.useEffect(() => {
     const fetchGlobalFactors = async () => {
       setIsLoadingFactor(true);
       try {
+        console.log('[Production] Fetching global factors...');
         const { data, error } = await supabase
           .from("global_settings")
           .select("conservant_usage_factor")
@@ -156,14 +167,18 @@ const Production = () => {
           .single();
 
         if (error) {
+          console.warn('[Production] Error fetching global factors:', error);
           toast({ variant: "destructive", title: "Erro ao buscar fator", description: "Não foi possível buscar o fator de uso de conservante." });
           setGlobalConservantUsageFactor(0.1);
         } else if (data && typeof data.conservant_usage_factor === 'number') {
+          console.log('[Production] Global conservant factor loaded:', data.conservant_usage_factor);
           setGlobalConservantUsageFactor(data.conservant_usage_factor === 0 ? 0.1 : data.conservant_usage_factor);
         } else {
+          console.log('[Production] Using default conservant factor: 0.1');
           setGlobalConservantUsageFactor(0.1);
         }
       } catch (err) {
+        console.error('[Production] Unexpected error fetching global factors:', err);
         toast({ variant: "destructive", title: "Erro inesperado", description: "Ocorreu um erro ao buscar o fator de uso." });
         setGlobalConservantUsageFactor(0.1);
       } finally {
@@ -177,7 +192,7 @@ const Production = () => {
     resolver: zodResolver(productionFormSchema),
     defaultValues: {
       productionDate: today,
-      batchNumber: "", // Inicialmente vazio
+      batchNumber: "",
       mixProductionBatchId: "",
       notes: "",
       producedItems: [{ productId: "", quantity: 0 }],
@@ -185,13 +200,14 @@ const Production = () => {
     },
   });
 
-  // useEffect para sugerir o número do lote (APÓS form init e APÓS fetchGlobalFactors useEffect)
+  // useEffect para sugerir o número do lote
   React.useEffect(() => {
     if (!isLoading.productionBatches && productionBatches && Array.isArray(productionBatches)) {
       const suggestedBatch = generateSuggestedBatchNumber(productionBatches);
       const currentBatchValue = form.getValues("batchNumber");
       
       if (!form.formState.dirtyFields.batchNumber && currentBatchValue === "") {
+        console.log('[Production] Setting suggested batch number:', suggestedBatch);
         form.setValue("batchNumber", suggestedBatch, { shouldValidate: false, shouldDirty: false });
       }
     }
@@ -213,12 +229,9 @@ const Production = () => {
     (batch) => batch.remainingQuantity > 0
   );
 
-  // Buscar mexidas disponíveis - agora usando fetchAvailableMixBatches do mixService
-
   const watchedUsedMaterials = form.watch("usedMaterials");
   const watchedMixId = form.watch("mixProductionBatchId");
 
-  // Buscar detalhes da mexida selecionada
   const selectedMixDetails = React.useMemo(() => {
     if (!watchedMixId) return null;
     return availableMixes.find(mix => mix.id === watchedMixId);
@@ -322,12 +335,15 @@ const Production = () => {
   }, [conservantUsages, form]);
 
   const onSubmit = (data: ProductionFormValues) => {
+    console.log('[Production] Form submit started with data:', data);
+    
     if (!hasPermission('production', 'create')) {
       toast({ variant: "destructive", title: "Acesso Negado", description: "Você não tem permissão para registrar novas produções." });
       return;
     }
 
     if (!selectedMixDetails) {
+      console.error('[Production] No mix selected');
       toast({ variant: "destructive", title: "Mexida obrigatória", description: "Selecione uma mexida antes de continuar." });
       return;
     }
@@ -343,16 +359,21 @@ const Production = () => {
     }
 
     try {
+      console.log('[Production] Processing form data...');
+      
       const producedItemsData = data.producedItems.map((item) => {
         const product = getProductDetails(item.productId);
         if (!product) throw new Error(`Produto não encontrado: ${item.productId}`);
         return {
-          productId: item.productId, productName: product.name, quantity: item.quantity,
-          unitOfMeasure: product.unitOfMeasure, batchNumber: data.batchNumber, remainingQuantity: item.quantity,
+          productId: item.productId, 
+          productName: product.name, 
+          quantity: item.quantity,
+          unitOfMeasure: product.unitOfMeasure, 
+          batchNumber: data.batchNumber, 
+          remainingQuantity: item.quantity,
         };
       });
 
-      // Processar apenas insumos adicionais (se houver)
       let usedMaterialsPayload: any[] = [];
       
       if (data.usedMaterials && data.usedMaterials.length > 0) {
@@ -361,8 +382,13 @@ const Production = () => {
           if (!materialBatch) throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
           if (materialBatch.remainingQuantity < item.quantity) throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
           return {
-            materialBatchId: item.materialBatchId, materialName: materialBatch.materialName, materialType: materialBatch.materialType,
-            batchNumber: materialBatch.batchNumber, quantity: item.quantity, unitOfMeasure: materialBatch.unitOfMeasure, mixCountUsed: null,
+            materialBatchId: item.materialBatchId, 
+            materialName: materialBatch.materialName, 
+            materialType: materialBatch.materialType,
+            batchNumber: materialBatch.batchNumber, 
+            quantity: item.quantity, 
+            unitOfMeasure: materialBatch.unitOfMeasure, 
+            mixCountUsed: null,
           };
         });
         usedMaterialsPayload = additionalMaterials;
@@ -378,20 +404,17 @@ const Production = () => {
         usedMaterials: usedMaterialsPayload,
         isMixOnly: false,
         mixProductionBatchId: selectedMixDetails.id,
-        status: undefined as any, // VALOR UNDEFINED PARA EVITAR CONSTRAINT
+        status: 'complete' as 'complete' | 'rework',
       } as Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">;
+      
+      console.log('[Production] Submitting production batch:', productionBatchPayload);
       
       addProductionBatch(productionBatchPayload);
       toast({ title: "Produção Registrada", description: `Lote de produção ${data.batchNumber} registrado com sucesso.` });
       
-      // Refresh automático para sincronizar dados - COMENTADO TEMPORARIAMENTE PARA DEBUG
-      // setTimeout(() => {
-      //   window.location.reload();
-      // }, 1500);
-      
       form.reset({
         productionDate: today, 
-        batchNumber: generateSuggestedBatchNumber(productionBatches), // Sugestão no reset
+        batchNumber: generateSuggestedBatchNumber(productionBatches),
         mixProductionBatchId: "",
         notes: "",
         producedItems: [{ productId: "", quantity: 0 }], 
@@ -399,6 +422,7 @@ const Production = () => {
       });
       setIsDistributeSectionVisible(false);
     } catch (error) {
+      console.error('[Production] Error submitting form:', error);
       toast({ variant: "destructive", title: "Erro ao registrar produção", description: error instanceof Error ? error.message : "Ocorreu um erro ao registrar a produção." });
     }
   };
@@ -417,17 +441,16 @@ const Production = () => {
 
   const currentTabIndex = TABS.findIndex(tab => tab.id === activeTabId);
   
-  // LOGS PARA DEPURAR O CICLO DE RENDERIZAÇÃO
-  console.log('[Production] Render. Directly Calculated Conservants Count:', directlyCalculatedConservantMaterialsCount);
-  console.log('[Production] Render. ConservantMaterials (prop para o hook):', JSON.stringify(conservantMaterials, null, 2));
-  console.log('[Production] Render. ConservantUsages (retorno do hook):', JSON.stringify(conservantUsages, null, 2));
-  console.log('[Production] Render. isDistributeSectionVisible:', isDistributeSectionVisible);
+  console.log('[Production] Render state:', {
+    isLoadingMixes,
+    availableMixesCount: availableMixes.length,
+    mixLoadError,
+    directlyCalculatedConservantMaterialsCount,
+    isDistributeSectionVisible
+  });
 
   const shouldShowMixFieldsSection = isDistributeSectionVisible && directlyCalculatedConservantMaterialsCount > 1;
   const conservantDataIsReadyForMixFields = shouldShowMixFieldsSection && conservantUsages.length === directlyCalculatedConservantMaterialsCount;
-
-  console.log('[Production] Render. shouldShowMixFieldsSection:', shouldShowMixFieldsSection);
-  console.log('[Production] Render. conservantDataIsReadyForMixFields:', conservantDataIsReadyForMixFields);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -445,6 +468,13 @@ const Production = () => {
           </Button>
         </div>
       </div>
+
+      {mixLoadError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{mixLoadError}</AlertDescription>
+        </Alert>
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -472,17 +502,27 @@ const Production = () => {
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
                           <FormLabel>Mexida</FormLabel>
-                          <Combobox
-                            options={availableMixes.map(mix => ({ 
-                              value: mix.id, 
-                              label: `${mix.batchNumber} - ${new Date(mix.mixDate).toLocaleDateString()} (${mix.mixCount} mexidas)`
-                            }))}
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            placeholder="Selecione uma mexida"
-                            searchPlaceholder="Buscar mexida..."
-                            notFoundMessage="Nenhuma mexida disponível."
-                          />
+                          {isLoadingMixes ? (
+                            <div className="h-10 bg-muted/50 rounded-md flex items-center justify-center">
+                              <span className="text-sm text-muted-foreground">Carregando mexidas...</span>
+                            </div>
+                          ) : availableMixes.length === 0 ? (
+                            <div className="h-10 bg-muted/50 rounded-md flex items-center justify-center">
+                              <span className="text-sm text-muted-foreground">Nenhuma mexida disponível</span>
+                            </div>
+                          ) : (
+                            <Combobox
+                              options={availableMixes.map(mix => ({ 
+                                value: mix.id, 
+                                label: `${mix.batchNumber} - ${new Date(mix.mixDate).toLocaleDateString()} (${mix.mixCount} mexidas)`
+                              }))}
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Selecione uma mexida"
+                              searchPlaceholder="Buscar mexida..."
+                              notFoundMessage="Nenhuma mexida disponível."
+                            />
+                          )}
                           <FormMessage />
                           {selectedMixDetails && (
                             <FormDescription className="text-xs">
@@ -678,7 +718,15 @@ const Production = () => {
           <div className="flex justify-between mt-8 p-0">
             {currentTabIndex > 0 && (<Button type="button" variant="outline" onClick={handlePrevious} className="md:w-auto">Voltar</Button>)}
             {currentTabIndex < TABS.length - 1 && (<Button type="button" onClick={handleNext} className="ml-auto md:w-auto">Avançar</Button>)}
-            {currentTabIndex === TABS.length - 1 && (<Button type="submit" disabled={form.formState.isSubmitting} className="ml-auto md:w-auto">{form.formState.isSubmitting ? "Salvando..." : "Salvar Produção"}</Button>)}
+            {currentTabIndex === TABS.length - 1 && (
+              <Button 
+                type="submit" 
+                disabled={form.formState.isSubmitting || isLoadingMixes || availableMixes.length === 0} 
+                className="ml-auto md:w-auto"
+              >
+                {form.formState.isSubmitting ? "Salvando..." : "Salvar Produção"}
+              </Button>
+            )}
           </div>
         </form>
       </Form>
@@ -687,4 +735,3 @@ const Production = () => {
 };
 
 export default Production;
-

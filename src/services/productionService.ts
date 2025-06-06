@@ -5,7 +5,6 @@ import { logSystemEvent } from "./logService";
 import { markMixAsUsed } from "./mixService";
 
 const fetchProducedItems = async (productionBatchId: string): Promise<ProducedItem[]> => {
-  // Updated query to include the product name from products table
   const { data, error } = await supabase
     .from("produced_items")
     .select(`
@@ -35,7 +34,6 @@ const fetchProducedItems = async (productionBatchId: string): Promise<ProducedIt
 };
 
 const fetchUsedMaterials = async (productionBatchId: string): Promise<UsedMaterial[]> => {
-  // Updated query to include material name and type from material_batches and materials tables
   const { data, error } = await supabase
     .from("used_materials")
     .select(`
@@ -103,12 +101,15 @@ const fetchProductionBatchById = async (id: string): Promise<ProductionBatch> =>
 
 export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
   try {
+    console.log('[ProductionService] Fetching production batches...');
     const { data, error } = await supabase
       .from("production_batches")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
+
+    console.log('[ProductionService] Raw production batches:', data?.length || 0);
 
     const batches = await Promise.all(
       data.map(async (batch) => {
@@ -130,11 +131,12 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
           updatedAt: new Date(batch.updated_at),
           isMixOnly: false,
           mixProductionBatchId: batch.mix_batch_id || null,
-          status: 'complete' // Valor padrão se não existir no banco
+          status: batch.status || 'complete'
         } as ProductionBatch;
       })
     );
 
+    console.log('[ProductionService] Processed production batches:', batches.length);
     return batches;
   } catch (error) {
     console.error("Error fetching production batches:", error);
@@ -142,6 +144,7 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
   }
 };
 
+// Deprecated function - use fetchAvailableMixBatches from mixService instead
 export const fetchAvailableMixes = async (): Promise<ProductionBatch[]> => {
   console.warn("fetchAvailableMixes is deprecated. Use fetchAvailableMixBatches from mixService instead.");
   return [];
@@ -156,6 +159,26 @@ export const createProductionBatch = async (
     await beginTransaction();
     
     console.log(`[ProductionService] Creating production batch: ${batch.batchNumber}`);
+    console.log(`[ProductionService] Mix batch ID: ${batch.mixProductionBatchId}`);
+    
+    // Validate that mix exists and is available
+    if (batch.mixProductionBatchId) {
+      const { data: mixBatch, error: mixError } = await supabase
+        .from("mix_batches")
+        .select("status")
+        .eq("id", batch.mixProductionBatchId)
+        .single();
+
+      if (mixError || !mixBatch) {
+        await abortTransaction();
+        throw new Error("Mexida não encontrada");
+      }
+
+      if (mixBatch.status !== 'available') {
+        await abortTransaction();
+        throw new Error("Mexida não está disponível para uso");
+      }
+    }
     
     // Insert the production batch
     const batchInsertData: any = {
@@ -164,17 +187,11 @@ export const createProductionBatch = async (
       mix_day: batch.mixDay,
       mix_count: batch.mixCount,
       notes: batch.notes,
+      status: batch.status || 'complete',
+      mix_batch_id: batch.mixProductionBatchId || null
     };
 
-    // Add status only if provided and not undefined
-    if (batch.status && batch.status !== undefined) {
-      batchInsertData.status = batch.status;
-    }
-
-    // Add mix_batch_id if provided (linking to a mix)
-    if (batch.mixProductionBatchId) {
-      batchInsertData.mix_batch_id = batch.mixProductionBatchId;
-    }
+    console.log(`[ProductionService] Inserting batch data:`, batchInsertData);
 
     const { data: batchData, error: batchError } = await supabase
       .from("production_batches")
@@ -183,12 +200,16 @@ export const createProductionBatch = async (
       .single();
     
     if (batchError) {
+      console.error(`[ProductionService] Error inserting batch:`, batchError);
       await abortTransaction();
       throw batchError;
     }
+
+    console.log(`[ProductionService] Batch inserted with ID: ${batchData.id}`);
     
     // Insert produced items
-    if (batch.producedItems) {
+    if (batch.producedItems && batch.producedItems.length > 0) {
+      console.log(`[ProductionService] Inserting ${batch.producedItems.length} produced items`);
       for (const item of batch.producedItems) {
         const { error: itemError } = await supabase
           .from("produced_items")
@@ -202,14 +223,16 @@ export const createProductionBatch = async (
           });
         
         if (itemError) {
+          console.error(`[ProductionService] Error inserting produced item:`, itemError);
           await abortTransaction();
           throw itemError;
         }
       }
     }
     
-    // Insert used materials AND UPDATE STOCK (only for additional materials, not mix materials)
+    // Insert used materials (additional materials only, not mix materials)
     if (batch.usedMaterials && batch.usedMaterials.length > 0) {
+      console.log(`[ProductionService] Processing ${batch.usedMaterials.length} additional materials`);
       for (const material of batch.usedMaterials) {
         console.log(`[ProductionService] Processing additional material: ${material.materialName}, Batch: ${material.batchNumber}, Quantity: ${material.quantity}`);
         
@@ -227,6 +250,12 @@ export const createProductionBatch = async (
         
         console.log(`[ProductionService] Stock BEFORE: ${materialBatchBefore.remaining_quantity} for batch ${materialBatchBefore.batch_number}`);
         
+        // Validate sufficient stock
+        if (materialBatchBefore.remaining_quantity < material.quantity) {
+          await abortTransaction();
+          throw new Error(`Estoque insuficiente para ${material.materialName}. Disponível: ${materialBatchBefore.remaining_quantity}, Necessário: ${material.quantity}`);
+        }
+        
         // Insert used material record
         const { error: materialError } = await supabase
           .from("used_materials")
@@ -239,6 +268,7 @@ export const createProductionBatch = async (
           });
         
         if (materialError) {
+          console.error(`[ProductionService] Error inserting used material:`, materialError);
           await abortTransaction();
           throw materialError;
         }
@@ -258,6 +288,7 @@ export const createProductionBatch = async (
           .single();
         
         if (stockUpdateError) {
+          console.error(`[ProductionService] Error updating stock:`, stockUpdateError);
           await abortTransaction();
           throw new Error(`Erro ao atualizar estoque do material: ${stockUpdateError.message}`);
         }
@@ -268,6 +299,7 @@ export const createProductionBatch = async (
     
     // If linking to a mix, mark the mix as used
     if (batch.mixProductionBatchId) {
+      console.log(`[ProductionService] Marking mix ${batch.mixProductionBatchId} as used`);
       await markMixAsUsed(batch.mixProductionBatchId);
     }
     
