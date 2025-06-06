@@ -60,36 +60,15 @@ const TABS = [
 
 // Função para gerar o nome da mexida no formato "Dia da Semana + Data DD/MM/AAAA"
 const generateMixBatchName = (dateString: string): string => {
-  // Obter partes da data diretamente da string YYYY-MM-DD
+  // Criar data local para obter o dia da semana correto
   const [year, month, day] = dateString.split('-').map(Number);
-  
-  // Algoritmo de Zeller para calcular o dia da semana sem timezone
-  const dayOfWeek = (() => {
-    let m = month;
-    let y = year;
-    
-    // Ajuste para o algoritmo de Zeller (Janeiro e Fevereiro são contados como meses 13 e 14 do ano anterior)
-    if (m < 3) {
-      m += 12;
-      y -= 1;
-    }
-    
-    const q = day;
-    const K = y % 100;
-    const J = Math.floor(y / 100);
-    
-    // Fórmula de Zeller
-    const h = (q + Math.floor((13 * (m + 1)) / 5) + K + Math.floor(K / 4) + Math.floor(J / 4) - 2 * J) % 7;
-    
-    // Converter resultado de Zeller (0=Sábado, 1=Domingo, ..., 6=Sexta) para índice do array (0=Domingo, 1=Segunda, ...)
-    return (h + 6) % 7;
-  })();
+  const date = new Date(year, month - 1, day);
   
   const dayNames = [
     'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
   ];
   
-  const dayName = dayNames[dayOfWeek];
+  const dayName = dayNames[date.getDay()];
   
   // Formatar data manualmente para DD/MM/AAAA
   const formattedDate = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
@@ -282,13 +261,9 @@ const MixRegistration = () => {
       // Gerar nome da mexida no formato "Dia da Semana + Data DD/MM/AAAA"
       const mixBatchNumber = generateMixBatchName(data.mixDate);
 
-      // Criar data UTC para evitar problemas de timezone
-      const [year, month, day] = data.mixDate.split('-').map(Number);
-      const mixDateUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)); // 12h UTC para evitar mudanças de dia
-
       const mixBatchPayload = {
         batchNumber: mixBatchNumber,
-        mixDate: mixDateUTC,
+        mixDate: new Date(data.mixDate + 'T12:00:00'), // Data local com horário fixo
         mixDay: data.mixDate,
         mixCount: data.mixCount,
         notes: data.notes || "",

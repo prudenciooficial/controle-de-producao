@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, setJWTErrorHandler } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logSystemEvent } from '@/services/logService';
+import { SessionExpiredModal } from '@/components/ui/SessionExpiredModal';
 
 // Estruturas de permissões para referência (devem ser consistentes com UserPermissionsDialog)
 interface ModuleActions {
@@ -29,6 +30,8 @@ interface AuthContextType {
   hasRole: (role: string) => boolean;
   canViewSystemLogs: () => boolean;
   getSession: () => Promise<Session | null>;
+  getUserDisplayName: () => string;
+  checkJWTError: (error: any) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,15 +40,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
   const { toast } = useToast();
 
+  // Função para verificar se é erro de JWT expirado
+  const checkJWTError = (error: any): boolean => {
+    if (error && 
+        (error.code === 'PGRST301' || 
+         error.message?.includes('JWT expired') ||
+         error.message?.includes('jwt expired') ||
+         (error.details === null && error.hint === null && error.message === 'JWT expired'))) {
+      
+      console.log('🔒 JWT expirado detectado:', error);
+      setShowSessionExpiredModal(true);
+      return true;
+    }
+    return false;
+  };
+
+  // Função para reconectar
+  const handleReconnect = async () => {
+    setShowSessionExpiredModal(false);
+    setLoading(true);
+    
+    try {
+      // Fazer sign out completo primeiro
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      
+      // Redirecionar para a página de login
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      // Forçar redirecionamento mesmo com erro
+      window.location.href = '/login';
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
+    // Registrar handler global para JWT expirado
+    setJWTErrorHandler(checkJWTError);
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          console.log('🔄 Auth state changed:', event);
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Se o token foi removido/expirado, esconder o modal
+        if (!session) {
+          setShowSessionExpiredModal(false);
+        }
       }
     );
 
@@ -56,7 +109,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      // Limpar handler global
+      setJWTErrorHandler(null);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -209,21 +266,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const canViewSystemLogs = (): boolean => {
     if (!user) return false;
     if (user.user_metadata?.role === 'admin') return true;
-
     const detailedPermissions = user.user_metadata?.permissions as DetailedPermissions | undefined;
-    return !!detailedPermissions?.can_view_system_logs;
+    return detailedPermissions?.can_view_system_logs === true;
   };
 
   const getSession = async (): Promise<Session | null> => {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("Error getting session:", error);
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Error getting session:', error);
+        return null;
+      }
+      return session;
+    } catch (error) {
+      console.error('Error getting session:', error);
       return null;
     }
-    return data.session;
   };
 
-  const value: AuthContextType = {
+  const getUserDisplayName = () => {
+    if (!user) return 'Usuário';
+    return user.user_metadata?.full_name || user.user_metadata?.username || user.email || 'Usuário';
+  };
+
+  const value = {
     user,
     session,
     loading,
@@ -234,31 +300,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasRole,
     canViewSystemLogs,
     getSession,
+    getUserDisplayName,
+    checkJWTError,
   };
 
   return (
     <AuthContext.Provider value={value}>
       {children}
+      
+      {/* Modal de Sessão Expirada */}
+      <SessionExpiredModal 
+        open={showSessionExpiredModal}
+        onReconnect={handleReconnect}
+      />
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
 
-  // Helper para obter o nome de exibição do usuário autenticado
   const getUserDisplayName = () => {
     const { user } = context;
-    if (!user) return undefined;
-    // Tenta pegar o full_name, depois username, depois email, depois id
-    return (
-      user.user_metadata?.full_name ||
-      user.user_metadata?.username ||
-      user.email ||
-      user.id
-    );
+    if (!user) return 'Usuário';
+    return user.user_metadata?.full_name || user.user_metadata?.username || user.email || 'Usuário';
   };
 
-  return { ...context, getUserDisplayName };
+  return {
+    ...context,
+    getUserDisplayName,
+  };
 }

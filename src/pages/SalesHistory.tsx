@@ -170,7 +170,6 @@ const SalesHistory = () => {
       setIsDeleting(true);
       await deleteSale(id);
       setShowDeleteDialog(false);
-      toast({ title: "Registro Excluído", description: "O registro de venda foi excluído com sucesso." });
       
       // Refresh automático para sincronizar dados
       window.location.reload();

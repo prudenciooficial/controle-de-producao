@@ -127,7 +127,6 @@ const LossesHistory = () => {
     try {
       setIsDeleting(true);
       await deleteLoss(id);
-      toast({ title: "Registro Excluído", description: "O registro de perda foi excluído com sucesso." });
       
       // Refresh automático para sincronizar dados
       setTimeout(() => {
@@ -166,7 +165,6 @@ const LossesHistory = () => {
       await updateLoss(selectedLoss.id, values);
       setShowEditDialog(false);
       setSelectedLoss(null);
-      toast({ title: "Registro Atualizado", description: "O registro de perda foi atualizado com sucesso." });
       
       // Refresh automático para sincronizar dados
       setTimeout(() => {

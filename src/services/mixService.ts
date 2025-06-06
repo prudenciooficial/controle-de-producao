@@ -53,7 +53,7 @@ export const fetchMixBatches = async (): Promise<MixBatch[]> => {
         return {
           id: batch.id,
           batchNumber: batch.batch_number,
-          mixDate: new Date(batch.mix_date),
+          mixDate: new Date(batch.mix_date + 'T12:00:00'),
           mixDay: batch.mix_day,
           mixCount: batch.mix_count,
           notes: batch.notes,
@@ -89,7 +89,7 @@ export const fetchAvailableMixBatches = async (): Promise<MixBatch[]> => {
         return {
           id: batch.id,
           batchNumber: batch.batch_number,
-          mixDate: new Date(batch.mix_date),
+          mixDate: new Date(batch.mix_date + 'T12:00:00'),
           mixDay: batch.mix_day,
           mixCount: batch.mix_count,
           notes: batch.notes,
@@ -123,9 +123,7 @@ export const createMixBatch = async (
       .from("mix_batches")
       .insert({
         batch_number: batch.batchNumber,
-        mix_date: batch.mixDate instanceof Date 
-          ? batch.mixDate.toISOString().split('T')[0] 
-          : String(batch.mixDate),
+        mix_date: batch.mixDay,
         mix_day: batch.mixDay,
         mix_count: batch.mixCount,
         notes: batch.notes,
@@ -218,7 +216,7 @@ export const createMixBatch = async (
     return {
       id: batchData.id,
       batchNumber: batchData.batch_number,
-      mixDate: new Date(batchData.mix_date),
+      mixDate: new Date(batchData.mix_date + 'T12:00:00'),
       mixDay: batchData.mix_day,
       mixCount: batchData.mix_count,
       notes: batchData.notes,
@@ -266,9 +264,7 @@ export const updateMixBatch = async (
     // Update mix batch
     const batchUpdates: any = {};
     if (batch.batchNumber !== undefined) batchUpdates.batch_number = batch.batchNumber;
-    if (batch.mixDate !== undefined) batchUpdates.mix_date = batch.mixDate instanceof Date 
-      ? batch.mixDate.toISOString().split('T')[0] 
-      : String(batch.mixDate);
+    if (batch.mixDate !== undefined) batchUpdates.mix_date = batch.mixDay;
     if (batch.mixDay !== undefined) batchUpdates.mix_day = batch.mixDay;
     if (batch.mixCount !== undefined) batchUpdates.mix_count = batch.mixCount;
     if (batch.notes !== undefined) batchUpdates.notes = batch.notes;

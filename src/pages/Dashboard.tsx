@@ -319,8 +319,8 @@ const Dashboard = () => {
   
   // NEW: Prepare data for Losses chart
   const getLossesChartData = () => {
-    // If no date range or losses data, return empty array
-    if (!dateRange?.from || !dateRange?.to || !losses || losses.length === 0) {
+    // If no date range, return empty array
+    if (!dateRange?.from || !dateRange?.to) {
       return [];
     }
     
@@ -334,24 +334,24 @@ const Dashboard = () => {
       return days.map((day, index) => {
         // Calculate losses for this day
         const lossesAmount = losses
-          .filter(loss => {
+          ?.filter(loss => {
             const lossDate = new Date(loss.date);
             return isSameDay(lossDate, day);
           })
           .reduce((total, loss) => {
             return total + loss.quantity;
-          }, 0);
+          }, 0) || 0;
         
         // Calculate previous day's losses for percentage change
         const previousDay = index > 0 ? days[index - 1] : subDays(day, 1);
         const previousDayLosses = losses
-          .filter(loss => {
+          ?.filter(loss => {
             const lossDate = new Date(loss.date);
             return isSameDay(lossDate, previousDay);
           })
           .reduce((total, loss) => {
             return total + loss.quantity;
-          }, 0);
+          }, 0) || 0;
         
         // Calculate percentage change
         const percentageChange = getPercentChange(lossesAmount, previousDayLosses);
@@ -376,25 +376,25 @@ const Dashboard = () => {
         
         // Calculate losses for this month
         const lossesAmount = losses
-          .filter(loss => {
+          ?.filter(loss => {
             const date = new Date(loss.date);
             return date.getMonth() === month && date.getFullYear() === year;
           })
           .reduce((total, loss) => {
             return total + loss.quantity;
-          }, 0);
+          }, 0) || 0;
         
         // Calculate previous month's losses for percentage change
         const previousMonthDate = subMonths(currentDate, 1);
         const previousMonthLosses = losses
-          .filter(loss => {
+          ?.filter(loss => {
             const date = new Date(loss.date);
             return date.getMonth() === previousMonthDate.getMonth() && 
                    date.getFullYear() === previousMonthDate.getFullYear();
           })
           .reduce((total, loss) => {
             return total + loss.quantity;
-          }, 0);
+          }, 0) || 0;
         
         // Calculate percentage change
         const percentageChange = getPercentChange(lossesAmount, previousMonthLosses);

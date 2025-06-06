@@ -423,7 +423,6 @@ const Production = () => {
       } as Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">;
       
       await addProductionBatch(productionBatchPayload);
-      toast({ title: "Produção Registrada", description: `Lote de produção ${data.batchNumber} registrado com sucesso.` });
       
       // Refresh dos dados do contexto primeiro para sincronização rápida
       try {

@@ -64,7 +64,7 @@ const MixHistory = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user, getUserDisplayName } = useAuth();
   const { materialBatches } = useData();
   
   const [mixBatches, setMixBatches] = useState<MixBatch[]>([]);
@@ -133,12 +133,21 @@ const MixHistory = () => {
     
     try {
       setIsDeleting(true);
-      await deleteMixBatch(id);
+      await deleteMixBatch(id, user?.id, getUserDisplayName());
       toast({ 
         title: "Mexida Excluída", 
         description: "A mexida foi excluída com sucesso." 
       });
-      await loadMixBatches(); // Refresh data
+      
+      // Refresh local data
+      await loadMixBatches();
+      
+      // Refresh automático da página para sincronização completa com outros componentes
+      setTimeout(() => {
+        console.log("🔄 Recarregando página para sincronização completa após exclusão...");
+        window.location.reload();
+      }, 1500);
+      
     } catch (error) {
       console.error("Erro ao excluir mexida:", error);
       toast({
@@ -258,12 +267,21 @@ const MixHistory = () => {
         }))
       };
       
-      await updateMixBatch(selectedMix.id, updatedMixData);
+      await updateMixBatch(selectedMix.id, updatedMixData, user?.id, getUserDisplayName());
       toast({ 
         title: "Mexida Atualizada", 
         description: "A mexida foi atualizada com sucesso e o estoque foi ajustado corretamente." 
       });
-      await loadMixBatches(); // Refresh data
+      
+      // Refresh local data
+      await loadMixBatches();
+      
+      // Refresh automático da página para sincronização completa com outros componentes
+      setTimeout(() => {
+        console.log("🔄 Recarregando página para sincronização completa após edição...");
+        window.location.reload();
+      }, 1500);
+      
       setShowEditDialog(false);
     } catch (error) {
       console.error("Erro ao atualizar mexida:", error);

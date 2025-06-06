@@ -195,7 +195,7 @@ const mockLosses: Loss[] = [
 ];
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, getUserDisplayName } = useAuth();
+  const { user, getUserDisplayName, checkJWTError } = useAuth();
   
   // State for all data collections
   const [productionBatches, setProductionBatches] = useState<ProductionBatch[]>([]);
@@ -411,11 +411,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProducts(productsData);
     } catch (error) {
       console.error("Error refetching products:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar dados dos produtos",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar dados dos produtos",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, products: false }));
     }
@@ -428,11 +432,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMaterials(materialsData);
     } catch (error) {
       console.error("Error refetching materials:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar dados dos materiais",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar dados dos materiais",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, materials: false }));
     }
@@ -445,11 +453,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSuppliers(suppliersData);
     } catch (error) {
       console.error("Error refetching suppliers:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar dados dos fornecedores",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar dados dos fornecedores",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, suppliers: false }));
     }
@@ -462,11 +474,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMaterialBatches(materialBatchesData);
     } catch (error) {
       console.error("Error refetching material batches:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar dados dos lotes de materiais",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar dados dos lotes de materiais",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, materialBatches: false }));
     }
@@ -479,11 +495,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProductionBatches(productionBatchesData);
     } catch (error) {
       console.error("Error refetching production batches:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar dados dos lotes de produção",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar dados dos lotes de produção",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, productionBatches: false }));
     }
@@ -496,11 +516,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSales(salesData);
     } catch (error) {
       console.error("Error refetching sales:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar dados das vendas",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar dados das vendas",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, sales: false }));
     }
@@ -513,11 +537,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setOrders(ordersData);
     } catch (error) {
       console.error("Error refetching orders:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar dados dos pedidos",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar dados dos pedidos",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, orders: false }));
     }
@@ -530,11 +558,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLosses(data);
     } catch (error) {
       console.error("Error refetching losses:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao recarregar dados das perdas",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao recarregar dados das perdas",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, losses: false }));
     }
@@ -547,11 +579,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setGlobalSettings(data);
     } catch (error) {
       console.error("Error refetching global settings:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao recarregar configurações globais",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao recarregar configurações globais",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(prev => ({ ...prev, globalSettings: false }));
     }
@@ -698,11 +734,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (error) {
       console.error("Error adding production batch:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao criar lote de produção",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao criar lote de produção",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };
@@ -723,11 +763,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (error) {
       console.error("Error updating production batch:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar lote de produção",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar lote de produção",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };
@@ -744,11 +788,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (error) {
       console.error("Error deleting production batch:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao excluir lote de produção",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao excluir lote de produção",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };
@@ -764,11 +812,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (error) {
       console.error("Error adding sale:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao criar venda",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao criar venda",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };
@@ -787,11 +839,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (error) {
       console.error("Error updating sale:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar venda",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar venda",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };
@@ -806,11 +862,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (error) {
       console.error("Error deleting sale:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao excluir venda",
-        variant: "destructive",
-      });
+      
+      // Verificar se é erro de JWT expirado antes de mostrar toast
+      if (!checkJWTError(error)) {
+        toast({
+          title: "Erro",
+          description: "Falha ao excluir venda",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };

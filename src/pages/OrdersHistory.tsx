@@ -241,7 +241,6 @@ const OrdersHistory = () => {
       setIsDeleting(true);
       await deleteOrder(id);
     setShowDeleteDialog(false);
-    toast({ title: "Pedido excluído", description: "O pedido foi excluído com sucesso." });
       
       // Refresh automático para sincronizar dados
       setTimeout(() => {
@@ -283,7 +282,6 @@ const OrdersHistory = () => {
       
       await updateOrder(selectedOrder.id, updatedOrder);
       setShowEditDialog(false);
-      toast({ title: "Pedido atualizado", description: "O pedido foi atualizado com sucesso." });
       
       // Refresh automático para sincronizar dados
       setTimeout(() => {

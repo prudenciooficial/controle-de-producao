@@ -165,7 +165,6 @@ const ProductionHistory = () => {
     try {
       setIsDeleting(true);
       await deleteProductionBatch(id);
-      toast({ title: "Registro Excluído", description: "O registro de produção foi excluído com sucesso." });
       
       // Refresh automático para sincronizar dados
       await refetchProductionBatches();
@@ -207,7 +206,6 @@ const ProductionHistory = () => {
       };
       
       await updateProductionBatch(selectedBatch.id, updateData);
-      toast({ title: "Registro Atualizado", description: "O registro de produção foi atualizado com sucesso." });
       setShowEditDialog(false);
       
       // Recarregar dados para atualizar métricas e status
