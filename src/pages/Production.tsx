@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -15,8 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox } from "@/components/ui/combobox";
 import { ConservantMixFields } from "@/components/production/ConservantMixFields";
-import { MixSelector } from "@/components/production/MixSelector";
-import { History, Plus, Trash, Package, Factory, ClipboardList, Beaker } from "lucide-react";
+import { History, Plus, Trash, Package, Factory, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,7 +44,6 @@ const productionFormSchema = z.object({
     .int()
     .positive({ message: "Quantidade de mexidas deve ser maior que zero" }),
   notes: z.string().optional(),
-  selectedMixId: z.string().optional(),
   producedItems: z.array(
     z.object({
       productId: z.string().nonempty({ message: "Produto é obrigatório" }),
@@ -68,7 +67,6 @@ type ProductionFormValues = z.infer<typeof productionFormSchema>;
 // Definindo os passos/abas
 const TABS = [
   { id: "info", name: "Informações Gerais", fields: ["productionDate", "batchNumber", "mixDate", "mixCount", "notes"] as const, icon: ClipboardList },
-  { id: "mix", name: "Mexida Base", fields: ["selectedMixId"] as const, icon: Beaker },
   { id: "products", name: "Produtos Acabados", fields: ["producedItems"] as const, icon: Package },
   { id: "materials", name: "Insumos Utilizados", fields: ["usedMaterials"] as const, icon: Factory },
 ];
@@ -110,7 +108,7 @@ const generateSuggestedBatchNumber = (
 };
 
 const Production = () => {
-  const { products, materialBatches, addProductionBatch, productionBatches, isLoading, availableMixes } = useData();
+  const { products, materialBatches, addProductionBatch, productionBatches, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
@@ -162,7 +160,6 @@ const Production = () => {
       mixDate: today,
       mixCount: 1,
       notes: "",
-      selectedMixId: "",
       producedItems: [{ productId: "", quantity: 0 }],
       usedMaterials: [
         { materialBatchId: "", quantity: 0 },
@@ -375,7 +372,6 @@ const Production = () => {
         usedMaterials: usedMaterialsPayload,
         // Adicionar campos obrigatórios
         isMixOnly: false,
-        mixProductionBatchId: data.selectedMixId || null,
         status: 'production_complete' as const,
       };
       
@@ -393,7 +389,6 @@ const Production = () => {
         mixDate: today, 
         mixCount: 1, 
         notes: "",
-        selectedMixId: "",
         producedItems: [{ productId: "", quantity: 0 }], 
         usedMaterials: [{ materialBatchId: "", quantity: 0 }],
       });
@@ -442,9 +437,9 @@ const Production = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Tabs value={activeTabId} onValueChange={setActiveTabId} className="w-full">
-            <TabsList className={cn("grid w-full grid-cols-4 mb-6", isMobile && "grid-cols-2 h-auto gap-2")}>
+            <TabsList className={cn("grid w-full grid-cols-3 mb-6", isMobile && "grid-cols-1 h-auto")}>
               {TABS.map((tab) => (
-                <TabsTrigger key={tab.id} value={tab.id} className={cn(isMobile && "text-xs px-2")}>
+                <TabsTrigger key={tab.id} value={tab.id} >
                   <tab.icon className="mr-2 h-4 w-4" /> {tab.name}
                 </TabsTrigger>
               ))}
@@ -493,15 +488,6 @@ const Production = () => {
                     )} />
                   </div>
                   <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Alguma observação relevante sobre a produção..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="mix" forceMount className={cn(activeTabId !== "mix" && "hidden")} >
-              <Card>
-                <CardHeader><CardTitle>Mexida Base</CardTitle><CardDescription>Selecione uma mexida existente para usar como base desta produção (opcional).</CardDescription></CardHeader>
-                <CardContent className="space-y-6">
-                  <MixSelector form={form} availableMixes={availableMixes || []} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -695,3 +681,4 @@ const Production = () => {
 };
 
 export default Production;
+
