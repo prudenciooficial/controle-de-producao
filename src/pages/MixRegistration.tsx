@@ -1,6 +1,5 @@
-
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,11 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox } from "@/components/ui/combobox";
 import { ConservantMixFields } from "@/components/production/ConservantMixFields";
-import { History, Plus, Trash } from "lucide-react";
+import { History, Plus, Trash, Factory, ClipboardList, FlaskConical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { getTodayDateString } from "@/components/helpers/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
@@ -27,8 +29,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
+// Schema for mix registration form validation
 const mixFormSchema = z.object({
   mixDate: z.string().nonempty({ message: "Data da mexida é obrigatória" }),
   mixCount: z
@@ -48,13 +51,21 @@ const mixFormSchema = z.object({
 
 type MixFormValues = z.infer<typeof mixFormSchema>;
 
+// Definindo os passos/abas para mexida
+const TABS = [
+  { id: "info", name: "Informações da Mexida", fields: ["mixDate", "mixCount", "notes"] as const, icon: ClipboardList },
+  { id: "materials", name: "Insumos da Mexida", fields: ["usedMaterials"] as const, icon: Factory },
+];
+
 const MixRegistration = () => {
   const { materialBatches, addProductionBatch } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
+  const isMobile = useIsMobile();
   
   const today = getTodayDateString();
+  const [activeTabId, setActiveTabId] = useState<string>(TABS[0].id);
   const [globalConservantUsageFactor, setGlobalConservantUsageFactor] = useState<number | null>(null);
   const [isLoadingFactor, setIsLoadingFactor] = useState<boolean>(true);
   const [isDistributeSectionVisible, setIsDistributeSectionVisible] = useState(false);
@@ -62,6 +73,7 @@ const MixRegistration = () => {
   const [conflictingConservantInfo, setConflictingConservantInfo] = useState<{ index: number; materialName: string } | null>(null);
   const previousConservantCountRef = React.useRef(0);
 
+  // useEffect para buscar fatores globais
   React.useEffect(() => {
     const fetchGlobalFactors = async () => {
       setIsLoadingFactor(true);
@@ -114,99 +126,80 @@ const MixRegistration = () => {
 
   const watchedUsedMaterials = form.watch("usedMaterials");
   const watchedMixCount = form.watch("mixCount");
-  
+
   const getMaterialBatchDetails = React.useCallback((materialBatchId: string) => {
-    return materialBatches.find((m) => m.id === materialBatchId);
+    return materialBatches.find((batch) => batch.id === materialBatchId);
   }, [materialBatches]);
 
+  // Lógica do conservante - usando hook existente
   const conservantMaterials = React.useMemo(() => {
-    const materials = watchedUsedMaterials
-      .filter(material => material.materialBatchId)
-      .map(material => {
-        const batch = getMaterialBatchDetails(material.materialBatchId);
-        return batch;
-      })
-      .filter(batch => batch && batch.materialType === "Conservante")
-      .map(batch => ({
-        id: batch!.id,
-        materialBatchId: batch!.id,
-        materialName: batch!.materialName,
-        materialType: batch!.materialType,
-        batchNumber: batch!.batchNumber,
-        quantity: batch!.remainingQuantity,
-        unitOfMeasure: "kg",
-      }));
-    return materials;
-  }, [watchedUsedMaterials, materialBatches, getMaterialBatchDetails]);
-
-  const {
-    conservantUsages,
-    isValid: conservantValid,
-    validationError: conservantError,
-    updateMixCount,
-    getConservantMaterials,
-  } = useConservantLogic(conservantMaterials, watchedMixCount, globalConservantUsageFactor !== null ? globalConservantUsageFactor : 0.1);
-
-  const directlyCalculatedConservantMaterialsCount = watchedUsedMaterials.filter(material => {
-    if (!material.materialBatchId) return false;
-    const details = getMaterialBatchDetails(material.materialBatchId);
-    return details && details.materialType === "Conservante";
-  }).length;
-
-  React.useEffect(() => {
-    if (directlyCalculatedConservantMaterialsCount <= 1 && isDistributeSectionVisible) {
-      setIsDistributeSectionVisible(false);
-    }
-  }, [directlyCalculatedConservantMaterialsCount, isDistributeSectionVisible]);
-
-  React.useEffect(() => {
-    const currentConservantsInfo = watchedUsedMaterials
-      .map((material, index) => {
-        if (!material.materialBatchId) return null;
+    return watchedUsedMaterials
+      .map((material, index) => ({ ...material, index }))
+      .filter(material => {
         const details = getMaterialBatchDetails(material.materialBatchId);
-        if (details && details.materialType === "Conservante") {
-          return { ...details, originalIndex: index };
-        }
-        return null;
-      })
-      .filter(Boolean) as (ReturnType<typeof getMaterialBatchDetails> & { materialType: "Conservante", originalIndex: number })[];
+        return details && details.materialType === "Conservante";
+      });
+  }, [watchedUsedMaterials, getMaterialBatchDetails]);
 
-    const newConservantCount = currentConservantsInfo.length;
+  const directlyCalculatedConservantMaterialsCount = conservantMaterials.length;
 
-    if (
-      newConservantCount >= 2 &&
-      previousConservantCountRef.current < 2 && 
-      !isDistributeSectionVisible && 
-      !showConservantConflictModal 
-    ) {
-      const lastAddedConservant = currentConservantsInfo.sort((a, b) => b.originalIndex - a.originalIndex)[0];
-      
-      if (lastAddedConservant) {
+  React.useEffect(() => {
+    const currentConservantCount = directlyCalculatedConservantMaterialsCount;
+    const previousConservantCount = previousConservantCountRef.current;
+    
+    if (currentConservantCount > 1 && previousConservantCount <= 1) {
+      const lastConservantMaterial = conservantMaterials[conservantMaterials.length - 1];
+      if (lastConservantMaterial) {
+        const details = getMaterialBatchDetails(lastConservantMaterial.materialBatchId);
         setConflictingConservantInfo({ 
-          index: lastAddedConservant.originalIndex, 
-          materialName: lastAddedConservant.materialName 
+          index: lastConservantMaterial.index, 
+          materialName: details?.materialName || 'Conservante' 
         });
         setShowConservantConflictModal(true);
       }
+    } else if (currentConservantCount <= 1) {
+      setIsDistributeSectionVisible(false);
     }
-    previousConservantCountRef.current = newConservantCount;
-  }, [watchedUsedMaterials, getMaterialBatchDetails, isDistributeSectionVisible, showConservantConflictModal, materialBatches]);
+    
+    previousConservantCountRef.current = currentConservantCount;
+  }, [directlyCalculatedConservantMaterialsCount, conservantMaterials, getMaterialBatchDetails]);
+
+  // Lógica do conservante - precisa adaptar para o formato esperado pelo hook
+  const conservantMaterialsForHook = React.useMemo(() => {
+    return conservantMaterials.map(cm => {
+      const details = getMaterialBatchDetails(cm.materialBatchId);
+      if (!details) return null;
+      return {
+        id: details.id,
+        materialBatchId: details.id,
+        materialName: details.materialName,
+        materialType: details.materialType,
+        batchNumber: details.batchNumber,
+        quantity: details.remainingQuantity,
+        unitOfMeasure: details.unitOfMeasure,
+      };
+    }).filter(Boolean) as any[];
+  }, [conservantMaterials, getMaterialBatchDetails]);
+
+  const { 
+    conservantUsages, 
+    isValid: conservantValid, 
+    validationError: conservantError, 
+    updateMixCount 
+  } = useConservantLogic(
+    conservantMaterialsForHook,
+    watchedMixCount,
+    globalConservantUsageFactor !== null ? globalConservantUsageFactor : 0.1
+  );
 
   React.useEffect(() => {
-    const currentUsedMaterials = form.getValues("usedMaterials");
-    if (conservantUsages.length > 0 && currentUsedMaterials.length > 0) {
-      currentUsedMaterials.forEach((formMaterial, index) => {
-        const logicUsage = conservantUsages.find(cu => cu.materialBatchId === formMaterial.materialBatchId);
-        if (logicUsage) { 
-          const currentFormQuantity = formMaterial.quantity;
-          const calculatedLogicQuantity = logicUsage.quantity;
-          if (Math.abs(currentFormQuantity - calculatedLogicQuantity) > 0.0001) {
-            form.setValue(`usedMaterials.${index}.quantity`, calculatedLogicQuantity, { shouldValidate: true, shouldDirty: true });
-          }
-        }
-      });
-    }
-  }, [conservantUsages, form]);
+    conservantUsages.forEach((usage, idx) => {
+      const matchingMaterial = conservantMaterials.find(cm => cm.materialBatchId === usage.materialBatchId);
+      if (matchingMaterial) {
+        form.setValue(`usedMaterials.${matchingMaterial.index}.quantity`, usage.quantity, { shouldValidate: false });
+      }
+    });
+  }, [conservantUsages, conservantMaterials, form]);
 
   const onSubmit = (data: MixFormValues) => {
     if (!hasPermission('production', 'create')) {
@@ -225,61 +218,42 @@ const MixRegistration = () => {
     }
 
     try {
-      let usedMaterialsPayload: any[] = []; 
-      if (conservantMaterials.length > 0 && isDistributeSectionVisible) { 
-        const conservantUsedData = getConservantMaterials(); 
-        const nonConservantMaterialsData = data.usedMaterials
-          .filter(item => {
-            const batchDetails = getMaterialBatchDetails(item.materialBatchId);
-            return batchDetails && batchDetails.materialType !== "Conservante";
-          })
-          .map((item) => {
-            const materialBatch = getMaterialBatchDetails(item.materialBatchId);
-            if (!materialBatch) throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
-            if (materialBatch.remainingQuantity < item.quantity) throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
-            return {
-              materialBatchId: item.materialBatchId, materialName: materialBatch.materialName, materialType: materialBatch.materialType,
-              batchNumber: materialBatch.batchNumber, quantity: item.quantity, unitOfMeasure: materialBatch.unitOfMeasure, mixCountUsed: null,
-            };
-          });
-        usedMaterialsPayload = [...conservantUsedData, ...nonConservantMaterialsData];
-      } else {
-        usedMaterialsPayload = data.usedMaterials
-          .map((item) => {
-            const materialBatch = getMaterialBatchDetails(item.materialBatchId);
-            if (!materialBatch) throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
-            let finalQuantity = item.quantity;
-            let mixCountToUse = null;
-            if (materialBatch.materialType === "Conservante") {
-              if (directlyCalculatedConservantMaterialsCount === 1) {
-                finalQuantity = item.quantity; mixCountToUse = watchedMixCount; 
-              } else if (directlyCalculatedConservantMaterialsCount > 1 && (!isDistributeSectionVisible || !conservantValid)) {
-                finalQuantity = 0; mixCountToUse = null;
-              }
-            } else {
-                if (materialBatch.remainingQuantity < item.quantity) throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
-            }
-            return {
-              materialBatchId: item.materialBatchId, materialName: materialBatch.materialName, materialType: materialBatch.materialType,
-              batchNumber: materialBatch.batchNumber, quantity: finalQuantity, unitOfMeasure: materialBatch.unitOfMeasure, mixCountUsed: mixCountToUse,
-            };
-          });
-      }
-      
+      const usedMaterialsData = data.usedMaterials.map((material, index) => {
+        const materialBatch = getMaterialBatchDetails(material.materialBatchId);
+        if (!materialBatch) throw new Error(`Lote de material não encontrado: ${material.materialBatchId}`);
+        
+        const conservantUsage = conservantUsages.find(u => u.materialBatchId === material.materialBatchId);
+        const mixCountUsed = conservantUsage ? conservantUsage.assignedMixes : undefined;
+        
+        return {
+          id: `temp-${index}`, // ID temporário para satisfazer o tipo
+          materialBatchId: material.materialBatchId,
+          materialName: materialBatch.materialName,
+          materialType: materialBatch.materialType,
+          batchNumber: materialBatch.batchNumber,
+          quantity: material.quantity,
+          unitOfMeasure: materialBatch.unitOfMeasure,
+          mixCountUsed,
+        };
+      });
+
+      // Gerar número sequencial simples para o lote da mexida
+      const mixBatchNumber = `MX-${Date.now()}`;
+
       const mixBatchPayload = {
-        batchNumber: `MIX-${new Date().getTime()}`, // Gera um número único para a mexida
-        productionDate: parseDateString(data.mixDate), 
+        batchNumber: mixBatchNumber,
+        productionDate: new Date(data.mixDate),
         mixDay: data.mixDate,
-        mixCount: data.mixCount, 
-        notes: data.notes, 
+        mixCount: data.mixCount,
+        notes: data.notes || "",
         producedItems: [], // Mexida não tem produtos acabados
-        usedMaterials: usedMaterialsPayload,
+        usedMaterials: usedMaterialsData,
         isMixOnly: true,
         status: 'mix_only' as const,
       };
       
       addProductionBatch(mixBatchPayload);
-      toast({ title: "Mexida Registrada", description: `Mexida registrada com sucesso.` });
+      toast({ title: "Mexida Registrada", description: `Mexida ${mixBatchNumber} registrada com sucesso.` });
       
       // Refresh automático para sincronizar dados
       setTimeout(() => {
@@ -298,6 +272,20 @@ const MixRegistration = () => {
     }
   };
 
+  const handleNext = async () => {
+    const currentTabIndex = TABS.findIndex(tab => tab.id === activeTabId);
+    const currentTabFields = TABS[currentTabIndex].fields;
+    const isValid = await form.trigger(currentTabFields as any); 
+    if (isValid && currentTabIndex < TABS.length - 1) setActiveTabId(TABS[currentTabIndex + 1].id);
+  };
+
+  const handlePrevious = () => {
+    const currentTabIndex = TABS.findIndex(tab => tab.id === activeTabId);
+    if (currentTabIndex > 0) setActiveTabId(TABS[currentTabIndex - 1].id);
+  };
+
+  const currentTabIndex = TABS.findIndex(tab => tab.id === activeTabId);
+  
   const shouldShowMixFieldsSection = isDistributeSectionVisible && directlyCalculatedConservantMaterialsCount > 1;
   const conservantDataIsReadyForMixFields = shouldShowMixFieldsSection && conservantUsages.length === directlyCalculatedConservantMaterialsCount;
 
@@ -305,194 +293,293 @@ const MixRegistration = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2">
         <h1 className="text-2xl font-bold">Registrar Nova Mexida</h1>
-        <Button variant="outline" onClick={() => navigate("/producao/historico")}>
-          <History className="mr-2 h-4 w-4" /> Histórico
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/producao")}>
+            <Factory className="mr-2 h-4 w-4" /> Ir para Produção
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/producao/historico")}>
+            <History className="mr-2 h-4 w-4" /> Histórico
+          </Button>
+        </div>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Detalhes da Mexida</CardTitle>
-              <CardDescription>Registre os detalhes da mexida que será utilizada posteriormente na produção.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField control={form.control} name="mixDate" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data da Mexida</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="mixCount" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantidade de Mexidas</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="0"
-                        value={field.value === 0 ? "" : field.value}
-                        onChange={e => {
-                          const inputValue = e.target.value;
-                          if (inputValue === "") {
-                            field.onChange(null);
-                          } else {
-                            const value = parseInt(inputValue, 10) || 0;
-                            field.onChange(value);
-                          }
-                        }}
-                        onBlur={e => {
-                          const inputValue = e.target.value;
-                          if (inputValue === "") {
-                            field.onChange(0);
-                          } else {
-                            const value = parseInt(inputValue, 10) || 0;
-                            field.onChange(value);
-                          }
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-              <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Alguma observação relevante sobre a mexida..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </CardContent>
-          </Card>
+          <Tabs value={activeTabId} onValueChange={setActiveTabId} className="w-full">
+            <TabsList className={cn("grid w-full grid-cols-2 mb-6", isMobile && "grid-cols-1 h-auto")}>
+              {TABS.map((tab) => (
+                <TabsTrigger key={tab.id} value={tab.id} className="flex items-center">
+                  <tab.icon className="mr-2 h-4 w-4" /> {tab.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Insumos Utilizados na Mexida</CardTitle>
-              <CardDescription>Adicione os insumos utilizados na mexida (fécula, sorbato, etc.)</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {usedMaterialFields.map((item, index) => {
-                const selMatBatchId = form.watch(`usedMaterials.${index}.materialBatchId`);
-                const matBatchDetails = getMaterialBatchDetails(selMatBatchId);
-                const isCons = matBatchDetails && matBatchDetails.materialType === "Conservante";
-                return (
-                  <Card key={item.id} className="p-4 relative bg-muted/30">
-                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeUsedMaterial(index)}>
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                      <FormField control={form.control} name={`usedMaterials.${index}.materialBatchId`} render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Lote do Insumo</FormLabel>
-                          <Combobox 
-                            options={availableMaterialBatches.map(b => ({ 
-                              value: b.id, 
-                              label: `${b.materialName} (Lote: ${b.batchNumber}, Rest: ${b.remainingQuantity} ${b.unitOfMeasure})`
-                            }))} 
-                            value={field.value} 
-                            onValueChange={field.onChange} 
-                            placeholder="Selecione um lote de insumo" 
-                            searchPlaceholder="Buscar lote..." 
-                            notFoundMessage="Nenhum lote de insumo encontrado."
-                          />
+            <TabsContent value="info" forceMount className={cn(activeTabId !== "info" && "hidden")}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Detalhes da Mexida</CardTitle>
+                  <CardDescription>Forneça os detalhes básicos da mexida de insumos.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className={cn("grid grid-cols-2 gap-6", isMobile && "grid-cols-1")}>
+                    <FormField 
+                      control={form.control} 
+                      name="mixDate" 
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data da Mexida</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
-                      )} />
-                      <FormField control={form.control} name={`usedMaterials.${index}.quantity`} render={({ field }) => {
-                          if (isCons) {
-                            if (directlyCalculatedConservantMaterialsCount > 1 && isDistributeSectionVisible) return null; 
-                            const uInfo = conservantUsages.find(u => u.materialBatchId === selMatBatchId);
-                            const calcQty = uInfo ? uInfo.quantity : 0;
-                            return (
-                              <FormItem>
-                                <FormLabel>Quantidade Utilizada (Calculada)</FormLabel>
-                                <FormControl>
-                                  <Input type="number" value={calcQty.toFixed(3)} readOnly className="bg-muted/50 cursor-default"/>
-                                </FormControl>
-                                {globalConservantUsageFactor !== null && watchedMixCount > 0 && matBatchDetails && (
-                                  <FormDescription>
-                                    Base: {watchedMixCount} mexida(s) × {globalConservantUsageFactor.toFixed(3)} {matBatchDetails.unitOfMeasure}/mexida
-                                  </FormDescription>
-                                )}
+                      )} 
+                    />
+                    <FormField 
+                      control={form.control} 
+                      name="mixCount" 
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantidade de Mexidas</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              placeholder="0"
+                              value={field.value === 0 ? "" : field.value}
+                              onChange={e => {
+                                const inputValue = e.target.value;
+                                if (inputValue === "") {
+                                  field.onChange(null);
+                                } else {
+                                  const value = parseInt(inputValue, 10) || 0;
+                                  field.onChange(value);
+                                }
+                              }}
+                              onBlur={e => {
+                                const inputValue = e.target.value;
+                                if (inputValue === "") {
+                                  field.onChange(0);
+                                } else {
+                                  const value = parseInt(inputValue, 10) || 0;
+                                  field.onChange(value);
+                                }
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} 
+                    />
+                  </div>
+                  <FormField 
+                    control={form.control} 
+                    name="notes" 
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Alguma observação relevante sobre a mexida..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} 
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="materials" forceMount className={cn(activeTabId !== "materials" && "hidden")}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Insumos da Mexida</CardTitle>
+                  <CardDescription>Adicione os insumos utilizados nesta mexida (fécula, sorbato, etc.).</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {usedMaterialFields.map((item, index) => {
+                    const selMatBatchId = form.watch(`usedMaterials.${index}.materialBatchId`);
+                    const matBatchDetails = getMaterialBatchDetails(selMatBatchId);
+                    const isCons = matBatchDetails && matBatchDetails.materialType === "Conservante";
+                    
+                    return (
+                      <Card key={item.id} className="p-4 relative bg-muted/30">
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive" 
+                          onClick={() => removeUsedMaterial(index)}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                        
+                        <div className={cn("grid grid-cols-2 gap-4 items-end", isMobile && "grid-cols-1")}>
+                          <FormField 
+                            control={form.control} 
+                            name={`usedMaterials.${index}.materialBatchId`} 
+                            render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                                <FormLabel>Insumo</FormLabel>
+                                <Combobox
+                                  options={availableMaterialBatches.map(batch => ({ 
+                                    value: batch.id, 
+                                    label: `${batch.materialName} / ${batch.batchNumber} (${batch.remainingQuantity} ${batch.unitOfMeasure})`
+                                  }))}
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                  placeholder="Selecione um insumo"
+                                  searchPlaceholder="Buscar insumo..."
+                                  notFoundMessage="Nenhum insumo encontrado."
+                                />
                                 <FormMessage />
                               </FormItem>
-                            );
-                          } else return (
-                            <FormItem>
-                              <FormLabel>Quantidade Utilizada</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  placeholder="0"
-                                  value={field.value == null || field.value === 0 ? "" : field.value}
-                                  onChange={e => {
-                                    const inputValue = e.target.value;
-                                    if (inputValue === "") {
-                                      field.onChange(null);
-                                    } else {
-                                      const value = parseFloat(inputValue) || 0;
-                                      field.onChange(value);
+                            )} 
+                          />
+                          
+                          <FormField 
+                            control={form.control} 
+                            name={`usedMaterials.${index}.quantity`} 
+                            render={({ field }) => {
+                              const currentQty = form.watch(`usedMaterials.${index}.quantity`);
+                              
+                              React.useEffect(() => {
+                                if (selMatBatchId) {
+                                  const cBatchDetails = getMaterialBatchDetails(selMatBatchId);
+                                  if (cBatchDetails && cBatchDetails.materialType !== "Conservante") { 
+                                    if (currentQty > cBatchDetails.remainingQuantity) {
+                                      form.setError(`usedMaterials.${index}.quantity`, { 
+                                        type: 'manual', 
+                                        message: `Máx: ${cBatchDetails.remainingQuantity} ${cBatchDetails.unitOfMeasure}` 
+                                      });
+                                    } else if (currentQty <= 0 && cBatchDetails.remainingQuantity > 0) { 
+                                      const err = form.formState.errors.usedMaterials?.[index]?.quantity; 
+                                      if (err && err.type === 'manual') form.clearErrors(`usedMaterials.${index}.quantity`); 
+                                    } else { 
+                                      const err = form.formState.errors.usedMaterials?.[index]?.quantity; 
+                                      if (err && err.type === 'manual') form.clearErrors(`usedMaterials.${index}.quantity`);
                                     }
-                                  }}
-                                  onBlur={e => {
-                                    const inputValue = e.target.value;
-                                    if (inputValue === "") {
-                                      field.onChange(0);
-                                    } else {
-                                      const value = parseFloat(inputValue) || 0;
-                                      field.onChange(value);
-                                    }
-                                  }}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          );
-                        }} />
-                    </div>
-                     {(() => { if (selMatBatchId && matBatchDetails) return (<FormDescription className="mt-2 text-xs">Lote selecionado: {matBatchDetails.materialName} / {matBatchDetails.batchNumber} {' - '} Disponível: {matBatchDetails.remainingQuantity} {matBatchDetails.unitOfMeasure}</FormDescription>); return null; })()}
-                  </Card>
-                );
-              })}
-              <Button type="button" variant="outline" size="sm" onClick={() => appendUsedMaterial({ materialBatchId: "", quantity: null as any })} className="mt-4 w-full">
-                <Plus className="mr-2 h-4 w-4" /> Adicionar Insumo
-              </Button>
-              
-              {shouldShowMixFieldsSection && (
-                <>
-                  {!conservantDataIsReadyForMixFields && (
-                    <div className="mt-4 p-4 border-t text-center">
-                      <p className="text-sm text-muted-foreground">Preparando dados da distribuição...</p>
-                    </div>
+                                  } else {
+                                    form.clearErrors(`usedMaterials.${index}.quantity`);
+                                  }
+                                } else if (!selMatBatchId) {
+                                  form.clearErrors(`usedMaterials.${index}.quantity`);
+                                }
+                              }, [selMatBatchId, currentQty, index, form, getMaterialBatchDetails]);
+                              
+                              if (isCons) {
+                                if (directlyCalculatedConservantMaterialsCount > 1 && isDistributeSectionVisible) return null; 
+                                const uInfo = conservantUsages.find(u => u.materialBatchId === selMatBatchId);
+                                const calcQty = uInfo ? uInfo.quantity : 0;
+                                return (
+                                  <FormItem>
+                                    <FormLabel>Quantidade Utilizada (Calculada)</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="number" 
+                                        value={calcQty.toFixed(3)} 
+                                        readOnly 
+                                        className="bg-muted/50 cursor-default"
+                                      />
+                                    </FormControl>
+                                    {globalConservantUsageFactor !== null && watchedMixCount > 0 && matBatchDetails && (
+                                      <FormDescription>
+                                        Base: {watchedMixCount} mexida(s) × {globalConservantUsageFactor.toFixed(3)} {matBatchDetails.unitOfMeasure}/mexida
+                                      </FormDescription>
+                                    )}
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              } else {
+                                return (
+                                  <FormItem>
+                                    <FormLabel>Quantidade Utilizada</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="number" 
+                                        placeholder="0"
+                                        value={field.value == null || field.value === 0 ? "" : field.value}
+                                        onChange={e => {
+                                          const inputValue = e.target.value;
+                                          if (inputValue === "") {
+                                            field.onChange(null);
+                                          } else {
+                                            const value = parseFloat(inputValue) || 0;
+                                            field.onChange(value);
+                                          }
+                                        }}
+                                        onBlur={e => {
+                                          const inputValue = e.target.value;
+                                          if (inputValue === "") {
+                                            field.onChange(0);
+                                          } else {
+                                            const value = parseFloat(inputValue) || 0;
+                                            field.onChange(value);
+                                          }
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }
+                            }} 
+                          />
+                        </div>
+                        {(() => { 
+                          if (selMatBatchId && matBatchDetails) {
+                            return (
+                              <FormDescription className="mt-2 text-xs">
+                                Lote selecionado: {matBatchDetails.materialName} / {matBatchDetails.batchNumber} 
+                                {' - '} Disponível: {matBatchDetails.remainingQuantity} {matBatchDetails.unitOfMeasure}
+                              </FormDescription>
+                            ); 
+                          }
+                          return null; 
+                        })()}
+                      </Card>
+                    );
+                  })}
+                  
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => appendUsedMaterial({ materialBatchId: "", quantity: null as any })} 
+                    className="mt-4 w-full"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Insumo
+                  </Button>
+                  
+                  {shouldShowMixFieldsSection && (
+                    <>
+                      {!conservantDataIsReadyForMixFields && (
+                        <div className="mt-4 p-4 border-t text-center">
+                          <p className="text-sm text-muted-foreground">Preparando dados da distribuição...</p>
+                        </div>
+                      )}
+                      {conservantDataIsReadyForMixFields && (
+                        <ConservantMixFields
+                          key={conservantUsages.map(u => u.materialBatchId).join('-')} 
+                          conservantUsages={conservantUsages}
+                          isValid={conservantValid}
+                          validationError={conservantError}
+                          onMixCountChange={updateMixCount}
+                          form={form} 
+                        />
+                      )}
+                    </>
                   )}
-                  {conservantDataIsReadyForMixFields && (
-                    <ConservantMixFields
-                      key={conservantUsages.map(u => u.materialBatchId).join('-')} 
-                      conservantUsages={conservantUsages}
-                      isValid={conservantValid}
-                      validationError={conservantError}
-                      onMixCountChange={updateMixCount}
-                      form={form} 
-                    />
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
 
           <AlertDialog open={showConservantConflictModal} onOpenChange={setShowConservantConflictModal}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Múltiplos Lotes de Conservantes Detectados</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Você selecionou mais de um lote para o insumo "{conflictingConservantInfo?.materialName || 'Conservante'}". Deseja remover o último lote adicionado ou continuar e distribuir as mexidas entre eles?
+                  Você selecionou mais de um lote para o insumo "{conflictingConservantInfo?.materialName || 'Conservante'}". 
+                  Deseja remover o último lote adicionado ou continuar e distribuir as mexidas entre eles?
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -503,20 +590,44 @@ const MixRegistration = () => {
                     setIsDistributeSectionVisible(false); 
                     setConflictingConservantInfo(null);
                   }
-                }}>Remover Último Lote Adicionado</AlertDialogCancel>
+                }}>
+                  Remover Último Lote Adicionado
+                </AlertDialogCancel>
                 <AlertDialogAction onClick={() => {
                   setIsDistributeSectionVisible(true);
                   setShowConservantConflictModal(false);
                   setConflictingConservantInfo(null);
-                }}>Continuar e Distribuir</AlertDialogAction>
+                }}>
+                  Continuar e Distribuir
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
-          <div className="flex justify-end mt-8">
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Salvando..." : "Salvar Mexida"}
+          <div className="flex justify-between items-center">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentTabIndex === 0}
+            >
+              Anterior
             </Button>
+            
+            <span className="text-sm text-muted-foreground">
+              Passo {currentTabIndex + 1} de {TABS.length}
+            </span>
+            
+            {currentTabIndex === TABS.length - 1 ? (
+              <Button type="submit">
+                <FlaskConical className="mr-2 h-4 w-4" />
+                Registrar Mexida
+              </Button>
+            ) : (
+              <Button type="button" onClick={handleNext}>
+                Próximo
+              </Button>
+            )}
           </div>
         </form>
       </Form>

@@ -736,6 +736,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await deleteProductionBatchApi(id, user?.id, getUserDisplayName());
       setProductionBatches(productionBatches.filter(b => b.id !== id));
+      // Refetch material batches to update stock levels
+      await refetchMaterialBatches();
       toast({
         title: "Sucesso",
         description: "Lote de produção excluído com sucesso",

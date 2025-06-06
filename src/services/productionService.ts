@@ -75,106 +75,115 @@ const fetchProductionBatchById = async (id: string): Promise<ProductionBatch> =>
     .eq("id", id)
     .single();
 
-  if (error) {
-    console.error("Error fetching production batch:", error);
-    throw error;
-  }
+  if (error) throw error;
 
-  const producedItems = await fetchProducedItems(id);
-  const usedMaterials = await fetchUsedMaterials(id);
+  const [producedItems, usedMaterials] = await Promise.all([
+    fetchProducedItems(id),
+    fetchUsedMaterials(id),
+  ]);
 
   return {
+    ...data,
     id: data.id,
     batchNumber: data.batch_number,
-    productionDate: new Date(data.production_date),
-    mixDay: data.mix_day,
-    mixCount: data.mix_count,
-    notes: data.notes,
-    producedItems: producedItems,
-    usedMaterials: usedMaterials,
+    productionDate: data.production_date,
+    mixDay: data.mix_day || "1",
+    mixCount: data.mix_count || 1,
+    notes: data.notes || "",
+    producedItems,
+    usedMaterials,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
-    // Novos campos - usar valores padrão para compatibilidade
     isMixOnly: data.is_mix_only || false,
     mixProductionBatchId: data.mix_production_batch_id || null,
     status: data.status || 'production_complete'
-  };
+  } as ProductionBatch;
 };
 
 export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
-  const { data, error } = await supabase
-    .from("production_batches")
-    .select("*")
-    .order("production_date", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("production_batches")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  if (error) {
+    if (error) throw error;
+
+    const batches = await Promise.all(
+      data.map(async (batch) => {
+        const [producedItems, usedMaterials] = await Promise.all([
+          fetchProducedItems(batch.id),
+          fetchUsedMaterials(batch.id),
+        ]);
+
+        return {
+          ...batch,
+          id: batch.id,
+          batchNumber: batch.batch_number,
+          productionDate: batch.production_date,
+          mixDay: batch.mix_day || "1",
+          mixCount: batch.mix_count || 1,
+          notes: batch.notes || "",
+          producedItems,
+          usedMaterials,
+          createdAt: new Date(batch.created_at),
+          updatedAt: new Date(batch.updated_at),
+          isMixOnly: batch.is_mix_only || false,
+          mixProductionBatchId: batch.mix_production_batch_id || null,
+          status: batch.status || 'production_complete'
+        } as ProductionBatch;
+      })
+    );
+
+    return batches;
+  } catch (error) {
     console.error("Error fetching production batches:", error);
     throw error;
   }
-
-  // Fetch related data for each batch
-  const productionBatches: ProductionBatch[] = [];
-  for (const batch of data) {
-    const producedItems = await fetchProducedItems(batch.id);
-    const usedMaterials = await fetchUsedMaterials(batch.id);
-
-    productionBatches.push({
-      id: batch.id,
-      batchNumber: batch.batch_number,
-      productionDate: new Date(batch.production_date),
-      mixDay: batch.mix_day,
-      mixCount: batch.mix_count,
-      notes: batch.notes,
-      producedItems: producedItems,
-      usedMaterials: usedMaterials,
-      createdAt: new Date(batch.created_at),
-      updatedAt: new Date(batch.updated_at),
-      // Novos campos - usar valores padrão para compatibilidade
-      isMixOnly: batch.is_mix_only || false,
-      mixProductionBatchId: batch.mix_production_batch_id || null,
-      status: batch.status || 'production_complete'
-    });
-  }
-
-  return productionBatches;
 };
 
-// Função para buscar apenas mexidas disponíveis
 export const fetchAvailableMixes = async (): Promise<ProductionBatch[]> => {
-  const { data, error } = await supabase
-    .from("production_batches")
-    .select("*")
-    .eq("is_mix_only", true)
-    .eq("status", "mix_only")
-    .order("production_date", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("production_batches")
+      .select("*")
+      .eq("status", "mix_only")
+      .eq("is_mix_only", true)
+      .order("created_at", { ascending: false });
 
-  if (error) {
+    if (error) throw error;
+
+    const batches = await Promise.all(
+      data.map(async (batch) => {
+        const [producedItems, usedMaterials] = await Promise.all([
+          fetchProducedItems(batch.id),
+          fetchUsedMaterials(batch.id),
+        ]);
+
+        return {
+          ...batch,
+          id: batch.id,
+          batchNumber: batch.batch_number,
+          productionDate: batch.production_date,
+          mixDay: batch.mix_day || "1",
+          mixCount: batch.mix_count || 1,
+          notes: batch.notes || "",
+          producedItems,
+          usedMaterials,
+          createdAt: new Date(batch.created_at),
+          updatedAt: new Date(batch.updated_at),
+          isMixOnly: batch.is_mix_only || false,
+          mixProductionBatchId: batch.mix_production_batch_id || null,
+          status: batch.status || 'mix_only'
+        } as ProductionBatch;
+      })
+    );
+
+    return batches;
+  } catch (error) {
     console.error("Error fetching available mixes:", error);
     throw error;
   }
-
-  const mixes: ProductionBatch[] = [];
-  for (const batch of data) {
-    const usedMaterials = await fetchUsedMaterials(batch.id);
-
-    mixes.push({
-      id: batch.id,
-      batchNumber: batch.batch_number,
-      productionDate: new Date(batch.production_date),
-      mixDay: batch.mix_day,
-      mixCount: batch.mix_count,
-      notes: batch.notes,
-      producedItems: [], // Mexidas não têm produtos acabados
-      usedMaterials: usedMaterials,
-      createdAt: new Date(batch.created_at),
-      updatedAt: new Date(batch.updated_at),
-      isMixOnly: batch.is_mix_only || false,
-      mixProductionBatchId: batch.mix_production_batch_id || null,
-      status: batch.status || 'mix_only'
-    });
-  }
-
-  return mixes;
 };
 
 // When creating a production batch, ensure remaining_quantity is set to the same value as quantity
@@ -573,10 +582,10 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
   try {
     await beginTransaction();
 
-    // Buscar o lote ANTES de deletar para registrar em oldData
+    // Buscar o lote ANTES de deletar para registrar em oldData e obter informações da mexida
     const { data: fetchedBatch, error: fetchError } = await supabase
       .from("production_batches")
-      .select("*")
+      .select("*, mix_production_batch_id")
       .eq("id", id)
       .single();
 
@@ -587,8 +596,8 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
       // Prossegue com a tentativa de deleção mesmo assim
     }
 
-    // *** CORREÇÃO: REVERTER ESTOQUE DOS MATERIAIS USADOS ***
-    // Buscar os materiais usados ANTES de deletar para reverter o estoque
+    // *** CORREÇÃO CRÍTICA: DISTINGUIR INSUMOS DA MEXIDA vs INSUMOS ADICIONAIS ***
+    // Buscar os materiais usados ANTES de deletar para reverter APENAS os insumos adicionais
     const { data: usedMaterialsToRestore, error: fetchUsedError } = await supabase
       .from("used_materials")
       .select("material_batch_id, quantity")
@@ -598,12 +607,38 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
       await abortTransaction();
       throw new Error(`Erro ao buscar materiais usados: ${fetchUsedError.message}`);
     }
+
+    // Se esta produção usa uma mexida, NÃO devemos reverter os insumos da mexida
+    let materialsToRevert = usedMaterialsToRestore || [];
     
-    // Reverter o estoque de cada material usado
-    if (usedMaterialsToRestore && usedMaterialsToRestore.length > 0) {
-      console.log(`🔄 Revertendo estoque de ${usedMaterialsToRestore.length} materiais usados...`);
+    if (fetchedBatch?.mix_production_batch_id) {
+      console.log(`🔍 Produção vinculada à mexida ${fetchedBatch.mix_production_batch_id} - verificando insumos...`);
       
-      for (const usedMaterial of usedMaterialsToRestore) {
+      // Buscar os insumos que pertencem à mexida (não devem ser revertidos)
+      const { data: mixMaterials, error: mixError } = await supabase
+        .from("used_materials")
+        .select("material_batch_id")
+        .eq("production_batch_id", fetchedBatch.mix_production_batch_id);
+      
+      if (mixError) {
+        console.warn(`Erro ao buscar materiais da mexida: ${mixError.message}`);
+      } else if (mixMaterials && mixMaterials.length > 0) {
+        const mixMaterialIds = mixMaterials.map(m => m.material_batch_id);
+        
+        // Filtrar apenas insumos que NÃO pertencem à mexida (insumos adicionais)
+        materialsToRevert = usedMaterialsToRestore.filter(material => 
+          !mixMaterialIds.includes(material.material_batch_id)
+        );
+        
+        console.log(`📦 Total de materiais: ${usedMaterialsToRestore.length}, Materiais da mexida: ${mixMaterials.length}, Apenas insumos adicionais a reverter: ${materialsToRevert.length}`);
+      }
+    }
+    
+    // Reverter o estoque APENAS dos insumos adicionais (não da mexida)
+    if (materialsToRevert && materialsToRevert.length > 0) {
+      console.log(`🔄 Revertendo estoque de ${materialsToRevert.length} insumos adicionais...`);
+      
+      for (const usedMaterial of materialsToRevert) {
         // Buscar quantidade atual do lote de material
         const { data: currentMaterialBatch, error: fetchCurrentError } = await supabase
           .from("material_batches")
@@ -633,6 +668,10 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
           throw new Error(`Erro ao restaurar estoque do material: ${stockRestoreError.message}`);
         }
       }
+    } else if (fetchedBatch?.mix_production_batch_id) {
+      console.log(`✅ Produção usa mexida - apenas insumos da mexida, nenhum adicional para reverter.`);
+    } else {
+      console.log(`✅ Nenhum material para reverter.`);
     }
 
     // Delete produced items (como na sua lógica original)
@@ -657,7 +696,7 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
     if (batchError) { await abortTransaction(); throw batchError; }
 
     await endTransaction();
-    console.log(`✅ Lote de produção ${id} excluído com estoque revertido com sucesso!`);
+    console.log(`✅ Lote de produção ${id} excluído com estoque revertido corretamente!`);
     
     await logSystemEvent({
       userId: userId!,

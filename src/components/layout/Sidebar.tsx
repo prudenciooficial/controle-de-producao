@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,18 +20,34 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
   const { hasRole, hasPermission, canViewSystemLogs } = useAuth();
   const [isDesktopSidebarExpanded, setIsDesktopSidebarExpanded] = useState(false);
   const [availableMenuItems, setAvailableMenuItems] = useState<any[]>([]);
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
 
-  type MenuItem = {
+  type SubMenuItem = {
     name: string;
     path: string;
     icon: React.ElementType;
+  };
+
+  type MenuItem = {
+    name: string;
+    path?: string;
+    icon: React.ElementType;
     module?: string;
     permissionCheck?: () => boolean;
+    subItems?: SubMenuItem[];
   };
 
   const [allMenuItems] = useState<MenuItem[]>([
     { name: "Dashboard", path: "/", icon: LayoutDashboard, module: "dashboard" },
-    { name: "Produção", path: "/producao", icon: Factory, module: "production" },
+    { 
+      name: "Produção", 
+      icon: Factory, 
+      module: "production",
+      subItems: [
+        { name: "Adicionar Mexidas", path: "/mexida", icon: FlaskConical },
+        { name: "Adicionar Produção", path: "/producao", icon: Factory }
+      ]
+    },
     { name: "Vendas", path: "/vendas", icon: ShoppingCart, module: "sales" },
     { name: "Pedidos", path: "/pedidos", icon: Truck, module: "orders" },
     { name: "Estoque", path: "/estoque", icon: Package, module: "inventory" },
@@ -87,6 +103,37 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     checkPermissions();
   }, [hasRole, hasPermission, canViewSystemLogs, allMenuItems]);
 
+  // Função para verificar se um item ou seus subitens estão ativos
+  const isItemActive = (item: MenuItem) => {
+    if (item.path && location.pathname === item.path) return true;
+    if (item.subItems) {
+      return item.subItems.some(subItem => location.pathname === subItem.path);
+    }
+    return false;
+  };
+
+  // Função para alternar expansão de menu
+  const toggleMenuExpansion = (itemName: string) => {
+    setExpandedMenus(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemName)) {
+        newSet.delete(itemName);
+      } else {
+        newSet.add(itemName);
+      }
+      return newSet;
+    });
+  };
+
+  // Auto-expand menu if current page is a submenu item
+  useEffect(() => {
+    availableMenuItems.forEach(item => {
+      if (item.subItems && isItemActive(item)) {
+        setExpandedMenus(prev => new Set([...prev, item.name]));
+      }
+    });
+  }, [location.pathname, availableMenuItems]);
+
   const sidebarHeaderVariants = {
     expanded: { opacity: 1, x: 0 },
     collapsed: { opacity: 0, x: -10 },
@@ -114,34 +161,136 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       animate={isExpanded ? "expanded" : "collapsed"}
     >
       {availableMenuItems.map((item) => {
-        const isActive = location.pathname === item.path;
+        const isActive = isItemActive(item);
+        const isExpanded_Menu = expandedMenus.has(item.name);
+        const hasSubItems = item.subItems && item.subItems.length > 0;
+
         return (
-          <MotionLink
-            key={item.path}
-            to={item.path}
-            onClick={() => {
-              if (isMobile && onMobileMenuToggle) {
-                onMobileMenuToggle();
-              }
-            }}
-            className={cn(
-              "flex items-center rounded-lg py-3 text-sm font-medium transition-colors duration-150 text-sidebar-foreground hover:bg-sidebar-accent",
-              isActive ? "bg-sidebar-accent shadow-sm" : "",
-              isExpanded ? "px-4" : "px-3 justify-center"
+          <div key={item.name}>
+            {/* Item principal */}
+            {hasSubItems ? (
+              <button
+                onClick={() => toggleMenuExpansion(item.name)}
+                className={cn(
+                  "flex items-center rounded-lg py-3 text-sm font-medium transition-colors duration-150 text-sidebar-foreground hover:bg-sidebar-accent w-full",
+                  isActive ? "bg-sidebar-accent shadow-sm" : "",
+                  isExpanded ? "px-4" : "px-3 justify-center"
+                )}
+                title={!isExpanded ? item.name : undefined}
+              >
+                <item.icon className={cn("h-5 w-5 shrink-0", isExpanded && "mr-3")} />
+                {isExpanded && (
+                  <>
+                    <motion.span 
+                      variants={navLinkTextVariants}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      className="whitespace-nowrap flex-1 text-left"
+                    >
+                      {item.name}
+                    </motion.span>
+                    <motion.div
+                      animate={{ rotate: isExpanded_Menu ? 90 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </motion.div>
+                  </>
+                )}
+              </button>
+            ) : (
+              <MotionLink
+                to={item.path!}
+                onClick={() => {
+                  if (isMobile && onMobileMenuToggle) {
+                    onMobileMenuToggle();
+                  }
+                }}
+                className={cn(
+                  "flex items-center rounded-lg py-3 text-sm font-medium transition-colors duration-150 text-sidebar-foreground hover:bg-sidebar-accent",
+                  isActive ? "bg-sidebar-accent shadow-sm" : "",
+                  isExpanded ? "px-4" : "px-3 justify-center"
+                )}
+                title={!isExpanded ? item.name : undefined}
+                whileHover={{ x: isActive ? 0 : (isExpanded ? 2 : 0) }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
+                <item.icon className={cn("h-5 w-5 shrink-0", isExpanded && "mr-3")} />
+                <motion.span 
+                  variants={navLinkTextVariants}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  className="whitespace-nowrap"
+                >
+                  {item.name}
+                </motion.span>
+              </MotionLink>
             )}
-            title={!isExpanded ? item.name : undefined}
-            whileHover={{ x: isActive ? 0 : (isExpanded ? 2 : 0) }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          >
-            <item.icon className={cn("h-5 w-5 shrink-0", isExpanded && "mr-3")} />
-            <motion.span 
-              variants={navLinkTextVariants}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="whitespace-nowrap"
-            >
-            {item.name}
-            </motion.span>
-          </MotionLink>
+
+            {/* Subitens */}
+            {hasSubItems && isExpanded && (
+              <AnimatePresence>
+                {isExpanded_Menu && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="ml-8 mt-1 space-y-1"
+                  >
+                    {item.subItems.map((subItem) => {
+                      const isSubActive = location.pathname === subItem.path;
+                      return (
+                        <MotionLink
+                          key={subItem.path}
+                          to={subItem.path}
+                          onClick={() => {
+                            if (isMobile && onMobileMenuToggle) {
+                              onMobileMenuToggle();
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center rounded-lg py-2 px-3 text-sm font-medium transition-colors duration-150 text-sidebar-foreground hover:bg-sidebar-accent",
+                            isSubActive ? "bg-sidebar-accent shadow-sm text-sidebar-accent-foreground" : ""
+                          )}
+                          whileHover={{ x: isSubActive ? 0 : 2 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        >
+                          <subItem.icon className="h-4 w-4 shrink-0 mr-3" />
+                          <span className="whitespace-nowrap">{subItem.name}</span>
+                        </MotionLink>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            )}
+
+            {/* Para mobile, sempre mostrar subitens se expandido */}
+            {hasSubItems && isMobile && isExpanded_Menu && (
+              <div className="ml-6 mt-1 space-y-1">
+                {item.subItems.map((subItem) => {
+                  const isSubActive = location.pathname === subItem.path;
+                  return (
+                    <Link
+                      key={subItem.path}
+                      to={subItem.path}
+                      onClick={() => {
+                        if (onMobileMenuToggle) {
+                          onMobileMenuToggle();
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center rounded-lg py-2 px-3 text-sm font-medium transition-colors duration-150 text-sidebar-foreground hover:bg-sidebar-accent",
+                        isSubActive ? "bg-sidebar-accent shadow-sm text-sidebar-accent-foreground" : ""
+                      )}
+                    >
+                      <subItem.icon className="h-4 w-4 shrink-0 mr-3" />
+                      <span className="whitespace-nowrap">{subItem.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         );
       })}
     </motion.nav>

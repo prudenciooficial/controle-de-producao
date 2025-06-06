@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -16,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox } from "@/components/ui/combobox";
 import { ConservantMixFields } from "@/components/production/ConservantMixFields";
-import { History, Plus, Trash, Package, Factory, ClipboardList } from "lucide-react";
+import { History, Plus, Trash, Package, Factory, ClipboardList, FlaskConical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -38,11 +37,7 @@ import type { ProductionBatch } from "@/types";
 const productionFormSchema = z.object({
   productionDate: z.string().nonempty({ message: "Data de produção é obrigatória" }),
   batchNumber: z.string().nonempty({ message: "Lote de produção é obrigatório" }),
-  mixDate: z.string().nonempty({ message: "Data da mexida é obrigatória" }),
-  mixCount: z
-    .number()
-    .int()
-    .positive({ message: "Quantidade de mexidas deve ser maior que zero" }),
+  mixProductionBatchId: z.string().nonempty({ message: "Mexida é obrigatória" }),
   notes: z.string().optional(),
   producedItems: z.array(
     z.object({
@@ -59,16 +54,16 @@ const productionFormSchema = z.object({
         .number()
         .min(0, { message: "Quantidade não pode ser negativa" }),
     })
-  ).nonempty({ message: "Adicione pelo menos um insumo utilizado" }),
+  ).optional().default([]),
 });
 
 type ProductionFormValues = z.infer<typeof productionFormSchema>;
 
 // Definindo os passos/abas
 const TABS = [
-  { id: "info", name: "Informações Gerais", fields: ["productionDate", "batchNumber", "mixDate", "mixCount", "notes"] as const, icon: ClipboardList },
+  { id: "info", name: "Informações Gerais", fields: ["productionDate", "batchNumber", "mixProductionBatchId", "notes"] as const, icon: ClipboardList },
   { id: "products", name: "Produtos Acabados", fields: ["producedItems"] as const, icon: Package },
-  { id: "materials", name: "Insumos Utilizados", fields: ["usedMaterials"] as const, icon: Factory },
+  { id: "materials", name: "Insumos Adicionais", fields: ["usedMaterials"] as const, icon: Factory },
 ];
 
 const generateSuggestedBatchNumber = (
@@ -157,13 +152,10 @@ const Production = () => {
     defaultValues: {
       productionDate: today,
       batchNumber: "", // Inicialmente vazio
-      mixDate: today,
-      mixCount: 1,
+      mixProductionBatchId: "",
       notes: "",
       producedItems: [{ productId: "", quantity: 0 }],
-      usedMaterials: [
-        { materialBatchId: "", quantity: 0 },
-      ],
+      usedMaterials: [],
     },
   });
 
@@ -195,8 +187,22 @@ const Production = () => {
     (batch) => batch.remainingQuantity > 0
   );
 
+  // Buscar mexidas disponíveis (status = 'mix_only')
+  const availableMixes = React.useMemo(() => {
+    if (!productionBatches) return [];
+    return productionBatches.filter(batch => 
+      batch.status === 'mix_only' && batch.isMixOnly
+    );
+  }, [productionBatches]);
+
   const watchedUsedMaterials = form.watch("usedMaterials");
-  const watchedMixCount = form.watch("mixCount");
+  const watchedMixId = form.watch("mixProductionBatchId");
+
+  // Buscar detalhes da mexida selecionada
+  const selectedMixDetails = React.useMemo(() => {
+    if (!watchedMixId) return null;
+    return availableMixes.find(mix => mix.id === watchedMixId);
+  }, [watchedMixId, availableMixes]);
 
   const getProductDetails = React.useCallback((productId: string) => {
     return products.find((p) => p.id === productId);
@@ -232,7 +238,7 @@ const Production = () => {
     validationError: conservantError,
     updateMixCount,
     getConservantMaterials,
-  } = useConservantLogic(conservantMaterials, watchedMixCount, globalConservantUsageFactor !== null ? globalConservantUsageFactor : 0.1);
+  } = useConservantLogic(conservantMaterials, 1, globalConservantUsageFactor !== null ? globalConservantUsageFactor : 0.1);
 
   const directlyCalculatedConservantMaterialsCount = watchedUsedMaterials.filter(material => {
     if (!material.materialBatchId) return false;
@@ -301,6 +307,11 @@ const Production = () => {
       return;
     }
 
+    if (!selectedMixDetails) {
+      toast({ variant: "destructive", title: "Mexida obrigatória", description: "Selecione uma mexida antes de continuar." });
+      return;
+    }
+
     if (directlyCalculatedConservantMaterialsCount > 1 && !isDistributeSectionVisible) {
       toast({ variant: "default", title: "Distribuição de Conservantes Pendente", description: "Por favor, confirme a distribuição de mexidas entre os lotes de conservantes através do pop-up." });
       return;
@@ -320,58 +331,33 @@ const Production = () => {
           unitOfMeasure: product.unitOfMeasure, batchNumber: data.batchNumber, remainingQuantity: item.quantity,
         };
       });
+
+      // Processar apenas insumos adicionais (se houver)
+      let usedMaterialsPayload: any[] = [];
       
-      let usedMaterialsPayload: any[] = []; 
-      if (conservantMaterials.length > 0 && isDistributeSectionVisible) { 
-        const conservantUsedData = getConservantMaterials(); 
-        const nonConservantMaterialsData = data.usedMaterials
-          .filter(item => {
-            const batchDetails = getMaterialBatchDetails(item.materialBatchId);
-            return batchDetails && batchDetails.materialType !== "Conservante";
-          })
-          .map((item) => {
-            const materialBatch = getMaterialBatchDetails(item.materialBatchId);
-            if (!materialBatch) throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
-            if (materialBatch.remainingQuantity < item.quantity) throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
-            return {
-              materialBatchId: item.materialBatchId, materialName: materialBatch.materialName, materialType: materialBatch.materialType,
-              batchNumber: materialBatch.batchNumber, quantity: item.quantity, unitOfMeasure: materialBatch.unitOfMeasure, mixCountUsed: null,
-            };
-          });
-        usedMaterialsPayload = [...conservantUsedData, ...nonConservantMaterialsData];
-      } else {
-        usedMaterialsPayload = data.usedMaterials
-          .map((item) => {
-            const materialBatch = getMaterialBatchDetails(item.materialBatchId);
-            if (!materialBatch) throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
-            let finalQuantity = item.quantity;
-            let mixCountToUse = null;
-            if (materialBatch.materialType === "Conservante") {
-              if (directlyCalculatedConservantMaterialsCount === 1) {
-                finalQuantity = item.quantity; mixCountToUse = watchedMixCount; 
-              } else if (directlyCalculatedConservantMaterialsCount > 1 && (!isDistributeSectionVisible || !conservantValid)) {
-                finalQuantity = 0; mixCountToUse = null;
-              }
-            } else {
-                if (materialBatch.remainingQuantity < item.quantity) throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
-            }
-            return {
-              materialBatchId: item.materialBatchId, materialName: materialBatch.materialName, materialType: materialBatch.materialType,
-              batchNumber: materialBatch.batchNumber, quantity: finalQuantity, unitOfMeasure: materialBatch.unitOfMeasure, mixCountUsed: mixCountToUse,
-            };
-          });
+      if (data.usedMaterials && data.usedMaterials.length > 0) {
+        const additionalMaterials = data.usedMaterials.map((item) => {
+          const materialBatch = getMaterialBatchDetails(item.materialBatchId);
+          if (!materialBatch) throw new Error(`Lote de insumo não encontrado: ${item.materialBatchId}`);
+          if (materialBatch.remainingQuantity < item.quantity) throw new Error(`Quantidade insuficiente de ${materialBatch.materialName} no lote ${materialBatch.batchNumber}`);
+          return {
+            materialBatchId: item.materialBatchId, materialName: materialBatch.materialName, materialType: materialBatch.materialType,
+            batchNumber: materialBatch.batchNumber, quantity: item.quantity, unitOfMeasure: materialBatch.unitOfMeasure, mixCountUsed: null,
+          };
+        });
+        usedMaterialsPayload = additionalMaterials;
       }
       
       const productionBatchPayload = {
         batchNumber: data.batchNumber, 
         productionDate: parseDateString(data.productionDate), 
-        mixDay: data.mixDate,
-        mixCount: data.mixCount, 
+        mixDay: selectedMixDetails.mixDay,
+        mixCount: selectedMixDetails.mixCount, 
         notes: data.notes, 
         producedItems: producedItemsData, 
         usedMaterials: usedMaterialsPayload,
-        // Adicionar campos obrigatórios
         isMixOnly: false,
+        mixProductionBatchId: selectedMixDetails.id,
         status: 'production_complete' as const,
       };
       
@@ -386,11 +372,10 @@ const Production = () => {
       form.reset({
         productionDate: today, 
         batchNumber: generateSuggestedBatchNumber(productionBatches), // Sugestão no reset
-        mixDate: today, 
-        mixCount: 1, 
+        mixProductionBatchId: "",
         notes: "",
         producedItems: [{ productId: "", quantity: 0 }], 
-        usedMaterials: [{ materialBatchId: "", quantity: 0 }],
+        usedMaterials: [],
       });
       setIsDistributeSectionVisible(false);
     } catch (error) {
@@ -413,7 +398,6 @@ const Production = () => {
   const currentTabIndex = TABS.findIndex(tab => tab.id === activeTabId);
   
   // LOGS PARA DEPURAR O CICLO DE RENDERIZAÇÃO
-  console.log('[Production] Render. Watched MixCount:', watchedMixCount);
   console.log('[Production] Render. Directly Calculated Conservants Count:', directlyCalculatedConservantMaterialsCount);
   console.log('[Production] Render. ConservantMaterials (prop para o hook):', JSON.stringify(conservantMaterials, null, 2));
   console.log('[Production] Render. ConservantUsages (retorno do hook):', JSON.stringify(conservantUsages, null, 2));
@@ -428,10 +412,18 @@ const Production = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2">
-        <h1 className="text-2xl font-bold">Registrar Nova Produção</h1>
-        <Button variant="outline" onClick={() => navigate("/producao/historico")}>
-          <History className="mr-2 h-4 w-4" /> Histórico de Produção
-        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Registrar Nova Produção</h1>
+          <p className="text-sm text-muted-foreground">Segunda etapa: Selecione uma mexida e registre os produtos acabados</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/mexida")}>
+            <FlaskConical className="mr-2 h-4 w-4" /> Nova Mexida
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/producao/historico")}>
+            <History className="mr-2 h-4 w-4" /> Histórico de Produção
+          </Button>
+        </div>
       </div>
 
       <Form {...form}>
@@ -454,38 +446,32 @@ const Production = () => {
                     <FormField control={form.control} name="batchNumber" render={({ field }) => (<FormItem><FormLabel>Lote de Produção</FormLabel><FormControl><Input placeholder="Ex: PROD-2024-07-27" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
                   <div className={cn("grid grid-cols-2 gap-6", isMobile && "grid-cols-1")}>
-                    <FormField control={form.control} name="mixDate" render={({ field }) => (<FormItem><FormLabel>Data da Mexida</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="mixCount" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quantidade de Mexidas</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0"
-                            value={field.value === 0 ? "" : field.value}
-                            onChange={e => {
-                              const inputValue = e.target.value;
-                              if (inputValue === "") {
-                                field.onChange(null);
-                              } else {
-                                const value = parseInt(inputValue, 10) || 0;
-                                field.onChange(value);
-                              }
-                            }}
-                            onBlur={e => {
-                              const inputValue = e.target.value;
-                              if (inputValue === "") {
-                                field.onChange(0);
-                              } else {
-                                const value = parseInt(inputValue, 10) || 0;
-                                field.onChange(value);
-                              }
-                            }}
+                    <FormField 
+                      control={form.control} 
+                      name="mixProductionBatchId" 
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Mexida</FormLabel>
+                          <Combobox
+                            options={availableMixes.map(mix => ({ 
+                              value: mix.id, 
+                              label: `${mix.batchNumber} - ${new Date(mix.productionDate).toLocaleDateString()} (${mix.mixCount} mexidas)`
+                            }))}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Selecione uma mexida"
+                            searchPlaceholder="Buscar mexida..."
+                            notFoundMessage="Nenhuma mexida disponível."
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                          <FormMessage />
+                          {selectedMixDetails && (
+                            <FormDescription className="text-xs">
+                              Mexida selecionada: {selectedMixDetails.batchNumber} - {selectedMixDetails.mixCount} mexidas - {new Date(selectedMixDetails.productionDate).toLocaleDateString()}
+                            </FormDescription>
+                          )}
+                        </FormItem>
+                      )} 
+                    />
                   </div>
                   <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea placeholder="Alguma observação relevante sobre a produção..." {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </CardContent>
@@ -556,7 +542,7 @@ const Production = () => {
 
             <TabsContent value="materials" forceMount className={cn(activeTabId !== "materials" && "hidden")} >
               <Card>
-                <CardHeader><CardTitle>Insumos Utilizados</CardTitle><CardDescription>Liste os insumos e seus respectivos lotes utilizados na produção.</CardDescription></CardHeader>
+                <CardHeader><CardTitle>Insumos Adicionais</CardTitle><CardDescription>Liste os insumos adicionais utilizados na produção.</CardDescription></CardHeader>
                 <CardContent className="space-y-4">
                   {usedMaterialFields.map((item, index) => {
                     const selMatBatchId = form.watch(`usedMaterials.${index}.materialBatchId`);
@@ -584,7 +570,7 @@ const Production = () => {
                                 if (directlyCalculatedConservantMaterialsCount > 1 && isDistributeSectionVisible) return null; 
                                 const uInfo = conservantUsages.find(u => u.materialBatchId === selMatBatchId);
                                 const calcQty = uInfo ? uInfo.quantity : 0;
-                                return (<FormItem><FormLabel>Quantidade Utilizada (Calculada)</FormLabel><FormControl><Input type="number" value={calcQty.toFixed(3)} readOnly className="bg-muted/50 cursor-default"/></FormControl>{globalConservantUsageFactor !== null && watchedMixCount > 0 && matBatchDetails && (<FormDescription>Base: {watchedMixCount} mexida(s) &times; {globalConservantUsageFactor.toFixed(3)} {matBatchDetails.unitOfMeasure}/mexida</FormDescription>)}<FormMessage /></FormItem>);
+                                return (<FormItem><FormLabel>Quantidade Utilizada (Calculada)</FormLabel><FormControl><Input type="number" value={calcQty.toFixed(3)} readOnly className="bg-muted/50 cursor-default"/></FormControl>{globalConservantUsageFactor !== null && (<FormDescription>Base: {globalConservantUsageFactor.toFixed(3)} {matBatchDetails.unitOfMeasure}/mexida</FormDescription>)}<FormMessage /></FormItem>);
                               } else return (
                                 <FormItem>
                                   <FormLabel>Quantidade Utilizada</FormLabel>
