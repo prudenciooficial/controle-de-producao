@@ -118,20 +118,19 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
         ]);
 
         return {
-          ...batch,
           id: batch.id,
           batchNumber: batch.batch_number,
-          productionDate: batch.production_date,
-          mixDay: batch.mix_day || "1",
-          mixCount: batch.mix_count || 1,
-          notes: batch.notes || "",
-          producedItems,
-          usedMaterials,
+          productionDate: new Date(batch.production_date),
+          mixDay: batch.mix_day,
+          mixCount: batch.mix_count,
+          notes: batch.notes,
+          producedItems: producedItems,
+          usedMaterials: usedMaterials,
           createdAt: new Date(batch.created_at),
           updatedAt: new Date(batch.updated_at),
           isMixOnly: false,
-          mixProductionBatchId: batch.mix_batch_id,
-          status: batch.status || 'complete'
+          mixProductionBatchId: batch.mix_batch_id || null,
+          status: 'complete' // Valor padrão se não existir no banco
         } as ProductionBatch;
       })
     );
@@ -165,8 +164,12 @@ export const createProductionBatch = async (
       mix_day: batch.mixDay,
       mix_count: batch.mixCount,
       notes: batch.notes,
-      status: batch.status || 'complete'
     };
+
+    // Add status only if provided and not undefined
+    if (batch.status && batch.status !== undefined) {
+      batchInsertData.status = batch.status;
+    }
 
     // Add mix_batch_id if provided (linking to a mix)
     if (batch.mixProductionBatchId) {

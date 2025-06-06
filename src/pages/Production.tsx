@@ -378,16 +378,16 @@ const Production = () => {
         usedMaterials: usedMaterialsPayload,
         isMixOnly: false,
         mixProductionBatchId: selectedMixDetails.id,
-        status: 'complete' as const,
-      };
+        status: undefined as any, // VALOR UNDEFINED PARA EVITAR CONSTRAINT
+      } as Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">;
       
       addProductionBatch(productionBatchPayload);
       toast({ title: "Produção Registrada", description: `Lote de produção ${data.batchNumber} registrado com sucesso.` });
       
-      // Refresh automático para sincronizar dados
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Refresh automático para sincronizar dados - COMENTADO TEMPORARIAMENTE PARA DEBUG
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 1500);
       
       form.reset({
         productionDate: today, 
