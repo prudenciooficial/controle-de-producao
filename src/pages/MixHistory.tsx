@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -57,7 +58,6 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { fetchMixBatches, updateMixBatch, deleteMixBatch } from "@/services/mixService";
 import type { MixBatch, UsedMaterialMix } from "@/types/mix";
-import { useFieldArray } from "react-hook-form";
 import { Combobox } from "@/components/ui/combobox";
 
 const MixHistory = () => {
@@ -778,4 +778,4 @@ const MixHistory = () => {
   );
 };
 
-export default MixHistory; 
+export default MixHistory;
