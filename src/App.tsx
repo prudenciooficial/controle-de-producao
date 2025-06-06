@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,6 +25,7 @@ import LossesHistory from "./pages/LossesHistory";
 import Traceability from "./pages/Traceability";
 import Registration from "./pages/Registration";
 import Users from "./pages/Users";
+import RecursosHumanos from "./pages/RecursosHumanos";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PrintableTraceabilityPage from "./pages/print/PrintableTraceabilityPage";
@@ -67,6 +69,7 @@ const AppContent = () => {
                   <Route path="/perdas/historico" element={<LossesHistory />} />
                   <Route path="/rastreabilidade" element={<Traceability />} />
                   <Route path="/cadastro" element={<Registration />} />
+                  <Route path="/recursos-humanos" element={<RecursosHumanos />} />
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
                   <Route path="*" element={<NotFound />} />

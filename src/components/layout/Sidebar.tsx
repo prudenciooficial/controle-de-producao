@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,6 +54,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     { name: "Perdas", path: "/perdas", icon: PackageX, module: "losses" },
     { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search, module: "traceability" },
     { name: "Cadastro", path: "/cadastro", icon: Settings, module: "general_settings" },
+    { name: "RH", path: "/recursos-humanos", icon: UserCheck, module: "human_resources" },
     { name: "Usuários", path: "/usuarios", icon: Users, module: "user_management" },
     {
       name: "Logs do Sistema",
