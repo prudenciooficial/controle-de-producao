@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ProductionBatch, ProducedItem, UsedMaterial } from "../types";
 import { beginTransaction, endTransaction, abortTransaction } from "./base/supabaseClient";
@@ -93,7 +94,11 @@ const fetchProductionBatchById = async (id: string): Promise<ProductionBatch> =>
     producedItems: producedItems,
     usedMaterials: usedMaterials,
     createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at)
+    updatedAt: new Date(data.updated_at),
+    // Novos campos
+    isMixOnly: data.is_mix_only || false,
+    mixProductionBatchId: data.mix_production_batch_id,
+    status: data.status || 'production_complete'
   };
 };
 
@@ -124,11 +129,53 @@ export const fetchProductionBatches = async (): Promise<ProductionBatch[]> => {
       producedItems: producedItems,
       usedMaterials: usedMaterials,
       createdAt: new Date(batch.created_at),
-      updatedAt: new Date(batch.updated_at)
+      updatedAt: new Date(batch.updated_at),
+      // Novos campos
+      isMixOnly: batch.is_mix_only || false,
+      mixProductionBatchId: batch.mix_production_batch_id,
+      status: batch.status || 'production_complete'
     });
   }
 
   return productionBatches;
+};
+
+// Função para buscar apenas mexidas disponíveis
+export const fetchAvailableMixes = async (): Promise<ProductionBatch[]> => {
+  const { data, error } = await supabase
+    .from("production_batches")
+    .select("*")
+    .eq("is_mix_only", true)
+    .eq("status", "mix_only")
+    .order("production_date", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching available mixes:", error);
+    throw error;
+  }
+
+  const mixes: ProductionBatch[] = [];
+  for (const batch of data) {
+    const usedMaterials = await fetchUsedMaterials(batch.id);
+
+    mixes.push({
+      id: batch.id,
+      batchNumber: batch.batch_number,
+      productionDate: new Date(batch.production_date),
+      mixDay: batch.mix_day,
+      mixCount: batch.mix_count,
+      notes: batch.notes,
+      producedItems: [], // Mexidas não têm produtos acabados
+      usedMaterials: usedMaterials,
+      createdAt: new Date(batch.created_at),
+      updatedAt: new Date(batch.updated_at),
+      isMixOnly: batch.is_mix_only || false,
+      mixProductionBatchId: batch.mix_production_batch_id,
+      status: batch.status || 'mix_only'
+    });
+  }
+
+  return mixes;
 };
 
 // When creating a production batch, ensure remaining_quantity is set to the same value as quantity
@@ -150,7 +197,10 @@ export const createProductionBatch = async (
         production_date: batch.productionDate.toISOString(),
         mix_day: batch.mixDay,
         mix_count: batch.mixCount,
-        notes: batch.notes
+        notes: batch.notes,
+        is_mix_only: batch.isMixOnly || false,
+        mix_production_batch_id: batch.mixProductionBatchId || null,
+        status: batch.status || 'production_complete'
       })
       .select()
       .single();
@@ -160,23 +210,25 @@ export const createProductionBatch = async (
       throw batchError;
     }
     
-    // Insert produced items
-    for (const item of batch.producedItems) {
-      // FIXED: Ensure remaining_quantity is same as quantity initially
-      const { error: itemError } = await supabase
-        .from("produced_items")
-        .insert({
-          production_batch_id: batchData.id,
-          product_id: item.productId,
-          quantity: item.quantity,
-          remaining_quantity: item.quantity, // Set to same as quantity
-          unit_of_measure: item.unitOfMeasure,
-          batch_number: item.batchNumber
-        });
-      
-      if (itemError) {
-        await abortTransaction();
-        throw itemError;
+    // Insert produced items (apenas se não for mexida)
+    if (!batch.isMixOnly && batch.producedItems) {
+      for (const item of batch.producedItems) {
+        // FIXED: Ensure remaining_quantity is same as quantity initially
+        const { error: itemError } = await supabase
+          .from("produced_items")
+          .insert({
+            production_batch_id: batchData.id,
+            product_id: item.productId,
+            quantity: item.quantity,
+            remaining_quantity: item.quantity, // Set to same as quantity
+            unit_of_measure: item.unitOfMeasure,
+            batch_number: item.batchNumber
+          });
+        
+        if (itemError) {
+          await abortTransaction();
+          throw itemError;
+        }
       }
     }
     
@@ -239,6 +291,19 @@ export const createProductionBatch = async (
       if (updatedBatch && Math.abs(updatedBatch.remaining_quantity - newRemainingQuantity) > 0.001) {
         await abortTransaction();
         throw new Error(`Inconsistência detectada! Esperado: ${newRemainingQuantity}, Obtido: ${updatedBatch.remaining_quantity} para material ${material.materialName}`);
+      }
+    }
+    
+    // Se estiver vinculando uma mexida à produção, atualizar o status da mexida
+    if (batch.mixProductionBatchId) {
+      const { error: mixUpdateError } = await supabase
+        .from("production_batches")
+        .update({ status: 'production_complete' })
+        .eq("id", batch.mixProductionBatchId);
+      
+      if (mixUpdateError) {
+        await abortTransaction();
+        throw new Error(`Erro ao atualizar status da mexida: ${mixUpdateError.message}`);
       }
     }
     

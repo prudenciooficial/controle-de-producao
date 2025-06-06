@@ -14,6 +14,9 @@ export interface ProductionBatch {
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
+  isMixOnly: boolean;
+  mixProductionBatchId?: string;
+  status: 'mix_only' | 'production_complete' | 'rework';
 }
 
 export interface ProducedItem {

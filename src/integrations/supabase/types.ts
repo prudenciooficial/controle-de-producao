@@ -87,6 +87,13 @@ export type Database = {
             referencedRelation: "production_batches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "losses_production_batch_id_fkey"
+            columns: ["production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_production_summary"
+            referencedColumns: ["production_batch_id"]
+          },
         ]
       }
       material_batches: {
@@ -97,6 +104,7 @@ export type Database = {
           has_report: boolean | null
           id: string
           material_id: string
+          order_item_id: string | null
           quantity: number
           remaining_quantity: number
           supplied_quantity: number
@@ -110,6 +118,7 @@ export type Database = {
           has_report?: boolean | null
           id?: string
           material_id: string
+          order_item_id?: string | null
           quantity: number
           remaining_quantity: number
           supplied_quantity: number
@@ -123,6 +132,7 @@ export type Database = {
           has_report?: boolean | null
           id?: string
           material_id?: string
+          order_item_id?: string | null
           quantity?: number
           remaining_quantity?: number
           supplied_quantity?: number
@@ -131,11 +141,25 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_material_batches_order_item"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "material_batches_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_batches_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_material_stock"
+            referencedColumns: ["material_id"]
           },
         ]
       }
@@ -216,6 +240,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_material_stock"
+            referencedColumns: ["material_id"]
           },
           {
             foreignKeyName: "order_items_order_id_fkey"
@@ -307,11 +338,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "produced_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_product_stock"
+            referencedColumns: ["product_id"]
+          },
+          {
             foreignKeyName: "produced_items_production_batch_id_fkey"
             columns: ["production_batch_id"]
             isOneToOne: false
             referencedRelation: "production_batches"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produced_items_production_batch_id_fkey"
+            columns: ["production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_production_summary"
+            referencedColumns: ["production_batch_id"]
           },
         ]
       }
@@ -320,33 +365,57 @@ export type Database = {
           batch_number: string
           created_at: string
           id: string
+          is_mix_only: boolean
           mix_count: number
           mix_day: string
+          mix_production_batch_id: string | null
           notes: string | null
           production_date: string
+          status: string
           updated_at: string
         }
         Insert: {
           batch_number: string
           created_at?: string
           id?: string
+          is_mix_only?: boolean
           mix_count: number
           mix_day: string
+          mix_production_batch_id?: string | null
           notes?: string | null
           production_date: string
+          status?: string
           updated_at?: string
         }
         Update: {
           batch_number?: string
           created_at?: string
           id?: string
+          is_mix_only?: boolean
           mix_count?: number
           mix_day?: string
+          mix_production_batch_id?: string | null
           notes?: string | null
           production_date?: string
+          status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "production_batches_mix_production_batch_id_fkey"
+            columns: ["mix_production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "production_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batches_mix_production_batch_id_fkey"
+            columns: ["mix_production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_production_summary"
+            referencedColumns: ["production_batch_id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -436,11 +505,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sale_items_produced_item_id_fkey"
+            columns: ["produced_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_product_stock"
+            referencedColumns: ["produced_item_id"]
+          },
+          {
             foreignKeyName: "sale_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_product_stock"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "sale_items_sale_id_fkey"
@@ -593,30 +676,149 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "used_materials_material_batch_id_fkey"
+            columns: ["material_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_current_material_stock"
+            referencedColumns: ["batch_id"]
+          },
+          {
             foreignKeyName: "used_materials_production_batch_id_fkey"
             columns: ["production_batch_id"]
             isOneToOne: false
             referencedRelation: "production_batches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "used_materials_production_batch_id_fkey"
+            columns: ["production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_production_summary"
+            referencedColumns: ["production_batch_id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      v_current_material_stock: {
+        Row: {
+          batch_id: string | null
+          batch_number: string | null
+          created_at: string | null
+          expiry_date: string | null
+          has_report: boolean | null
+          material_id: string | null
+          material_name: string | null
+          material_type: string | null
+          original_quantity: number | null
+          remaining_quantity: number | null
+          unit_of_measure: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      v_current_product_stock: {
+        Row: {
+          batch_number: string | null
+          created_at: string | null
+          original_quantity: number | null
+          produced_item_id: string | null
+          product_id: string | null
+          product_name: string | null
+          product_type: string | null
+          production_date: string | null
+          remaining_quantity: number | null
+          unit_of_measure: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      v_production_summary: {
+        Row: {
+          batch_number: string | null
+          created_at: string | null
+          materials_count: number | null
+          mix_count: number | null
+          mix_day: string | null
+          production_batch_id: string | null
+          production_date: string | null
+          products_count: number | null
+          total_weight_kg: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       abort_transaction: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      auditoria_completa_estoque: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          relatorio: string
+        }[]
+      }
       begin_transaction: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      calculate_total_weight: {
+        Args: { production_batch_id: string }
+        Returns: number
+      }
+      check_material_stock: {
+        Args: { material_batch_id: string; required_quantity: number }
+        Returns: boolean
+      }
+      detectar_inconsistencias_estoque: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          material_id: string
+          batch_id: string
+          material_nome: string
+          lote_material: string
+          estoque_atual: number
+          estoque_esperado: number
+          diferenca: number
+          data_deteccao: string
+        }[]
+      }
       end_transaction: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_global_settings: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          fecula_conversion_factor: number
+          production_prediction_factor: number
+          conservant_conversion_factor: number
+          conservant_usage_factor: number
+        }[]
+      }
+      get_material_stock_history: {
+        Args: { material_id: string }
+        Returns: {
+          batch_number: string
+          quantity: number
+          remaining_quantity: number
+          created_at: string
+        }[]
+      }
+      verificar_integridade_estoque: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          material_nome: string
+          lote_material: string
+          estoque_atual: number
+          total_usado: number
+          estoque_esperado: number
+          diferenca: number
+          status: string
+        }[]
       }
     }
     Enums: {

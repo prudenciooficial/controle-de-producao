@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +13,7 @@ import { Header } from "./components/layout/Header";
 import Dashboard from "./pages/Dashboard";
 import Production from "./pages/Production";
 import ProductionHistory from "./pages/ProductionHistory";
+import MixRegistration from "./pages/MixRegistration";
 import Sales from "./pages/Sales";
 import SalesHistory from "./pages/SalesHistory";
 import Orders from "./pages/Orders";
@@ -52,6 +54,7 @@ const AppContent = () => {
               <main className="flex-1 p-4 sm:p-6 bg-muted">
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
+                  <Route path="/mexida" element={<MixRegistration />} />
                   <Route path="/producao" element={<Production />} />
                   <Route path="/producao/historico" element={<ProductionHistory />} />
                   <Route path="/vendas" element={<Sales />} />
