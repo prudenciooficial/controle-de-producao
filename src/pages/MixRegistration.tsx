@@ -30,6 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { createMixBatch } from "@/services/mixService";
 
 // Schema for mix registration form validation
 const mixFormSchema = z.object({
@@ -61,7 +62,7 @@ const MixRegistration = () => {
   const { materialBatches, addProductionBatch } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user, getUserDisplayName } = useAuth();
   const isMobile = useIsMobile();
   
   const today = getTodayDateString();
@@ -201,7 +202,7 @@ const MixRegistration = () => {
     });
   }, [conservantUsages, conservantMaterials, form]);
 
-  const onSubmit = (data: MixFormValues) => {
+  const onSubmit = async (data: MixFormValues) => {
     if (!hasPermission('production', 'create')) {
       toast({ variant: "destructive", title: "Acesso Negado", description: "Você não tem permissão para registrar mexidas." });
       return;
@@ -234,6 +235,8 @@ const MixRegistration = () => {
           quantity: material.quantity,
           unitOfMeasure: materialBatch.unitOfMeasure,
           mixCountUsed,
+          createdAt: new Date(),
+          updatedAt: new Date()
         };
       });
 
@@ -242,17 +245,16 @@ const MixRegistration = () => {
 
       const mixBatchPayload = {
         batchNumber: mixBatchNumber,
-        productionDate: new Date(data.mixDate),
+        mixDate: new Date(data.mixDate),
         mixDay: data.mixDate,
         mixCount: data.mixCount,
         notes: data.notes || "",
-        producedItems: [], // Mexida não tem produtos acabados
+        status: 'available' as const,
         usedMaterials: usedMaterialsData,
-        isMixOnly: true,
-        status: 'mix_only' as const,
       };
       
-      addProductionBatch(mixBatchPayload);
+      // Usar o serviço específico de mexidas
+      await createMixBatch(mixBatchPayload, user?.id, getUserDisplayName());
       toast({ title: "Mexida Registrada", description: `Mexida ${mixBatchNumber} registrada com sucesso.` });
       
       // Refresh automático para sincronizar dados
@@ -297,8 +299,8 @@ const MixRegistration = () => {
           <Button variant="outline" onClick={() => navigate("/producao")}>
             <Factory className="mr-2 h-4 w-4" /> Ir para Produção
           </Button>
-          <Button variant="outline" onClick={() => navigate("/producao/historico")}>
-            <History className="mr-2 h-4 w-4" /> Histórico
+          <Button variant="outline" onClick={() => navigate("/mexida/historico")}>
+            <History className="mr-2 h-4 w-4" /> Histórico de Mexidas
           </Button>
         </div>
       </div>

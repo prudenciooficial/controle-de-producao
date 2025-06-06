@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Production from "./pages/Production";
 import ProductionHistory from "./pages/ProductionHistory";
 import MixRegistration from "./pages/MixRegistration";
+import MixHistory from "./pages/MixHistory";
 import Sales from "./pages/Sales";
 import SalesHistory from "./pages/SalesHistory";
 import Orders from "./pages/Orders";
@@ -54,6 +55,7 @@ const AppContent = () => {
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/mexida" element={<MixRegistration />} />
+                  <Route path="/mexida/historico" element={<MixHistory />} />
                   <Route path="/producao" element={<Production />} />
                   <Route path="/producao/historico" element={<ProductionHistory />} />
                   <Route path="/vendas" element={<Sales />} />

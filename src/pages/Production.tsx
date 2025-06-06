@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAvailableMixBatches } from "@/services/mixService";
+import type { MixBatch } from "@/types/mix";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,6 +119,30 @@ const Production = () => {
   const [showConservantConflictModal, setShowConservantConflictModal] = useState(false);
   const [conflictingConservantInfo, setConflictingConservantInfo] = useState<{ index: number; materialName: string } | null>(null);
   const previousConservantCountRef = React.useRef(0);
+  const [availableMixes, setAvailableMixes] = useState<MixBatch[]>([]);
+  const [isLoadingMixes, setIsLoadingMixes] = useState<boolean>(true);
+
+  // useEffect para buscar mexidas disponíveis
+  React.useEffect(() => {
+    const fetchMixes = async () => {
+      setIsLoadingMixes(true);
+      try {
+        const mixes = await fetchAvailableMixBatches();
+        setAvailableMixes(mixes);
+      } catch (error) {
+        console.error("Erro ao buscar mexidas:", error);
+        toast({ 
+          variant: "destructive", 
+          title: "Erro ao carregar mexidas", 
+          description: "Não foi possível carregar as mexidas disponíveis." 
+        });
+      } finally {
+        setIsLoadingMixes(false);
+      }
+    };
+    
+    fetchMixes();
+  }, [toast]);
 
   // useEffect para buscar fatores globais (posição original)
   React.useEffect(() => {
@@ -187,13 +213,7 @@ const Production = () => {
     (batch) => batch.remainingQuantity > 0
   );
 
-  // Buscar mexidas disponíveis (status = 'mix_only')
-  const availableMixes = React.useMemo(() => {
-    if (!productionBatches) return [];
-    return productionBatches.filter(batch => 
-      batch.status === 'mix_only' && batch.isMixOnly
-    );
-  }, [productionBatches]);
+  // Buscar mexidas disponíveis - agora usando fetchAvailableMixBatches do mixService
 
   const watchedUsedMaterials = form.watch("usedMaterials");
   const watchedMixId = form.watch("mixProductionBatchId");
@@ -358,7 +378,7 @@ const Production = () => {
         usedMaterials: usedMaterialsPayload,
         isMixOnly: false,
         mixProductionBatchId: selectedMixDetails.id,
-        status: 'production_complete' as const,
+        status: 'complete' as const,
       };
       
       addProductionBatch(productionBatchPayload);
@@ -455,7 +475,7 @@ const Production = () => {
                           <Combobox
                             options={availableMixes.map(mix => ({ 
                               value: mix.id, 
-                              label: `${mix.batchNumber} - ${new Date(mix.productionDate).toLocaleDateString()} (${mix.mixCount} mexidas)`
+                              label: `${mix.batchNumber} - ${new Date(mix.mixDate).toLocaleDateString()} (${mix.mixCount} mexidas)`
                             }))}
                             value={field.value}
                             onValueChange={field.onChange}
@@ -466,7 +486,7 @@ const Production = () => {
                           <FormMessage />
                           {selectedMixDetails && (
                             <FormDescription className="text-xs">
-                              Mexida selecionada: {selectedMixDetails.batchNumber} - {selectedMixDetails.mixCount} mexidas - {new Date(selectedMixDetails.productionDate).toLocaleDateString()}
+                              Mexida selecionada: {selectedMixDetails.batchNumber} - {selectedMixDetails.mixCount} mexidas - {new Date(selectedMixDetails.mixDate).toLocaleDateString()}
                             </FormDescription>
                           )}
                         </FormItem>
