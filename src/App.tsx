@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,6 +28,7 @@ import RecursosHumanos from "./pages/RecursosHumanos";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PrintableTraceabilityPage from "./pages/print/PrintableTraceabilityPage";
+import { FolhaPontoPage } from "./pages/print/FolhaPontoPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import { cn } from "./lib/utils";
 import SystemLogsPage from "./pages/SystemLogsPage/SystemLogsPage";
@@ -48,6 +48,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route path="/print/traceability/:batchId" element={<PrintableTraceabilityPage />} />
+        <Route path="/print/folha-ponto" element={<FolhaPontoPage />} />
         <Route path="/*" element={
           <ProtectedRoute>
             <Sidebar isMobileMenuOpen={sidebarOpen} onMobileMenuToggle={toggleSidebar} />

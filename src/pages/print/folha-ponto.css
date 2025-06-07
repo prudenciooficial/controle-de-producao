@@ -1,0 +1,709 @@
+/* Estilos para impressão A4 */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 12px !important;
+    width: 210mm !important;
+    height: 297mm !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    width: 210mm !important;
+    height: auto !important;
+  }
+  
+  .folha-ponto {
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    page-break-after: always !important;
+    page-break-before: auto !important;
+    page-break-inside: avoid !important;
+    box-sizing: border-box !important;
+    background: white !important;
+    display: flex !important;
+    flex-direction: column !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    color: #000 !important;
+  }
+  
+  .folha-ponto:last-child {
+    page-break-after: auto !important;
+  }
+  
+  /* Cabeçalho e seções para impressão */
+  .cabecalho-principal {
+    text-align: center;
+    margin-bottom: 8px !important;
+    border: 2px solid #000 !important;
+    padding: 4px !important;
+    background: white !important;
+  }
+  
+  .cabecalho-principal h1 {
+    margin: 0 !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
+    letter-spacing: 1px !important;
+  }
+  
+  .info-empresa, .info-periodo, .info-funcionario {
+    margin-bottom: 6px !important;
+    border: 1px solid #000 !important;
+    padding: 3px 6px !important;
+    background: white !important;
+  }
+  
+  .linha-info, .linha-periodo, .linha-horario, .linha-funcionario, .linha-funcionario-completa {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-bottom: 1px !important;
+  }
+  
+  .linha-funcionario-completa {
+    flex-wrap: wrap !important;
+  }
+  
+  .linha-info .label, .linha-periodo .label, .linha-horario .label, .linha-funcionario .label, .linha-funcionario-completa .label {
+    font-weight: bold !important;
+    font-size: 9px !important;
+  }
+  
+  .linha-info .valor, .linha-periodo .valor, .linha-horario .valor {
+    font-weight: bold !important;
+    font-size: 9px !important;
+  }
+  
+  .nome-funcionario {
+    font-weight: bold !important;
+    font-size: 10px !important;
+  }
+  
+  .cargo-funcionario {
+    font-weight: bold !important;
+    font-size: 9px !important;
+  }
+  
+  .setor-funcionario {
+    font-weight: bold !important;
+    font-size: 9px !important;
+  }
+  
+  .separador {
+    font-weight: bold !important;
+    font-size: 10px !important;
+    color: #666 !important;
+    margin: 0 3px !important;
+  }
+  
+  .mes-ano-direita {
+    font-weight: bold !important;
+    font-size: 10px !important;
+  }
+  
+  /* Tabela para impressão */
+  .tabela-ponto {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border: 2px solid #000 !important;
+    margin-bottom: 10px !important;
+    flex: 1 !important;
+    background: white !important;
+  }
+  
+  .tabela-ponto th {
+    background: #000 !important;
+    color: white !important;
+    border: 1px solid #000 !important;
+    padding: 3px 1px !important;
+    text-align: center !important;
+    font-weight: bold !important;
+    font-size: 8px !important;
+    vertical-align: middle !important;
+  }
+  
+  .tabela-ponto td {
+    border: 1px solid #000 !important;
+    padding: 2px !important;
+    text-align: center !important;
+    height: auto !important;
+    vertical-align: middle !important;
+    font-size: 8px !important;
+    min-height: 16px !important;
+    background: white !important;
+  }
+  
+  .sub-header {
+    background: #333 !important;
+    color: white !important;
+    font-size: 7px !important;
+  }
+  
+  .dia-container .numero {
+    font-weight: bold !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+  }
+  
+  .dia-container .dia-semana {
+    font-size: 7px !important;
+    font-weight: normal !important;
+    line-height: 1 !important;
+  }
+  
+  .horario-preenchido {
+    font-size: 8px !important;
+    font-weight: normal !important;
+    color: #666 !important;
+    font-style: italic !important;
+  }
+  
+  .feriado-texto-destaque {
+    font-size: 9px !important;
+    font-weight: bold !important;
+    color: #000 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+  }
+  
+  /* Cores para impressão */
+  .linha-domingo td {
+    background: #9ca3af !important;
+  }
+  
+  .linha-sabado td {
+    background: #d1d5db !important;
+  }
+  
+  .linha-feriado td {
+    background: #9ca3af !important;
+  }
+  
+  /* Rodapé para impressão */
+  .rodape-assinatura {
+    margin-top: 10px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-end !important;
+    background: white !important;
+  }
+  
+  .data-local {
+    font-size: 9px !important;
+    font-weight: bold !important;
+  }
+  
+  .linha-assinatura-funcionario {
+    text-align: center !important;
+    width: 160px !important;
+  }
+  
+  .linha-assinatura-funcionario .linha {
+    width: 100% !important;
+    height: 1px !important;
+    background: #000 !important;
+    margin-bottom: 2px !important;
+  }
+  
+  .texto-assinatura {
+    font-size: 8px !important;
+    font-weight: bold !important;
+  }
+}
+
+/* Estilos gerais */
+.print-container {
+  background: #f5f5f5;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.folha-ponto {
+  background: white;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto 20px;
+  padding: 18mm;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.3;
+  color: #000;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cabeçalho principal */
+.cabecalho-principal {
+  text-align: center;
+  margin-bottom: 12px;
+  border: 2px solid #000;
+  padding: 6px;
+  flex-shrink: 0;
+  background: white !important;
+}
+
+.cabecalho-principal h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  background: transparent;
+}
+
+/* Informações da empresa */
+.info-empresa {
+  margin-bottom: 8px;
+  border: 1px solid #000;
+  padding: 4px 8px;
+  flex-shrink: 0;
+  background: white !important;
+}
+
+.linha-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  background: transparent;
+}
+
+.linha-info .label {
+  font-weight: bold;
+  font-size: 10px;
+  background: transparent;
+}
+
+.linha-info .valor {
+  flex: 1;
+  font-weight: bold;
+  font-size: 11px;
+  background: transparent;
+}
+
+.linha-info .cnpj {
+  font-weight: bold;
+  font-size: 10px;
+  background: transparent;
+}
+
+.endereco {
+  font-size: 10px;
+  font-weight: bold;
+  background: transparent;
+}
+
+/* Período e horário */
+.info-periodo {
+  margin-bottom: 8px;
+  border: 1px solid #000;
+  padding: 4px 8px;
+  flex-shrink: 0;
+  background: white !important;
+}
+
+.linha-periodo, .linha-horario {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  background: transparent;
+}
+
+.linha-periodo .label, .linha-horario .label {
+  font-weight: bold;
+  font-size: 10px;
+  min-width: 60px;
+  background: transparent;
+}
+
+.linha-periodo .valor, .linha-horario .valor {
+  font-weight: bold;
+  font-size: 10px;
+  background: transparent;
+}
+
+/* Funcionário */
+.info-funcionario {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  border: 1px solid #000;
+  padding: 4px 8px;
+  flex-shrink: 0;
+  background: white !important;
+}
+
+.linha-funcionario {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+}
+
+.linha-funcionario .label {
+  font-weight: bold;
+  font-size: 9px;
+  background: transparent;
+}
+
+.nome-funcionario {
+  font-weight: bold;
+  font-size: 10px;
+  background: transparent;
+}
+
+.assistente {
+  font-size: 9px;
+  margin-left: 15px;
+  text-transform: uppercase;
+  background: transparent;
+}
+
+.mes-ano-direita {
+  font-weight: bold;
+  font-size: 10px;
+  background: transparent;
+}
+
+/* Tabela principal - Esticar para ocupar espaço restante */
+.tabela-ponto {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid #000;
+  margin-bottom: 12px;
+  flex: 1;
+  height: calc(100% - 150px);
+}
+
+.tabela-ponto thead {
+  height: auto;
+}
+
+.tabela-ponto tbody {
+  height: 100%;
+}
+
+.tabela-ponto th {
+  background: #000;
+  color: white;
+  border: 1px solid #000;
+  padding: 4px 2px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 9px;
+  vertical-align: middle;
+}
+
+.tabela-ponto td {
+  border: 1px solid #000;
+  padding: 3px;
+  text-align: center;
+  height: auto;
+  vertical-align: middle;
+  font-size: 9px;
+  min-height: 20px;
+}
+
+/* Colunas específicas - Ajustadas para 8 colunas */
+.col-dia {
+  width: 8%;
+}
+
+.col-entrada, .col-saida {
+  width: 12%;
+}
+
+.col-saida-almoco, .col-retorno-almoco, .col-entrada-extra, .col-saida-extra {
+  width: 10%;
+}
+
+.col-assinatura {
+  width: 18%;
+}
+
+.header-almoco, .header-extras {
+  font-size: 7px;
+}
+
+.sub-header {
+  font-size: 7px;
+  background: #333 !important;
+}
+
+/* Célula do dia */
+.dia-numero {
+  padding: 2px !important;
+}
+
+.dia-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2px;
+}
+
+.dia-container .numero {
+  font-weight: bold;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.dia-container .dia-semana {
+  font-size: 8px;
+  font-weight: normal;
+  line-height: 1;
+}
+
+/* Células de hora */
+.celula-hora {
+  background: white;
+  position: relative;
+}
+
+.celula-assinatura {
+  background: white;
+  text-align: center;
+  padding: 3px !important;
+  position: relative;
+}
+
+/* Texto de feriado que aparece em toda linha */
+.feriado-texto-linha {
+  font-size: 6px;
+  font-weight: bold;
+  color: #000;
+  text-align: center;
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+}
+
+/* Texto de feriado destacado na célula de assinatura */
+.feriado-texto-destaque {
+  font-size: 11px;
+  font-weight: bold;
+  color: #000;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Horários preenchidos automaticamente */
+.horario-preenchido {
+  font-size: 9px;
+  font-weight: normal;
+  color: #666;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+/* Linhas especiais - CORES MAIS ESCURAS PARA DESTAQUE */
+.linha-nao-util {
+  background: #a1a1aa !important;
+}
+
+.linha-nao-util td {
+  background: #a1a1aa !important;
+}
+
+.linha-domingo {
+  background: #9ca3af !important;
+}
+
+.linha-domingo td {
+  background: #9ca3af !important;
+}
+
+.linha-sabado {
+  background: #d1d5db !important;
+}
+
+.linha-sabado td {
+  background: #d1d5db !important;
+}
+
+.linha-feriado {
+  background: #9ca3af !important;
+}
+
+.linha-feriado td {
+  background: #9ca3af !important;
+}
+
+/* Rodapé */
+.rodape-assinatura {
+  margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-shrink: 0;
+  background: white !important;
+  padding: 0;
+}
+
+.data-local {
+  font-size: 10px;
+  font-weight: bold;
+  background: transparent;
+}
+
+.linha-assinatura-funcionario {
+  text-align: center;
+  width: 180px;
+  background: transparent;
+}
+
+.linha-assinatura-funcionario .linha {
+  width: 100%;
+  height: 1px;
+  background: #000;
+  margin-bottom: 3px;
+}
+
+.texto-assinatura {
+  font-size: 9px;
+  font-weight: bold;
+  background: transparent;
+}
+
+/* Responsivo para tela */
+@media screen and (max-width: 768px) {
+  .print-container {
+    padding: 10px;
+  }
+  
+  .folha-ponto {
+    width: 100%;
+    min-height: auto;
+    padding: 20px;
+    font-size: 12px;
+    margin-bottom: 30px;
+    border: 1px solid #e5e5e5;
+  }
+  
+  .tabela-ponto {
+    height: auto;
+  }
+  
+  .tabela-ponto th {
+    font-size: 10px;
+    padding: 8px 4px;
+  }
+  
+  .tabela-ponto td {
+    font-size: 10px;
+    min-height: 22px;
+  }
+  
+  .dia-container .numero {
+    font-size: 12px;
+  }
+  
+  .dia-container .dia-semana {
+    font-size: 9px;
+  }
+  
+  .info-funcionario {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .feriado-texto-linha {
+    writing-mode: horizontal-tb;
+    font-size: 8px;
+  }
+
+  .horario-preenchido {
+    font-size: 10px;
+  }
+}
+
+.linha-funcionario-completa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  flex-wrap: wrap;
+}
+
+.linha-funcionario-completa .label {
+  font-weight: bold;
+  font-size: 10px;
+  background: transparent;
+}
+
+.nome-funcionario {
+  font-weight: bold;
+  font-size: 11px;
+  background: transparent;
+}
+
+.cargo-funcionario {
+  font-weight: bold;
+  font-size: 10px;
+  background: transparent;
+}
+
+.setor-funcionario {
+  font-weight: bold;
+  font-size: 10px;
+  background: transparent;
+}
+
+.separador {
+  font-weight: bold;
+  font-size: 12px;
+  color: #666;
+  background: transparent;
+  margin: 0 4px;
+} 

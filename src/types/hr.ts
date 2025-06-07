@@ -1,14 +1,14 @@
-
 export interface Funcionario {
   id: string;
   nome_completo: string;
   cpf: string;
   cargo: string;
-  data_admissao: Date;
-  jornada_id: string;
+  setor: 'Produção' | 'Administrativo';
+  data_admissao: string;
+  jornada_id?: string;
   status: 'ativo' | 'inativo';
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;
+  updated_at: string;
   // Dados relacionados
   jornada?: JornadaTrabalho;
 }
@@ -46,6 +46,7 @@ export interface Feriado {
   tipo: 'nacional' | 'estadual' | 'municipal';
   ano: number;
   ativo: boolean;
+  descricao?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -55,6 +56,9 @@ export interface ConfiguracaoEmpresa {
   nome_empresa: string;
   cnpj: string;
   endereco: string;
+  telefone?: string;
+  email?: string;
+  logo_url?: string;
   created_at: Date;
   updated_at: Date;
 }

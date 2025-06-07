@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
@@ -33,6 +32,7 @@ interface FuncionarioForm {
   nome_completo: string;
   cpf: string;
   cargo: string;
+  setor: 'Produção' | 'Administrativo';
   data_admissao: string;
   jornada_id: string;
   status: 'ativo' | 'inativo';
@@ -52,6 +52,7 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
       nome_completo: funcionario?.nome_completo || '',
       cpf: funcionario?.cpf || '',
       cargo: funcionario?.cargo || '',
+      setor: funcionario?.setor || 'Produção',
       data_admissao: funcionario?.data_admissao ? new Date(funcionario.data_admissao).toISOString().split('T')[0] : '',
       jornada_id: funcionario?.jornada_id || '',
       status: funcionario?.status || 'ativo',
@@ -64,7 +65,8 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
         nome_completo: funcionario.nome_completo,
         cpf: funcionario.cpf,
         cargo: funcionario.cargo,
-        data_admissao: new Date(funcionario.data_admissao).toISOString().split('T')[0],
+        setor: funcionario.setor || 'Produção',
+        data_admissao: funcionario.data_admissao ? funcionario.data_admissao.split('T')[0] : '',
         jornada_id: funcionario.jornada_id,
         status: funcionario.status,
       });
@@ -73,6 +75,7 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
         nome_completo: '',
         cpf: '',
         cargo: '',
+        setor: 'Produção',
         data_admissao: '',
         jornada_id: '',
         status: 'ativo',
@@ -84,7 +87,7 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
     try {
       const funcionarioData = {
         ...data,
-        data_admissao: new Date(data.data_admissao),
+        data_admissao: data.data_admissao,
       };
 
       if (isEditing) {
@@ -132,8 +135,8 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
             <Input
               id="nome_completo"
               {...register('nome_completo', { required: 'Nome é obrigatório' })}
-              error={errors.nome_completo?.message}
             />
+            {errors.nome_completo && <p className="text-sm text-red-500">{errors.nome_completo.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -143,8 +146,8 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
               {...register('cpf', { required: 'CPF é obrigatório' })}
               onChange={handleCPFChange}
               maxLength={14}
-              error={errors.cpf?.message}
             />
+            {errors.cpf && <p className="text-sm text-red-500">{errors.cpf.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -152,8 +155,24 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
             <Input
               id="cargo"
               {...register('cargo', { required: 'Cargo é obrigatório' })}
-              error={errors.cargo?.message}
             />
+            {errors.cargo && <p className="text-sm text-red-500">{errors.cargo.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="setor">Setor</Label>
+            <Select
+              value={watch('setor')}
+              onValueChange={(value: 'Produção' | 'Administrativo') => setValue('setor', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o setor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Produção">Produção</SelectItem>
+                <SelectItem value="Administrativo">Administrativo</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -162,8 +181,8 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
               id="data_admissao"
               type="date"
               {...register('data_admissao', { required: 'Data de admissão é obrigatória' })}
-              error={errors.data_admissao?.message}
             />
+            {errors.data_admissao && <p className="text-sm text-red-500">{errors.data_admissao.message}</p>}
           </div>
 
           <div className="space-y-2">

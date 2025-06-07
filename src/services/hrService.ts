@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Funcionario, JornadaTrabalho, Feriado, ConfiguracaoEmpresa } from "@/types/hr";
 
@@ -83,6 +82,9 @@ export const getJornadasTrabalho = async (): Promise<JornadaTrabalho[]> => {
 
   return data || [];
 };
+
+// Alias para getJornadasTrabalho para compatibilidade
+export const getJornadas = getJornadasTrabalho;
 
 export const createJornadaTrabalho = async (jornada: Omit<JornadaTrabalho, 'id' | 'created_at' | 'updated_at'>): Promise<JornadaTrabalho> => {
   const { data, error } = await supabase

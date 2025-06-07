@@ -197,7 +197,7 @@ const StatsSection: React.FC<StatsSectionProps> = ({ stats, changes }) => {
                     <span>vs. mês anterior</span>
                   </div>
                 )}
-              </div>
+      </div>
 
               {/* Efeito de borda animada */}
               <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" 
