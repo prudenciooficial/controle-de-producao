@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { createFuncionario, updateFuncionario, getJornadasTrabalho } from "@/services/hrService";
+import { createFuncionario, updateFuncionario, getJornadasTrabalho, getConfiguracoesEmpresas } from "@/services/hrService";
 import type { Funcionario } from "@/types/hr";
 
 interface FuncionarioDialogProps {
@@ -36,6 +36,7 @@ interface FuncionarioForm {
   setor: 'Produção' | 'Administrativo';
   data_admissao: string;
   jornada_id: string;
+  empresa_id: string;
   status: 'ativo' | 'inativo';
 }
 
@@ -49,6 +50,11 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
     queryFn: getJornadasTrabalho,
   });
 
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['configuracoes-empresas'],
+    queryFn: getConfiguracoesEmpresas,
+  });
+
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FuncionarioForm>({
     defaultValues: {
       nome_completo: funcionario?.nome_completo || '',
@@ -57,6 +63,7 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
       setor: funcionario?.setor || 'Produção',
       data_admissao: funcionario?.data_admissao ? new Date(funcionario.data_admissao).toISOString().split('T')[0] : '',
       jornada_id: funcionario?.jornada_id || '',
+      empresa_id: funcionario?.empresa_id || '',
       status: funcionario?.status || 'ativo',
     },
   });
@@ -70,6 +77,7 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
         setor: funcionario.setor || 'Produção',
         data_admissao: funcionario.data_admissao ? funcionario.data_admissao.split('T')[0] : '',
         jornada_id: funcionario.jornada_id,
+        empresa_id: funcionario.empresa_id || '',
         status: funcionario.status,
       });
     } else {
@@ -80,6 +88,7 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
         setor: 'Produção',
         data_admissao: '',
         jornada_id: '',
+        empresa_id: '',
         status: 'ativo',
       });
     }
@@ -221,6 +230,32 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="empresa_id">Empresa *</Label>
+                <Select
+                  value={watch('empresa_id')}
+                  onValueChange={(value) => setValue('empresa_id', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empresas.filter(empresa => empresa.ativa).map((empresa) => (
+                      <SelectItem key={empresa.id} value={empresa.id}>
+                        {empresa.nome_empresa}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <input 
+                  type="hidden" 
+                  {...register('empresa_id', { required: 'Empresa é obrigatória' })} 
+                />
+                {errors.empresa_id && <p className="text-sm text-red-500">{errors.empresa_id.message}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select

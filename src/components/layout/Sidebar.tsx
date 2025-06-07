@@ -4,6 +4,7 @@ import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Searc
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
+import { useModulePermissions } from "@/hooks/useModulePermissions";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,7 +18,8 @@ const MotionLink = motion(Link);
 export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) {
   const location = useLocation();
   const isMobile = useIsMobile();
-  const { hasRole, hasPermission, canViewSystemLogs } = useAuth();
+  const { hasRole, canViewSystemLogs } = useAuth();
+  const { getModuleAccess } = useModulePermissions();
   const [isDesktopSidebarExpanded, setIsDesktopSidebarExpanded] = useState(false);
   const [availableMenuItems, setAvailableMenuItems] = useState<any[]>([]);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
@@ -38,7 +40,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
   };
 
   const [allMenuItems] = useState<MenuItem[]>([
-    { name: "Dashboard", path: "/", icon: LayoutDashboard, module: "dashboard" },
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, module: "dashboard" },
     { 
       name: "Produção", 
       icon: Factory, 
@@ -58,9 +60,12 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     { name: "Usuários", path: "/usuarios", icon: Users, module: "user_management" },
     {
       name: "Logs do Sistema",
-      path: "/logs",
       icon: ScrollText,
       permissionCheck: canViewSystemLogs,
+      subItems: [
+        { name: "Logs", path: "/logs", icon: ScrollText },
+        { name: "Debug Permissões", path: "/debug-permissions", icon: FileSearch }
+      ]
     },
   ]);
 
@@ -72,37 +77,44 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
 
   useEffect(() => {
     const checkPermissions = () => {
+      console.log('Verificando permissões dos módulos...');
       const filteredItems = [];
       
       for (const item of allMenuItems) {
+        console.log(`Verificando item: ${item.name}`);
+        
         if (hasRole('admin')) {
+          console.log(`Admin tem acesso a ${item.name}`);
           filteredItems.push(item);
           continue;
         }
         
         if (item.permissionCheck) {
           if (item.permissionCheck()) {
+            console.log(`Permissão customizada aprovada para ${item.name}`);
             filteredItems.push(item);
+          } else {
+            console.log(`Permissão customizada negada para ${item.name}`);
           }
           continue;
         }
 
         if (item.module) {
-          try {
-            const hasAccess = hasPermission(item.module, 'view');
-            if (hasAccess) {
-              filteredItems.push(item);
-            }
-          } catch (error) {
-            console.error(`Error checking permission for ${item.module}:`, error);
+          const hasAccess = getModuleAccess(item.module);
+          console.log(`Módulo ${item.module} (${item.name}): ${hasAccess ? 'APROVADO' : 'NEGADO'}`);
+          
+          if (hasAccess) {
+            filteredItems.push(item);
           }
         }
       }
+      
+      console.log('Itens de menu disponíveis:', filteredItems.map(item => item.name));
       setAvailableMenuItems(filteredItems);
     };
 
     checkPermissions();
-  }, [hasRole, hasPermission, canViewSystemLogs, allMenuItems]);
+  }, [hasRole, getModuleAccess, canViewSystemLogs, allMenuItems]);
 
   // Função para verificar se um item ou seus subitens estão ativos
   const isItemActive = (item: MenuItem) => {

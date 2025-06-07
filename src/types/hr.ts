@@ -6,11 +6,13 @@ export interface Funcionario {
   setor: 'Produção' | 'Administrativo';
   data_admissao: string;
   jornada_id?: string;
+  empresa_id?: string;
   status: 'ativo' | 'inativo';
   created_at: string;
   updated_at: string;
   // Dados relacionados
   jornada?: JornadaTrabalho;
+  empresa?: ConfiguracaoEmpresa;
 }
 
 export interface JornadaTrabalho {
@@ -59,6 +61,7 @@ export interface ConfiguracaoEmpresa {
   telefone?: string;
   email?: string;
   logo_url?: string;
+  ativa: boolean;
   created_at: Date;
   updated_at: Date;
 }

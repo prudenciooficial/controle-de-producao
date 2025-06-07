@@ -6,10 +6,14 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DataProvider } from "./context/DataContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { DashboardProtectedRoute } from "./components/auth/DashboardProtectedRoute";
+import { DefaultRoute } from "./components/auth/DefaultRoute";
 import { ThemeProvider } from "./components/theme/ThemeProvider";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
 import Dashboard from "./pages/Dashboard";
+import Welcome from "./pages/Welcome";
+import PermissionsDebug from "./pages/PermissionsDebug";
 import Production from "./pages/Production";
 import ProductionHistory from "./pages/ProductionHistory";
 import MixRegistration from "./pages/MixRegistration";
@@ -49,6 +53,7 @@ const AppContent = () => {
         <Route path="/auth" element={<Auth />} />
         <Route path="/print/traceability/:batchId" element={<PrintableTraceabilityPage />} />
         <Route path="/print/folha-ponto" element={<FolhaPontoPage />} />
+        
         <Route path="/*" element={
           <ProtectedRoute>
             <Sidebar isMobileMenuOpen={sidebarOpen} onMobileMenuToggle={toggleSidebar} />
@@ -56,7 +61,14 @@ const AppContent = () => {
               <Header toggleSidebar={toggleSidebar} />
               <main className="flex-1 p-4 sm:p-6 bg-muted">
                 <Routes>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/" element={<DefaultRoute />} />
+                  <Route path="/welcome" element={<Welcome />} />
+                  <Route path="/debug-permissions" element={<PermissionsDebug />} />
+                  <Route path="/dashboard" element={
+                    <DashboardProtectedRoute>
+                      <Dashboard />
+                    </DashboardProtectedRoute>
+                  } />
                   <Route path="/mexida" element={<MixRegistration />} />
                   <Route path="/mexida/historico" element={<MixHistory />} />
                   <Route path="/producao" element={<Production />} />

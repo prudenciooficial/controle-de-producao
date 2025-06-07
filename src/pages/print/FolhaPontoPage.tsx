@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getFuncionarios, getFeriados, getConfiguracaoEmpresa } from '@/services/hrService';
+import { getFuncionarios, getFeriados, getConfiguracaoEmpresa, getConfiguracoesEmpresas } from '@/services/hrService';
 import { Button } from '@/components/ui/button';
 import { Printer, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +31,8 @@ export function FolhaPontoPage() {
   const funcionarioIds = searchParams.get('funcionarios')?.split(',') || [];
   const mes = parseInt(searchParams.get('mes') || '0');
   const ano = parseInt(searchParams.get('ano') || '0');
+  const empresaId = searchParams.get('empresa') || '';
+  const modo = searchParams.get('modo') || 'manual'; // 'auto' ou 'manual'
 
   const { data: funcionarios = [] } = useQuery({
     queryKey: ['funcionarios'],
@@ -42,28 +44,58 @@ export function FolhaPontoPage() {
     queryFn: () => getFeriados(),
   });
 
-  const { data: configuracao } = useQuery({
-    queryKey: ['configuracao-empresa'],
-    queryFn: getConfiguracaoEmpresa,
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['configuracoes-empresas'],
+    queryFn: getConfiguracoesEmpresas,
   });
 
   useEffect(() => {
-    if (funcionarios.length && configuracao && funcionarioIds.length) {
+    if (funcionarios.length && empresas.length && funcionarioIds.length) {
       const funcionariosSelecionados = funcionarios.filter(f => 
         funcionarioIds.includes(f.id)
       );
       
-      const dadosFolhas = funcionariosSelecionados.map(funcionario => ({
-        funcionario,
-        mes,
-        ano,
-        feriados,
-        configuracao_empresa: configuracao,
-      }));
+      const dadosFolhas: FolhaPontoData[] = [];
+      
+      funcionariosSelecionados.forEach(funcionario => {
+        let empresaParaUsar: ConfiguracaoEmpresa | undefined;
+        
+        if (modo === 'auto') {
+          // Modo automático: usar empresa vinculada ao funcionário
+          empresaParaUsar = empresas.find(e => e.id === funcionario.empresa_id);
+          
+          // Se funcionário não tem empresa ou empresa não encontrada, pular
+          if (!empresaParaUsar) {
+            console.warn(`Funcionário ${funcionario.nome_completo} não tem empresa vinculada ou empresa não encontrada`);
+            return;
+          }
+        } else {
+          // Modo manual: usar empresa específica passada como parâmetro
+          empresaParaUsar = empresas.find(e => e.id === empresaId);
+          
+          // Fallback para primeira empresa ativa se não encontrar
+          if (!empresaParaUsar) {
+            empresaParaUsar = empresas.find(e => e.ativa);
+          }
+          
+          if (!empresaParaUsar) {
+            console.warn('Nenhuma empresa disponível para o funcionário');
+            return;
+          }
+        }
+        
+        dadosFolhas.push({
+          funcionario,
+          mes,
+          ano,
+          feriados,
+          configuracao_empresa: empresaParaUsar,
+        });
+      });
       
       setFolhasData(dadosFolhas);
     }
-  }, [funcionarios, configuracao, feriados, funcionarioIds, mes, ano]);
+  }, [funcionarios, empresas, feriados, funcionarioIds, mes, ano, empresaId, modo]);
 
   const handlePrint = () => {
     window.print();

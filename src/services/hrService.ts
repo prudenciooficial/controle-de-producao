@@ -8,7 +8,8 @@ export const getFuncionarios = async (): Promise<Funcionario[]> => {
     .from('funcionarios')
     .select(`
       *,
-      jornada:jornadas_trabalho(*)
+      jornada:jornadas_trabalho(*),
+      empresa:configuracoes_empresa(*)
     `)
     .order('nome_completo');
 
@@ -55,7 +56,8 @@ export const createFuncionario = async (
           setor: data.setor,
           status: data.status,
           data_admissao: data.data_admissao,
-          jornada_id: data.jornada_id
+          jornada_id: data.jornada_id,
+          empresa_id: data.empresa_id
         }
       });
     } catch (logError) {
@@ -533,6 +535,7 @@ export const getConfiguracaoEmpresa = async (): Promise<ConfiguracaoEmpresa | nu
   const { data, error } = await supabase
     .from('configuracoes_empresa')
     .select('*')
+    .eq('ativa', true)
     .limit(1)
     .single();
 
@@ -543,6 +546,62 @@ export const getConfiguracaoEmpresa = async (): Promise<ConfiguracaoEmpresa | nu
     }
     console.error('Erro ao buscar configuração da empresa:', error);
     throw error;
+  }
+
+  return data as unknown as ConfiguracaoEmpresa;
+};
+
+export const getConfiguracoesEmpresas = async (): Promise<ConfiguracaoEmpresa[]> => {
+  const { data, error } = await supabase
+    .from('configuracoes_empresa')
+    .select('*')
+    .order('nome_empresa');
+
+  if (error) {
+    console.error('Erro ao buscar configurações de empresas:', error);
+    throw error;
+  }
+
+  return (data || []) as unknown as ConfiguracaoEmpresa[];
+};
+
+export const createConfiguracaoEmpresa = async (
+  config: Omit<ConfiguracaoEmpresa, 'id' | 'created_at' | 'updated_at'>,
+  userId?: string,
+  userDisplayName?: string
+): Promise<ConfiguracaoEmpresa> => {
+  const { data, error } = await supabase
+    .from('configuracoes_empresa')
+    .insert(config)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao criar configuração de empresa:', error);
+    throw error;
+  }
+
+  // Registrar log da criação
+  if (userId && userDisplayName) {
+    try {
+      await logSystemEvent({
+        userId,
+        userDisplayName,
+        actionType: 'CREATE',
+        entityTable: 'configuracoes_empresa',
+        entityId: data.id,
+        newData: {
+          nome_empresa: data.nome_empresa,
+          cnpj: data.cnpj,
+          endereco: data.endereco,
+          telefone: data.telefone,
+          email: data.email,
+          ativa: data.ativa
+        }
+      });
+    } catch (logError) {
+      console.warn('Erro ao registrar log de criação de configuração de empresa:', logError);
+    }
   }
 
   return data as unknown as ConfiguracaoEmpresa;
@@ -594,12 +653,18 @@ export const updateConfiguracaoEmpresa = async (
         oldData: originalData ? {
           nome_empresa: originalData.nome_empresa,
           cnpj: originalData.cnpj,
-          endereco: originalData.endereco
+          endereco: originalData.endereco,
+          telefone: originalData.telefone,
+          email: originalData.email,
+          ativa: originalData.ativa
         } : undefined,
         newData: {
           nome_empresa: data.nome_empresa,
           cnpj: data.cnpj,
-          endereco: data.endereco
+          endereco: data.endereco,
+          telefone: data.telefone,
+          email: data.email,
+          ativa: data.ativa
         }
       });
     } catch (logError) {
@@ -608,4 +673,56 @@ export const updateConfiguracaoEmpresa = async (
   }
 
   return data as unknown as ConfiguracaoEmpresa;
+};
+
+export const deleteConfiguracaoEmpresa = async (
+  id: string,
+  userId?: string,
+  userDisplayName?: string
+): Promise<void> => {
+  // Buscar dados da configuração antes de deletar para o log
+  let configData = null;
+  try {
+    const { data: config } = await supabase
+      .from('configuracoes_empresa')
+      .select('*')
+      .eq('id', id)
+      .single();
+    configData = config;
+  } catch (error) {
+    console.warn('Não foi possível buscar dados da configuração para log:', error);
+  }
+
+  const { error } = await supabase
+    .from('configuracoes_empresa')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao deletar configuração da empresa:', error);
+    throw error;
+  }
+
+  // Registrar log da exclusão
+  if (userId && userDisplayName && configData) {
+    try {
+      await logSystemEvent({
+        userId,
+        userDisplayName,
+        actionType: 'DELETE',
+        entityTable: 'configuracoes_empresa',
+        entityId: id,
+        oldData: {
+          nome_empresa: configData.nome_empresa,
+          cnpj: configData.cnpj,
+          endereco: configData.endereco,
+          telefone: configData.telefone,
+          email: configData.email,
+          ativa: configData.ativa
+        }
+      });
+    } catch (logError) {
+      console.warn('Erro ao registrar log de exclusão de configuração da empresa:', logError);
+    }
+  }
 };

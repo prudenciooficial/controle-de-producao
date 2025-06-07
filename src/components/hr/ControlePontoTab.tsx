@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { FileText, Download, Search, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getFuncionarios, getFeriados, getConfiguracaoEmpresa } from "@/services/hrService";
+import { getFuncionarios, getFeriados, getConfiguracaoEmpresa, getConfiguracoesEmpresas } from "@/services/hrService";
 import { generateControlePontoPDF } from "@/utils/controlePontoPDF";
 import type { Funcionario } from "@/types/hr";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,6 +24,7 @@ export function ControlePontoTab() {
   const [funcionariosSelecionados, setFuncionariosSelecionados] = useState<string[]>([]);
   const [selectedMes, setSelectedMes] = useState<string>("");
   const [selectedAno, setSelectedAno] = useState<string>("");
+  const [filtroEmpresa, setFiltroEmpresa] = useState<string>("todas"); // Filtro de empresa
   const [searchTerm, setSearchTerm] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
@@ -39,12 +40,30 @@ export function ControlePontoTab() {
     queryFn: getConfiguracaoEmpresa,
   });
 
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['configuracoes-empresas'],
+    queryFn: getConfiguracoesEmpresas,
+  });
+
   const funcionariosAtivos = funcionarios.filter(f => f.status === 'ativo');
   
-  const filteredFuncionarios = funcionariosAtivos.filter(funcionario =>
-    funcionario.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    funcionario.cargo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar funcionários por empresa selecionada
+  const funcionariosFiltrados = funcionariosAtivos.filter(funcionario => {
+    const matchSearch = funcionario.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       funcionario.cargo.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchEmpresa = false;
+    
+    if (filtroEmpresa === "todas") {
+      matchEmpresa = true;
+    } else if (filtroEmpresa === "sem-empresa") {
+      matchEmpresa = !funcionario.empresa_id;
+    } else {
+      matchEmpresa = funcionario.empresa_id === filtroEmpresa;
+    }
+    
+    return matchSearch && matchEmpresa;
+  });
 
   const meses = [
     { value: "1", label: "Janeiro" },
@@ -76,7 +95,7 @@ export function ControlePontoTab() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setFuncionariosSelecionados(filteredFuncionarios.map(f => f.id));
+      setFuncionariosSelecionados(funcionariosFiltrados.map(f => f.id));
     } else {
       setFuncionariosSelecionados([]);
     }
@@ -84,22 +103,59 @@ export function ControlePontoTab() {
 
   const handleGerar = () => {
     if (funcionariosSelecionados.length === 0) {
-      alert('Selecione pelo menos um funcionário');
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Selecione pelo menos um funcionário",
+      });
       return;
     }
 
     if (!selectedMes || !selectedAno) {
-      alert('Selecione o período (mês e ano)');
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Selecione o período (mês e ano)",
+      });
       return;
     }
 
-    // Navegar para a página de impressão
+    // Verificar se todos os funcionários selecionados têm empresa vinculada
+    const funcionariosSemEmpresa = funcionarios.filter(f => 
+      funcionariosSelecionados.includes(f.id) && !f.empresa_id
+    );
+
+    if (funcionariosSemEmpresa.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: `Os seguintes funcionários não têm empresa vinculada: ${funcionariosSemEmpresa.map(f => f.nome_completo).join(', ')}. Edite-os para vincular uma empresa.`,
+      });
+      return;
+    }
+
+    // Navegar para a página de impressão - cada funcionário usará sua própria empresa
     const funcionarioIds = funcionariosSelecionados.join(',');
-    const url = `/print/folha-ponto?funcionarios=${funcionarioIds}&mes=${selectedMes}&ano=${selectedAno}`;
+    const url = `/print/folha-ponto?funcionarios=${funcionarioIds}&mes=${selectedMes}&ano=${selectedAno}&modo=auto`;
     
     // Abrir em nova aba para impressão
     window.open(url, '_blank');
   };
+
+  // Contar funcionários por empresa no filtro atual
+  const contarFuncionariosPorEmpresa = () => {
+    const contadores: {[key: string]: number} = {};
+    funcionariosAtivos.forEach(f => {
+      if (f.empresa_id) {
+        contadores[f.empresa_id] = (contadores[f.empresa_id] || 0) + 1;
+      } else {
+        contadores['sem-empresa'] = (contadores['sem-empresa'] || 0) + 1;
+      }
+    });
+    return contadores;
+  };
+
+  const contadorEmpresas = contarFuncionariosPorEmpresa();
 
   return (
     <div className="space-y-6">
@@ -108,7 +164,7 @@ export function ControlePontoTab() {
         <CardHeader>
           <CardTitle>Configurações do Período</CardTitle>
           <CardDescription>
-            Selecione o mês e ano para gerar as folhas de controle de ponto
+            Selecione o período para gerar as folhas de controle de ponto
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -148,7 +204,7 @@ export function ControlePontoTab() {
         </CardContent>
       </Card>
 
-      {/* Seleção de Funcionários */}
+      {/* Filtro e Seleção de Funcionários */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -161,12 +217,39 @@ export function ControlePontoTab() {
             )}
           </CardTitle>
           <CardDescription>
-            Selecione os funcionários para gerar as folhas de controle de ponto
+            Filtre por empresa e selecione os funcionários para gerar as folhas de controle de ponto
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Busca de funcionários */}
+          {/* Filtros */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="space-y-2 w-full sm:w-auto">
+              <Label htmlFor="filtro-empresa">Filtrar por Empresa</Label>
+              <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
+                <SelectTrigger className="w-full sm:w-[250px]">
+                  <SelectValue placeholder="Filtrar por empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">
+                    Todas as Empresas ({funcionariosAtivos.length})
+                  </SelectItem>
+                  {empresas.filter(empresa => empresa.ativa).map((empresa) => {
+                    const count = contadorEmpresas[empresa.id] || 0;
+                    return (
+                      <SelectItem key={empresa.id} value={empresa.id}>
+                        {empresa.nome_empresa} ({count})
+                      </SelectItem>
+                    );
+                  })}
+                  {contadorEmpresas['sem-empresa'] > 0 && (
+                    <SelectItem value="sem-empresa">
+                      Sem Empresa Vinculada ({contadorEmpresas['sem-empresa']})
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="relative flex-1 w-full sm:w-auto">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -176,25 +259,27 @@ export function ControlePontoTab() {
                 className="pl-8"
               />
             </div>
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <Checkbox
-                id="select-all"
-                checked={
-                  filteredFuncionarios.length > 0 && 
-                  filteredFuncionarios.every(f => funcionariosSelecionados.includes(f.id))
-                }
-                onCheckedChange={handleSelectAll}
-              />
-              <Label htmlFor="select-all" className="text-sm font-medium">
-                Selecionar Todos ({filteredFuncionarios.length})
-              </Label>
-            </div>
+          </div>
+
+          {/* Seleção rápida */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="select-all"
+              checked={
+                funcionariosFiltrados.length > 0 && 
+                funcionariosFiltrados.every(f => funcionariosSelecionados.includes(f.id))
+              }
+              onCheckedChange={handleSelectAll}
+            />
+            <Label htmlFor="select-all" className="text-sm font-medium">
+              Selecionar Todos os Filtrados ({funcionariosFiltrados.length})
+            </Label>
           </div>
 
           {/* Lista de funcionários */}
           <div className="max-h-[300px] overflow-y-auto border rounded-md p-2">
             <div className="space-y-2">
-              {filteredFuncionarios.map((funcionario) => (
+              {funcionariosFiltrados.map((funcionario) => (
                 <div
                   key={funcionario.id}
                   className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50"
@@ -215,19 +300,32 @@ export function ControlePontoTab() {
                     </Label>
                     <p className="text-xs text-muted-foreground">
                       {funcionario.cargo} • Jornada: {funcionario.jornada?.nome || 'Não definida'}
+                      {funcionario.empresa && (
+                        <> • Empresa: {funcionario.empresa.nome_empresa}</>
+                      )}
+                      {!funcionario.empresa_id && (
+                        <span className="text-orange-600"> • ⚠️ Sem empresa vinculada</span>
+                      )}
                     </p>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {funcionario.status}
-                  </Badge>
+                  <div className="flex flex-col gap-1">
+                    {funcionario.empresa && (
+                      <Badge variant="secondary" className="text-xs">
+                        {funcionario.empresa.nome_empresa}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {filteredFuncionarios.length === 0 && (
+          {funcionariosFiltrados.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
-              {searchTerm ? "Nenhum funcionário encontrado" : "Nenhum funcionário ativo cadastrado"}
+              {searchTerm || filtroEmpresa !== "todas" 
+                ? "Nenhum funcionário encontrado com os filtros aplicados" 
+                : "Nenhum funcionário ativo cadastrado"
+              }
             </div>
           )}
         </CardContent>
@@ -260,12 +358,12 @@ export function ControlePontoTab() {
       </div>
 
       <div className="text-center text-sm text-muted-foreground px-4">
-        As folhas de controle de ponto serão geradas em formato PDF com os feriados do período selecionado.
+        <p>As folhas serão geradas automaticamente com os dados da empresa vinculada a cada funcionário.</p>
         {funcionariosSelecionados.length > 1 && (
           <>
             <br />
             <span className="text-primary font-medium">
-              Serão gerados {funcionariosSelecionados.length} arquivos PDF, um para cada funcionário.
+              Serão gerados {funcionariosSelecionados.length} arquivos PDF, cada um com os dados da empresa do respectivo funcionário.
             </span>
           </>
         )}

@@ -36,11 +36,11 @@ const ALL_MODULES = [
   { key: 'sales', label: 'Vendas', has_actions: true },
   { key: 'orders', label: 'Pedidos', has_actions: true },
   { key: 'inventory', label: 'Estoque', has_actions: true },
-  { key: 'losses', label: 'Perdas', has_actions: false },
+  { key: 'losses', label: 'Perdas', has_actions: true },
   { key: 'traceability', label: 'Rastreabilidade', has_actions: false },
-  { key: 'general_settings', label: 'Cadastros (Geral)', has_actions: false },
+  { key: 'general_settings', label: 'Cadastros (Geral)', has_actions: true },
   { key: 'human_resources', label: 'Recursos Humanos', has_actions: true },
-  { key: 'user_management', label: 'Gerenciamento de Usuários', has_actions: false },
+  { key: 'user_management', label: 'Gerenciamento de Usuários', has_actions: true },
 ];
 
 const ACTION_KEYS: (keyof ModuleActions)[] = ['create', 'read', 'update', 'delete'];

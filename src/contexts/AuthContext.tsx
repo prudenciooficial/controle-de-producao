@@ -242,12 +242,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const moduleSpecificActions = detailedPermissions.module_actions?.[moduleKey];
 
-    if (actionKey === 'read') { 
+    // Tratar 'view' como sinônimo de 'read'
+    const normalizedActionKey = actionKey === 'view' ? 'read' : actionKey;
+
+    if (normalizedActionKey === 'read') { 
       if (!moduleSpecificActions) return true; 
       return moduleSpecificActions.read === true;
     }
     
-    if (!moduleSpecificActions || moduleSpecificActions[actionKey as keyof ModuleActions] !== true) {
+    if (!moduleSpecificActions || moduleSpecificActions[normalizedActionKey as keyof ModuleActions] !== true) {
       return false;
     }
 
