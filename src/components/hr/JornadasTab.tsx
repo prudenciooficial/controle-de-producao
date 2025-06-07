@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Edit, Clock, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getJornadasTrabalho } from "@/services/hrService";
+import { getJornadasTrabalho, createJornadaTrabalho, updateJornadaTrabalho } from "@/services/hrService";
 import type { JornadaTrabalho, HorarioDia, HorariosEstruturados } from "@/types/hr";
 import {
   Table,
@@ -54,9 +55,10 @@ export function JornadasTab() {
     horarios: DIAS_SEMANA.reduce((acc, dia) => ({
       ...acc,
       [dia.key]: { entrada1: "", saida1: "", entrada2: "", saida2: "" }
-    }), {})
+    }), {} as HorariosEstruturados)
   });
   const { toast } = useToast();
+  const { user, getUserDisplayName } = useAuth();
 
   const { data: jornadas = [], isLoading, refetch } = useQuery({
     queryKey: ['jornadas'],
@@ -74,7 +76,7 @@ export function JornadasTab() {
       horarios: DIAS_SEMANA.reduce((acc, dia) => ({
         ...acc,
         [dia.key]: { entrada1: "", saida1: "", entrada2: "", saida2: "" }
-      }), {})
+      }), {} as HorariosEstruturados)
     });
     setEditingJornada(null);
   };
@@ -113,44 +115,39 @@ export function JornadasTab() {
 
   const copiarHorariosPara = (diaOrigem: string, diasDestino: string[]) => {
     const horarioOrigem = formData.horarios[diaOrigem];
-    setFormData(prev => ({
-      ...prev,
-      horarios: {
-        ...prev.horarios,
-        ...diasDestino.reduce((acc, dia) => ({
-          ...acc,
-          [dia]: { ...horarioOrigem }
-        }), {})
+    const novosHorarios = { ...formData.horarios };
+    
+    diasDestino.forEach(dia => {
+      if (dia !== diaOrigem) {
+        novosHorarios[dia] = { ...horarioOrigem };
       }
-    }));
-    toast({
-      title: "Horários Copiados",
-      description: `Horários copiados para ${diasDestino.length} dia(s).`,
     });
+    
+    setFormData(prev => ({ ...prev, horarios: novosHorarios }));
   };
 
   const aplicarHorarioPadrao = () => {
     const horarioPadrao = {
       entrada1: "08:00",
-      saida1: "12:00", 
+      saida1: "12:00",
       entrada2: "13:00",
       saida2: "17:00"
     };
     
-    setFormData(prev => ({
-      ...prev,
-      horarios: DIAS_SEMANA.reduce((acc, dia) => ({
+    const novoHorario = DIAS_SEMANA.reduce((acc, dia) => {
+      if (dia.key === 'sabado' || dia.key === 'domingo') {
+        return {
+          ...acc,
+          [dia.key]: { entrada1: "", saida1: "", entrada2: "", saida2: "" }
+        };
+      }
+      return {
         ...acc,
-        [dia.key]: dia.key === 'sabado' || dia.key === 'domingo' ? 
-          { entrada1: "", saida1: "", entrada2: "", saida2: "" } : 
-          { ...horarioPadrao }
-      }), {})
-    }));
+        [dia.key]: { ...horarioPadrao }
+      };
+    }, {} as HorariosEstruturados);
     
-    toast({
-      title: "Horário Padrão Aplicado",
-      description: "Horário comercial aplicado de segunda a sexta.",
-    });
+    setFormData(prev => ({ ...prev, horarios: novoHorario }));
   };
 
   const handleSave = async () => {
@@ -173,7 +170,27 @@ export function JornadasTab() {
     }
 
     try {
-      // Aqui seria feita a chamada para salvar no banco
+      const jornadaData = {
+        nome: formData.nome.trim(),
+        descricao_impressao: formData.descricao_impressao.trim(),
+        horarios_estruturados: formData.horarios
+      };
+
+      if (editingJornada) {
+        await updateJornadaTrabalho(
+          editingJornada.id, 
+          jornadaData,
+          user?.id,
+          getUserDisplayName()
+        );
+      } else {
+        await createJornadaTrabalho(
+          jornadaData,
+          user?.id,
+          getUserDisplayName()
+        );
+      }
+
       toast({
         title: "Sucesso",
         description: editingJornada ? "Jornada atualizada com sucesso!" : "Jornada criada com sucesso!",
@@ -182,6 +199,7 @@ export function JornadasTab() {
       handleCloseDialog();
       refetch();
     } catch (error) {
+      console.error('Erro ao salvar jornada:', error);
       toast({
         variant: "destructive",
         title: "Erro",
@@ -231,24 +249,24 @@ export function JornadasTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar jornadas..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-80"
+            className="w-full sm:w-80"
           />
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
+            <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Nova Jornada
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
@@ -296,9 +314,9 @@ export function JornadasTab() {
               {/* Configuração de Horários */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
+                  <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <span>Horários por Dia da Semana</span>
-                    <Button variant="outline" size="sm" onClick={aplicarHorarioPadrao}>
+                    <Button variant="outline" size="sm" onClick={aplicarHorarioPadrao} className="w-full sm:w-auto">
                       Aplicar Horário Comercial
                     </Button>
                   </CardTitle>
@@ -310,18 +328,19 @@ export function JornadasTab() {
                   <div className="space-y-4">
                     {DIAS_SEMANA.map((dia) => (
                       <div key={dia.key} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-2">
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium">{dia.label}</h4>
                             <Badge variant="outline">
                               {calcularHorasDia(formData.horarios[dia.key])}
                             </Badge>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => copiarHorariosPara(dia.key, ['segunda', 'terca', 'quarta', 'quinta', 'sexta'])}
+                              className="text-xs w-full sm:w-auto"
                             >
                               Copiar para Úteis
                             </Button>
@@ -329,13 +348,14 @@ export function JornadasTab() {
                               variant="ghost"
                               size="sm"
                               onClick={() => copiarHorariosPara(dia.key, DIAS_SEMANA.map(d => d.key))}
+                              className="text-xs w-full sm:w-auto"
                             >
                               Copiar para Todos
                             </Button>
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs">1ª Entrada</Label>
                             <Input
@@ -380,12 +400,12 @@ export function JornadasTab() {
               </Card>
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={handleCloseDialog}>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={handleCloseDialog} className="w-full sm:w-auto">
                 <X className="h-4 w-4 mr-2" />
                 Cancelar
               </Button>
-              <Button onClick={handleSave}>
+              <Button onClick={handleSave} className="w-full sm:w-auto">
                 <Save className="h-4 w-4 mr-2" />
                 {editingJornada ? 'Atualizar' : 'Salvar'} Jornada
               </Button>
@@ -394,62 +414,66 @@ export function JornadasTab() {
         </Dialog>
       </div>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Descrição para Impressão</TableHead>
-              <TableHead>Resumo Semanal</TableHead>
-              <TableHead>Total Horas/Semana</TableHead>
-              <TableHead className="w-20">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredJornadas.map((jornada) => {
-              const totalSemanal = DIAS_SEMANA.reduce((total, dia) => {
-                const horario = jornada.horarios_estruturados[dia.key];
-                const horas = calcularHorasDia(horario);
-                const match = horas.match(/(\d+)h(\d+)?m?/);
-                if (match) {
-                  return total + parseInt(match[1]) + (match[2] ? parseInt(match[2]) / 60 : 0);
-                }
-                return total;
-              }, 0);
+      <div className="border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table className="min-w-[800px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="whitespace-nowrap">Nome</TableHead>
+                <TableHead className="whitespace-nowrap max-w-xs">Descrição para Impressão</TableHead>
+                <TableHead className="whitespace-nowrap">Resumo Semanal</TableHead>
+                <TableHead className="whitespace-nowrap">Total Horas/Semana</TableHead>
+                <TableHead className="w-20">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredJornadas.map((jornada) => {
+                const totalSemanal = DIAS_SEMANA.reduce((total, dia) => {
+                  const horario = jornada.horarios_estruturados[dia.key];
+                  const horas = calcularHorasDia(horario);
+                  const match = horas.match(/(\d+)h(\d+)?m?/);
+                  if (match) {
+                    return total + parseInt(match[1]) + (match[2] ? parseInt(match[2]) / 60 : 0);
+                  }
+                  return total;
+                }, 0);
 
-              return (
-                <TableRow key={jornada.id}>
-                  <TableCell className="font-medium">{jornada.nome}</TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {jornada.descricao_impressao}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {DIAS_SEMANA.slice(0, 5).map(dia => {
-                        const horario = jornada.horarios_estruturados[dia.key];
-                        return horario.entrada1 ? calcularHorasDia(horario) : '0h';
-                      }).join(' + ')}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {Math.round(totalSemanal)}h/sem
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleOpenDialog(jornada)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                return (
+                  <TableRow key={jornada.id}>
+                    <TableCell className="font-medium whitespace-nowrap">{jornada.nome}</TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={jornada.descricao_impressao}>
+                        {jornada.descricao_impressao}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm whitespace-nowrap">
+                        {DIAS_SEMANA.slice(0, 5).map(dia => {
+                          const horario = jornada.horarios_estruturados[dia.key];
+                          return horario.entrada1 ? calcularHorasDia(horario) : '0h';
+                        }).join(' + ')}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="whitespace-nowrap">
+                        {Math.round(totalSemanal)}h/sem
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleOpenDialog(jornada)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {filteredJornadas.length === 0 && (

@@ -89,7 +89,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
 
         if (item.module) {
           try {
-            const hasAccess = hasPermission(item.module, 'read');
+            const hasAccess = hasPermission(item.module, 'view');
             if (hasAccess) {
               filteredItems.push(item);
             }
@@ -227,7 +227,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
             )}
 
             {/* Subitens */}
-            {hasSubItems && isExpanded && (
+            {hasSubItems && (isExpanded || isMobile) && (
               <AnimatePresence>
                 {isExpanded_Menu && (
                   <motion.div
@@ -235,10 +235,35 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="ml-8 mt-1 space-y-1"
+                    className={cn(
+                      "mt-1 space-y-1",
+                      isMobile ? "ml-6" : "ml-8"
+                    )}
                   >
                     {item.subItems.map((subItem) => {
                       const isSubActive = location.pathname === subItem.path;
+                      
+                      if (isMobile) {
+                        return (
+                          <Link
+                            key={subItem.path}
+                            to={subItem.path}
+                            onClick={() => {
+                              if (onMobileMenuToggle) {
+                                onMobileMenuToggle();
+                              }
+                            }}
+                            className={cn(
+                              "flex items-center rounded-lg py-2 px-3 text-sm font-medium transition-colors duration-150 text-sidebar-foreground hover:bg-sidebar-accent",
+                              isSubActive ? "bg-sidebar-accent shadow-sm text-sidebar-accent-foreground" : ""
+                            )}
+                          >
+                            <subItem.icon className="h-4 w-4 shrink-0 mr-3" />
+                            <span className="whitespace-nowrap">{subItem.name}</span>
+                          </Link>
+                        );
+                      }
+                      
                       return (
                         <MotionLink
                           key={subItem.path}
@@ -263,33 +288,6 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
                   </motion.div>
                 )}
               </AnimatePresence>
-            )}
-
-            {/* Para mobile, sempre mostrar subitens se expandido */}
-            {hasSubItems && isMobile && isExpanded_Menu && (
-              <div className="ml-6 mt-1 space-y-1">
-                {item.subItems.map((subItem) => {
-                  const isSubActive = location.pathname === subItem.path;
-                  return (
-                    <Link
-                      key={subItem.path}
-                      to={subItem.path}
-                      onClick={() => {
-                        if (onMobileMenuToggle) {
-                          onMobileMenuToggle();
-                        }
-                      }}
-                      className={cn(
-                        "flex items-center rounded-lg py-2 px-3 text-sm font-medium transition-colors duration-150 text-sidebar-foreground hover:bg-sidebar-accent",
-                        isSubActive ? "bg-sidebar-accent shadow-sm text-sidebar-accent-foreground" : ""
-                      )}
-                    >
-                      <subItem.icon className="h-4 w-4 shrink-0 mr-3" />
-                      <span className="whitespace-nowrap">{subItem.name}</span>
-                    </Link>
-                  );
-                })}
-              </div>
             )}
           </div>
         );

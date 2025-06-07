@@ -1,7 +1,7 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ interface ConfigForm {
 
 export function ConfiguracaoEmpresaTab() {
   const { toast } = useToast();
+  const { user, getUserDisplayName } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: configuracao, isLoading } = useQuery({
@@ -27,7 +28,7 @@ export function ConfiguracaoEmpresaTab() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<ConfiguracaoEmpresa> }) =>
-      updateConfiguracaoEmpresa(id, data),
+      updateConfiguracaoEmpresa(id, data, user?.id, getUserDisplayName()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracao-empresa'] });
       toast({
@@ -92,43 +93,53 @@ export function ConfiguracaoEmpresaTab() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="nome_empresa">Nome da Empresa</Label>
-          <Input
-            id="nome_empresa"
-            {...register('nome_empresa', { required: 'Nome da empresa é obrigatório' })}
-            error={errors.nome_empresa?.message}
-          />
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="nome_empresa">Nome da Empresa</Label>
+            <Input
+              id="nome_empresa"
+              {...register('nome_empresa', { required: 'Nome da empresa é obrigatório' })}
+            />
+            {errors.nome_empresa && (
+              <p className="text-sm text-red-500">{errors.nome_empresa.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cnpj">CNPJ</Label>
+            <Input
+              id="cnpj"
+              {...register('cnpj', { required: 'CNPJ é obrigatório' })}
+              onChange={(e) => {
+                e.target.value = formatCNPJ(e.target.value);
+              }}
+              maxLength={18}
+            />
+            {errors.cnpj && (
+              <p className="text-sm text-red-500">{errors.cnpj.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="endereco">Endereço Completo</Label>
+            <Textarea
+              id="endereco"
+              {...register('endereco', { required: 'Endereço é obrigatório' })}
+              rows={3}
+            />
+            {errors.endereco && (
+              <p className="text-sm text-red-500">{errors.endereco.message}</p>
+            )}
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="cnpj">CNPJ</Label>
-          <Input
-            id="cnpj"
-            {...register('cnpj', { required: 'CNPJ é obrigatório' })}
-            onChange={(e) => {
-              e.target.value = formatCNPJ(e.target.value);
-            }}
-            maxLength={18}
-            error={errors.cnpj?.message}
-          />
+        <div className="flex justify-end pt-4">
+          <Button type="submit" disabled={isSubmitting || updateMutation.isPending} className="w-full sm:w-auto">
+            {isSubmitting || updateMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
+          </Button>
         </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="endereco">Endereço Completo</Label>
-          <Textarea
-            id="endereco"
-            {...register('endereco', { required: 'Endereço é obrigatório' })}
-            rows={3}
-            error={errors.endereco?.message}
-          />
-        </div>
-
-        <Button type="submit" disabled={isSubmitting || updateMutation.isPending}>
-          {isSubmitting || updateMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
-        </Button>
       </form>
     </div>
   );

@@ -1,6 +1,7 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ interface FuncionarioForm {
 export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }: FuncionarioDialogProps) {
   const { toast } = useToast();
   const isEditing = !!funcionario;
+  const { user, getUserDisplayName } = useAuth();
 
   const { data: jornadas = [] } = useQuery({
     queryKey: ['jornadas-trabalho'],
@@ -90,10 +92,19 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
         data_admissao: data.data_admissao,
       };
 
-      if (isEditing) {
-        await updateFuncionario(funcionario.id, funcionarioData);
+      if (isEditing && funcionario?.id) {
+        await updateFuncionario(
+          funcionario.id, 
+          funcionarioData,
+          user?.id,
+          getUserDisplayName()
+        );
       } else {
-        await createFuncionario(funcionarioData);
+        await createFuncionario(
+          funcionarioData,
+          user?.id,
+          getUserDisplayName()
+        );
       }
 
       onSuccess();
@@ -122,7 +133,7 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? 'Editar Funcionário' : 'Novo Funcionário'}
@@ -130,101 +141,109 @@ export function FuncionarioDialog({ open, onOpenChange, funcionario, onSuccess }
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="nome_completo">Nome Completo</Label>
-            <Input
-              id="nome_completo"
-              {...register('nome_completo', { required: 'Nome é obrigatório' })}
-            />
-            {errors.nome_completo && <p className="text-sm text-red-500">{errors.nome_completo.message}</p>}
+          <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="nome_completo">Nome Completo</Label>
+              <Input
+                id="nome_completo"
+                {...register('nome_completo', { required: 'Nome é obrigatório' })}
+              />
+              {errors.nome_completo && <p className="text-sm text-red-500">{errors.nome_completo.message}</p>}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF</Label>
+                <Input
+                  id="cpf"
+                  {...register('cpf', { required: 'CPF é obrigatório' })}
+                  onChange={handleCPFChange}
+                  maxLength={14}
+                />
+                {errors.cpf && <p className="text-sm text-red-500">{errors.cpf.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="data_admissao">Data de Admissão</Label>
+                <Input
+                  id="data_admissao"
+                  type="date"
+                  {...register('data_admissao', { required: 'Data de admissão é obrigatória' })}
+                />
+                {errors.data_admissao && <p className="text-sm text-red-500">{errors.data_admissao.message}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cargo">Cargo</Label>
+                <Input
+                  id="cargo"
+                  {...register('cargo', { required: 'Cargo é obrigatório' })}
+                />
+                {errors.cargo && <p className="text-sm text-red-500">{errors.cargo.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="setor">Setor</Label>
+                <Select
+                  value={watch('setor')}
+                  onValueChange={(value: 'Produção' | 'Administrativo') => setValue('setor', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o setor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Produção">Produção</SelectItem>
+                    <SelectItem value="Administrativo">Administrativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="jornada_id">Jornada de Trabalho</Label>
+                <Select
+                  value={watch('jornada_id')}
+                  onValueChange={(value) => setValue('jornada_id', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma jornada" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jornadas.map((jornada) => (
+                      <SelectItem key={jornada.id} value={jornada.id}>
+                        {jornada.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={watch('status')}
+                  onValueChange={(value: 'ativo' | 'inativo') => setValue('status', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="cpf">CPF</Label>
-            <Input
-              id="cpf"
-              {...register('cpf', { required: 'CPF é obrigatório' })}
-              onChange={handleCPFChange}
-              maxLength={14}
-            />
-            {errors.cpf && <p className="text-sm text-red-500">{errors.cpf.message}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cargo">Cargo</Label>
-            <Input
-              id="cargo"
-              {...register('cargo', { required: 'Cargo é obrigatório' })}
-            />
-            {errors.cargo && <p className="text-sm text-red-500">{errors.cargo.message}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="setor">Setor</Label>
-            <Select
-              value={watch('setor')}
-              onValueChange={(value: 'Produção' | 'Administrativo') => setValue('setor', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o setor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Produção">Produção</SelectItem>
-                <SelectItem value="Administrativo">Administrativo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="data_admissao">Data de Admissão</Label>
-            <Input
-              id="data_admissao"
-              type="date"
-              {...register('data_admissao', { required: 'Data de admissão é obrigatória' })}
-            />
-            {errors.data_admissao && <p className="text-sm text-red-500">{errors.data_admissao.message}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="jornada_id">Jornada de Trabalho</Label>
-            <Select
-              value={watch('jornada_id')}
-              onValueChange={(value) => setValue('jornada_id', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma jornada" />
-              </SelectTrigger>
-              <SelectContent>
-                {jornadas.map((jornada) => (
-                  <SelectItem key={jornada.id} value={jornada.id}>
-                    {jornada.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select
-              value={watch('status')}
-              onValueChange={(value: 'ativo' | 'inativo') => setValue('status', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ativo">Ativo</SelectItem>
-                <SelectItem value="inativo">Inativo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
               {isSubmitting ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Criar')}
             </Button>
           </div>

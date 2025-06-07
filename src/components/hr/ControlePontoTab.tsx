@@ -112,7 +112,7 @@ export function ControlePontoTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="mes">Mês</Label>
               <Select value={selectedMes} onValueChange={setSelectedMes}>
@@ -166,8 +166,8 @@ export function ControlePontoTab() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Busca de funcionários */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="relative flex-1 w-full sm:w-auto">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar funcionários por nome ou cargo..."
@@ -176,7 +176,7 @@ export function ControlePontoTab() {
                 className="pl-8"
               />
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
               <Checkbox
                 id="select-all"
                 checked={
@@ -239,21 +239,27 @@ export function ControlePontoTab() {
           onClick={handleGerar} 
           disabled={isGenerating || funcionariosSelecionados.length === 0 || !selectedMes || !selectedAno}
           size="lg"
-          className="min-w-[250px]"
+          className="w-full sm:w-auto sm:min-w-[250px]"
         >
           {isGenerating ? (
             <>Gerando...</>
           ) : (
             <>
               <FileText className="h-5 w-5 mr-2" />
-              Gerar {funcionariosSelecionados.length > 0 && `${funcionariosSelecionados.length} `}
-              Folha{funcionariosSelecionados.length !== 1 ? 's' : ''} de Ponto
+              <span className="hidden sm:inline">
+                Gerar {funcionariosSelecionados.length > 0 && `${funcionariosSelecionados.length} `}
+                Folha{funcionariosSelecionados.length !== 1 ? 's' : ''} de Ponto
+              </span>
+              <span className="sm:hidden">
+                Gerar {funcionariosSelecionados.length > 0 && `(${funcionariosSelecionados.length}) `}
+                Folhas
+              </span>
             </>
           )}
         </Button>
       </div>
 
-      <div className="text-center text-sm text-muted-foreground">
+      <div className="text-center text-sm text-muted-foreground px-4">
         As folhas de controle de ponto serão geradas em formato PDF com os feriados do período selecionado.
         {funcionariosSelecionados.length > 1 && (
           <>

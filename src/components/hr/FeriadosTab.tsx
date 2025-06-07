@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Edit, Download, Calendar } from "lucide-react";
@@ -64,6 +65,7 @@ export function FeriadosTab() {
     descricao: ''
   });
   const { toast } = useToast();
+  const { user, getUserDisplayName } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: feriados = [], isLoading: isLoadingFeriados, refetch } = useQuery({
@@ -72,7 +74,8 @@ export function FeriadosTab() {
   });
 
   const createFeriadoMutation = useMutation({
-    mutationFn: createFeriado,
+    mutationFn: (feriadoData: Omit<Feriado, 'id' | 'created_at' | 'updated_at'>) => 
+      createFeriado(feriadoData, user?.id, getUserDisplayName()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feriados'] });
       toast({
@@ -258,25 +261,25 @@ export function FeriadosTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar feriados..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-80"
+            className="w-full sm:w-80"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Dialog open={isBuscaOpen} onOpenChange={setIsBuscaOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <Download className="h-4 w-4 mr-2" />
                 Buscar Novos Feriados
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Buscar Feriados Automaticamente</DialogTitle>
                 <DialogDescription>
@@ -285,10 +288,10 @@ export function FeriadosTab() {
               </DialogHeader>
               
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                   <Label htmlFor="ano">Ano:</Label>
                   <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Selecione o ano" />
                     </SelectTrigger>
                     <SelectContent>
@@ -299,7 +302,7 @@ export function FeriadosTab() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button onClick={buscarFeriados} disabled={isLoading || !anoSelecionado}>
+                  <Button onClick={buscarFeriados} disabled={isLoading || !anoSelecionado} className="w-full sm:w-auto">
                     {isLoading ? "Buscando..." : "Buscar Feriados"}
                   </Button>
                 </div>
@@ -307,7 +310,7 @@ export function FeriadosTab() {
                 {feriadosSugeridos.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center justify-between">
+                      <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                         <span>Feriados Encontrados ({feriadosSugeridos.length})</span>
                         <div className="flex items-center gap-2">
                           <Checkbox
@@ -326,57 +329,61 @@ export function FeriadosTab() {
                     </CardHeader>
                     <CardContent>
                       <div className="max-h-[400px] overflow-y-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-12">
-                                <span className="sr-only">Selecionar</span>
-                              </TableHead>
-                              <TableHead>Nome</TableHead>
-                              <TableHead>Data</TableHead>
-                              <TableHead>Tipo</TableHead>
-                              <TableHead>Descrição</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {feriadosSugeridos.map((feriado) => (
-                              <TableRow key={feriado.data}>
-                                <TableCell>
-                                  <Checkbox
-                                    checked={feriadosSelecionados.includes(feriado.data)}
-                                    onCheckedChange={(checked) => 
-                                      handleSelectFeriado(feriado.data, !!checked)
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell className="font-medium">{feriado.nome}</TableCell>
-                                <TableCell>
-                                  {new Date(feriado.data).toLocaleDateString('pt-BR')}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={getTipoColor(feriado.tipo)}>
-                                    {feriado.tipo}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground">
-                                  {feriado.descricao}
-                                </TableCell>
+                        <div className="overflow-x-auto">
+                          <Table className="min-w-[600px]">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-12">
+                                  <span className="sr-only">Selecionar</span>
+                                </TableHead>
+                                <TableHead className="whitespace-nowrap">Nome</TableHead>
+                                <TableHead className="whitespace-nowrap">Data</TableHead>
+                                <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                                <TableHead className="whitespace-nowrap">Descrição</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {feriadosSugeridos.map((feriado) => (
+                                <TableRow key={feriado.data}>
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={feriadosSelecionados.includes(feriado.data)}
+                                      onCheckedChange={(checked) => 
+                                        handleSelectFeriado(feriado.data, !!checked)
+                                      }
+                                    />
+                                  </TableCell>
+                                  <TableCell className="font-medium whitespace-nowrap">{feriado.nome}</TableCell>
+                                  <TableCell className="whitespace-nowrap">
+                                    {new Date(feriado.data).toLocaleDateString('pt-BR')}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={getTipoColor(feriado.tipo)}>
+                                      {feriado.tipo}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground max-w-xs">
+                                    <div className="truncate" title={feriado.descricao}>
+                                      {feriado.descricao}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
                 )}
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsBuscaOpen(false)}>
+              <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setIsBuscaOpen(false)} className="w-full sm:w-auto">
                   Cancelar
                 </Button>
                 {feriadosSelecionados.length > 0 && (
-                  <Button onClick={importarFeriados}>
+                  <Button onClick={importarFeriados} className="w-full sm:w-auto">
                     <Calendar className="h-4 w-4 mr-2" />
                     Importar {feriadosSelecionados.length} Feriado(s)
                   </Button>
@@ -385,7 +392,7 @@ export function FeriadosTab() {
             </DialogContent>
           </Dialog>
 
-          <Button onClick={() => setIsDialogOpen(true)}>
+          <Button onClick={() => setIsDialogOpen(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Novo Feriado
           </Button>
@@ -394,7 +401,7 @@ export function FeriadosTab() {
 
       {/* Dialog para criar novo feriado */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Novo Feriado</DialogTitle>
             <DialogDescription>
@@ -413,31 +420,33 @@ export function FeriadosTab() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="data">Data *</Label>
-              <Input
-                id="data"
-                type="date"
-                value={formData.data}
-                onChange={(e) => handleInputChange('data', e.target.value)}
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="data">Data *</Label>
+                <Input
+                  id="data"
+                  type="date"
+                  value={formData.data}
+                  onChange={(e) => handleInputChange('data', e.target.value)}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tipo">Tipo *</Label>
-              <Select 
-                value={formData.tipo} 
-                onValueChange={(value) => handleInputChange('tipo', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nacional">Nacional</SelectItem>
-                  <SelectItem value="estadual">Estadual</SelectItem>
-                  <SelectItem value="municipal">Municipal</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="tipo">Tipo *</Label>
+                <Select 
+                  value={formData.tipo} 
+                  onValueChange={(value) => handleInputChange('tipo', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nacional">Nacional</SelectItem>
+                    <SelectItem value="estadual">Estadual</SelectItem>
+                    <SelectItem value="municipal">Municipal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -450,17 +459,19 @@ export function FeriadosTab() {
               />
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => setIsDialogOpen(false)}
+                className="w-full sm:w-auto"
               >
                 Cancelar
               </Button>
               <Button 
                 type="submit" 
                 disabled={createFeriadoMutation.isPending}
+                className="w-full sm:w-auto"
               >
                 {createFeriadoMutation.isPending ? "Salvando..." : "Salvar Feriado"}
               </Button>
@@ -469,45 +480,47 @@ export function FeriadosTab() {
         </DialogContent>
       </Dialog>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Ano</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-20">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredFeriados.map((feriado) => (
-              <TableRow key={feriado.id}>
-                <TableCell className="font-medium">{feriado.nome}</TableCell>
-                <TableCell>
-                  {new Date(feriado.data).toLocaleDateString('pt-BR')}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={getTipoColor(feriado.tipo)}>
-                    {feriado.tipo}
-                  </Badge>
-                </TableCell>
-                <TableCell>{feriado.ano}</TableCell>
-                <TableCell>
-                  <Badge variant={feriado.ativo ? 'default' : 'secondary'}>
-                    {feriado.ativo ? 'Ativo' : 'Inativo'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="sm">
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </TableCell>
+      <div className="border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table className="min-w-[700px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="whitespace-nowrap">Nome</TableHead>
+                <TableHead className="whitespace-nowrap">Data</TableHead>
+                <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                <TableHead className="whitespace-nowrap">Ano</TableHead>
+                <TableHead className="whitespace-nowrap">Status</TableHead>
+                <TableHead className="w-20">Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredFeriados.map((feriado) => (
+                <TableRow key={feriado.id}>
+                  <TableCell className="font-medium whitespace-nowrap">{feriado.nome}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {new Date(feriado.data).toLocaleDateString('pt-BR')}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getTipoColor(feriado.tipo)}>
+                      {feriado.tipo}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{feriado.ano}</TableCell>
+                  <TableCell>
+                    <Badge variant={feriado.ativo ? 'default' : 'secondary'}>
+                      {feriado.ativo ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {filteredFeriados.length === 0 && (

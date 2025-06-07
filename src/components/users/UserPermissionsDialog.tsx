@@ -39,6 +39,7 @@ const ALL_MODULES = [
   { key: 'losses', label: 'Perdas', has_actions: false },
   { key: 'traceability', label: 'Rastreabilidade', has_actions: false },
   { key: 'general_settings', label: 'Cadastros (Geral)', has_actions: false },
+  { key: 'human_resources', label: 'Recursos Humanos', has_actions: true },
   { key: 'user_management', label: 'Gerenciamento de Usuários', has_actions: false },
 ];
 
