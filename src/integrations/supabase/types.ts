@@ -13,25 +13,34 @@ export type Database = {
         Row: {
           cnpj: string
           created_at: string
+          email: string | null
           endereco: string
           id: string
+          logo_url: string | null
           nome_empresa: string
+          telefone: string | null
           updated_at: string
         }
         Insert: {
           cnpj: string
           created_at?: string
+          email?: string | null
           endereco: string
           id?: string
+          logo_url?: string | null
           nome_empresa: string
+          telefone?: string | null
           updated_at?: string
         }
         Update: {
           cnpj?: string
           created_at?: string
+          email?: string | null
           endereco?: string
           id?: string
+          logo_url?: string | null
           nome_empresa?: string
+          telefone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -42,6 +51,7 @@ export type Database = {
           ativo: boolean
           created_at: string
           data: string
+          descricao: string | null
           id: string
           nome: string
           tipo: string
@@ -52,6 +62,7 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           data: string
+          descricao?: string | null
           id?: string
           nome: string
           tipo: string
@@ -62,6 +73,7 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           data?: string
+          descricao?: string | null
           id?: string
           nome?: string
           tipo?: string
@@ -78,6 +90,7 @@ export type Database = {
           id: string
           jornada_id: string | null
           nome_completo: string
+          setor: string
           status: string
           updated_at: string
         }
@@ -89,6 +102,7 @@ export type Database = {
           id?: string
           jornada_id?: string | null
           nome_completo: string
+          setor?: string
           status?: string
           updated_at?: string
         }
@@ -100,6 +114,7 @@ export type Database = {
           id?: string
           jornada_id?: string | null
           nome_completo?: string
+          setor?: string
           status?: string
           updated_at?: string
         }

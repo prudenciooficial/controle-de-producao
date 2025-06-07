@@ -160,14 +160,20 @@ export function FolhaPontoPage() {
     const nomesDia = diasNomes[diaSemana];
     const horarioDia = jornada.horarios_estruturados[nomesDia];
     
-    // Para qualquer dia que tenha horário de almoço definido (incluindo sábado)
-    if (horarioDia?.entrada1 && horarioDia?.saida1 && horarioDia?.entrada2 && horarioDia?.saida2) {
+    // Verificar se o dia tem trabalho definido
+    if (!horarioDia?.entrada1 || !horarioDia?.saida1) {
+      return { saida: '', retorno: '' };
+    }
+    
+    // Verificar se há horário de almoço (entrada2 e saida2 preenchidos)
+    if (horarioDia.entrada2 && horarioDia.saida2) {
       return {
         saida: horarioDia.saida1,
         retorno: horarioDia.entrada2
       };
     }
     
+    // Se não há entrada2/saida2, não há horário de almoço
     return { saida: '', retorno: '' };
   };
 
@@ -284,11 +290,6 @@ export function FolhaPontoPage() {
                     const isNaoUtil = diaInfo.isDomingo || diaInfo.isFeriado || (diaInfo.isSabado && !trabalhaNoSab);
                     const horarioAlmoco = getHorarioAlmoco(data.funcionario.jornada, diaInfo.diaSemana);
                     
-                    // Mostrar horários de almoço em todos os dias úteis (exceto domingos e feriados)
-                    // Para sábado: só mostra se trabalha no sábado
-                    const devePreencherAlmoco = !diaInfo.isDomingo && !diaInfo.isFeriado && 
-                                               (!diaInfo.isSabado || trabalhaNoSab);
-                    
                     return (
                       <tr 
                         key={diaInfo.dia}
@@ -307,12 +308,12 @@ export function FolhaPontoPage() {
                         </td>
                         <td className="celula-hora"></td>
                         <td className="celula-hora">
-                          {devePreencherAlmoco && horarioAlmoco.saida && (
+                          {horarioAlmoco.saida && (
                             <span className="horario-preenchido">{horarioAlmoco.saida}</span>
                           )}
                         </td>
                         <td className="celula-hora">
-                          {devePreencherAlmoco && horarioAlmoco.retorno && (
+                          {horarioAlmoco.retorno && (
                             <span className="horario-preenchido">{horarioAlmoco.retorno}</span>
                           )}
                         </td>
@@ -346,4 +347,4 @@ export function FolhaPontoPage() {
       </div>
     </>
   );
-} 
+}
