@@ -361,7 +361,6 @@ export const getFeriados = async (ano?: number): Promise<Feriado[]> => {
   let query = supabase
     .from('feriados')
     .select('*')
-    .eq('ativo', true)
     .order('data');
 
   if (ano) {
@@ -420,7 +419,6 @@ export const createFeriado = async (
           data: data.data,
           tipo: data.tipo,
           ano: data.ano,
-          ativo: data.ativo,
           descricao: data.descricao
         }
       });
@@ -492,7 +490,6 @@ export const updateFeriado = async (
           data: originalData.data,
           tipo: originalData.tipo,
           ano: originalData.ano,
-          ativo: originalData.ativo,
           descricao: originalData.descricao
         } : undefined,
         newData: {
@@ -500,7 +497,6 @@ export const updateFeriado = async (
           data: data.data,
           tipo: data.tipo,
           ano: data.ano,
-          ativo: data.ativo,
           descricao: data.descricao
         }
       });

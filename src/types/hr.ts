@@ -47,7 +47,6 @@ export interface Feriado {
   data: Date;
   tipo: 'nacional' | 'estadual' | 'municipal';
   ano: number;
-  ativo: boolean;
   descricao?: string;
   created_at: Date;
   updated_at: Date;

@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Edit, Download, Calendar } from "lucide-react";
+import { Plus, Search, Edit, Download, Calendar, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getFeriados, createFeriado } from "@/services/hrService";
+import { getFeriados, createFeriado, updateFeriado, deleteFeriado } from "@/services/hrService";
 import type { Feriado } from "@/types/hr";
 import {
   Table,
@@ -58,6 +58,7 @@ export function FeriadosTab() {
   const [feriadosSugeridos, setFeriadosSugeridos] = useState<FeriadoSugerido[]>([]);
   const [feriadosSelecionados, setFeriadosSelecionados] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [editingFeriado, setEditingFeriado] = useState<Feriado | null>(null);
   const [formData, setFormData] = useState<FormularioFeriado>({
     nome: '',
     data: '',
@@ -82,8 +83,7 @@ export function FeriadosTab() {
         title: "Sucesso",
         description: "Feriado criado com sucesso!",
       });
-      setIsDialogOpen(false);
-      setFormData({ nome: '', data: '', tipo: 'nacional', descricao: '' });
+      resetForm();
     },
     onError: (error) => {
       toast({
@@ -93,6 +93,72 @@ export function FeriadosTab() {
       });
     },
   });
+
+  const updateFeriadoMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Feriado> }) =>
+      updateFeriado(id, data, user?.id, getUserDisplayName()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feriados'] });
+      toast({
+        title: "Sucesso",
+        description: "Feriado atualizado com sucesso!",
+      });
+      resetForm();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao atualizar feriado. Tente novamente.",
+      });
+    },
+  });
+
+  const deleteFeriadoMutation = useMutation({
+    mutationFn: (id: string) => deleteFeriado(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feriados'] });
+      toast({
+        title: "Sucesso",
+        description: "Feriado excluído com sucesso!",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao excluir feriado. Tente novamente.",
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({
+      nome: '',
+      data: '',
+      tipo: 'nacional',
+      descricao: ''
+    });
+    setEditingFeriado(null);
+    setIsDialogOpen(false);
+  };
+
+  const handleEdit = (feriado: Feriado) => {
+    setEditingFeriado(feriado);
+    setFormData({
+      nome: feriado.nome,
+      data: feriado.data instanceof Date ? feriado.data.toISOString().split('T')[0] : new Date(feriado.data).toISOString().split('T')[0],
+      tipo: feriado.tipo,
+      descricao: feriado.descricao || ''
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (feriado: Feriado) => {
+    if (confirm(`Tem certeza que deseja excluir o feriado "${feriado.nome}"?`)) {
+      deleteFeriadoMutation.mutate(feriado.id);
+    }
+  };
 
   const filteredFeriados = feriados.filter(feriado =>
     feriado.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -225,7 +291,10 @@ export function FeriadosTab() {
   });
 
   const handleInputChange = (field: keyof FormularioFeriado, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => ({ 
+      ...prev, 
+      [field]: value 
+    }));
   };
 
   const handleSubmitFeriado = async (e: React.FormEvent) => {
@@ -243,16 +312,32 @@ export function FeriadosTab() {
     const dataFeriado = new Date(formData.data);
     const ano = dataFeriado.getFullYear();
 
-    const novoFeriado = {
-      nome: formData.nome,
-      data: new Date(formData.data),
-      ano,
-      tipo: formData.tipo,
-      descricao: formData.descricao || null,
-      ativo: true,
-    };
+    if (editingFeriado) {
+      // Editar feriado existente
+      const feriadoAtualizado = {
+        nome: formData.nome,
+        data: new Date(formData.data),
+        ano,
+        tipo: formData.tipo,
+        descricao: formData.descricao || null,
+      };
 
-    createFeriadoMutation.mutate(novoFeriado);
+      updateFeriadoMutation.mutate({ 
+        id: editingFeriado.id, 
+        data: feriadoAtualizado 
+      });
+    } else {
+      // Criar novo feriado
+      const novoFeriado = {
+        nome: formData.nome,
+        data: new Date(formData.data),
+        ano,
+        tipo: formData.tipo,
+        descricao: formData.descricao || null,
+      };
+
+      createFeriadoMutation.mutate(novoFeriado);
+    }
   };
 
   if (isLoadingFeriados) {
@@ -392,7 +477,10 @@ export function FeriadosTab() {
             </DialogContent>
           </Dialog>
 
-          <Button onClick={() => setIsDialogOpen(true)} className="w-full sm:w-auto">
+          <Button onClick={() => {
+            resetForm();
+            setIsDialogOpen(true);
+          }} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Novo Feriado
           </Button>
@@ -400,12 +488,20 @@ export function FeriadosTab() {
       </div>
 
       {/* Dialog para criar novo feriado */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        if (!open) resetForm();
+        setIsDialogOpen(open);
+      }}>
         <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Novo Feriado</DialogTitle>
+            <DialogTitle>
+              {editingFeriado ? 'Editar Feriado' : 'Novo Feriado'}
+            </DialogTitle>
             <DialogDescription>
-              Adicione um novo feriado ao sistema preenchendo as informações abaixo.
+              {editingFeriado 
+                ? 'Edite as informações do feriado abaixo.'
+                : 'Adicione um novo feriado ao sistema preenchendo as informações abaixo.'
+              }
             </DialogDescription>
           </DialogHeader>
           
@@ -463,17 +559,20 @@ export function FeriadosTab() {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => setIsDialogOpen(false)}
+                onClick={resetForm}
                 className="w-full sm:w-auto"
               >
                 Cancelar
               </Button>
               <Button 
                 type="submit" 
-                disabled={createFeriadoMutation.isPending}
+                disabled={createFeriadoMutation.isPending || updateFeriadoMutation.isPending}
                 className="w-full sm:w-auto"
               >
-                {createFeriadoMutation.isPending ? "Salvando..." : "Salvar Feriado"}
+                {createFeriadoMutation.isPending || updateFeriadoMutation.isPending
+                  ? "Salvando..." 
+                  : editingFeriado ? "Atualizar Feriado" : "Salvar Feriado"
+                }
               </Button>
             </DialogFooter>
           </form>
@@ -482,14 +581,13 @@ export function FeriadosTab() {
 
       <div className="border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <Table className="min-w-[700px]">
+          <Table className="min-w-[600px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="whitespace-nowrap">Nome</TableHead>
                 <TableHead className="whitespace-nowrap">Data</TableHead>
                 <TableHead className="whitespace-nowrap">Tipo</TableHead>
                 <TableHead className="whitespace-nowrap">Ano</TableHead>
-                <TableHead className="whitespace-nowrap">Status</TableHead>
                 <TableHead className="w-20">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -507,14 +605,25 @@ export function FeriadosTab() {
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{feriado.ano}</TableCell>
                   <TableCell>
-                    <Badge variant={feriado.ativo ? 'default' : 'secondary'}>
-                      {feriado.ativo ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleEdit(feriado)}
+                        title="Editar feriado"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDelete(feriado)}
+                        title="Excluir feriado"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
