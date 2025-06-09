@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useData } from "@/context/DataContext";
-import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2, TrendingDown, TrendingUp, Info, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2, TrendingDown, TrendingUp, Info, AlertTriangle, ClipboardList } from "lucide-react";
 import { SimpleDateFilter } from "@/components/ui/simple-date-filter";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { formatMonthYear, formatDayMonth, isWithinOneMonth, formatNumberBR } fro
 import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { StatsSection } from "@/components/ui/StatsSection";
+import { motion } from "framer-motion";
 
 // Função melhorada para calcular mudança percentual
 const getPercentChange = (current: number, previous: number) => {
@@ -38,6 +39,8 @@ const Dashboard = () => {
     setDateRange,
     getAvailableProducts,
     getAvailableMaterials,
+    materialBatches,
+    getProductiveCapacity
   } = useData();
   
   // State for inventory details dialog
@@ -115,14 +118,15 @@ const Dashboard = () => {
     }
   }, [previousMonthRange, productionBatches, sales, dashboardStats, products, globalSettings]);
   
-  // Calcular capacidade produtiva atual
+  // Calcular capacidade produtiva atual usando a função utilitária
   const currentCapacidadeProdutiva = React.useMemo(() => {
-    if (isLoading.globalSettings || !globalSettings || dashboardStats.totalFeculaInventoryKg === undefined) {
+    if (isLoading.globalSettings || !globalSettings || isLoading.materialBatches) {
       return 0; // Ou algum valor de carregamento/padrão
     }
-    // Usar o estoque de FÉCULA para o cálculo
-    return (dashboardStats.totalFeculaInventoryKg || 0) * globalSettings.production_prediction_factor;
-  }, [dashboardStats.totalFeculaInventoryKg, globalSettings, isLoading.globalSettings]);
+    
+    const productiveCapacity = getProductiveCapacity();
+    return productiveCapacity.capacityKg;
+  }, [getProductiveCapacity, isLoading.globalSettings, isLoading.materialBatches]);
   
   // Calculate percentage changes
   const percentChanges = {
@@ -653,9 +657,7 @@ const Dashboard = () => {
         </div>
 
         {/* Seção de estatísticas */}
-        {statsForDisplay && percentChanges && (
-          <StatsSection stats={statsForDisplay} changes={percentChanges} />
-        )}
+        <StatsSection stats={statsForDisplay} changes={percentChanges} />
 
         {/* Gráficos Corrigidos */}
         <div className="grid gap-6 md:grid-cols-2 mb-6">
@@ -836,8 +838,18 @@ const Dashboard = () => {
                             {typeGroup.materials.map((material) => (
                               <TableRow key={material.name} className="hover:bg-muted/50">
                                 <TableCell className="font-medium align-middle">{material.name}</TableCell>
-                                <TableCell className="align-middle">{formatNumberBR(material.total)}</TableCell>
-                                <TableCell className="align-middle">{material.unitOfMeasure === 'kg' ? 'unidades' : material.unitOfMeasure}</TableCell>
+                                <TableCell className="align-middle">
+                                  {typeGroup.type.toLowerCase().includes('fécula') ? (
+                                    <span>
+                                      {formatNumberBR(material.total)} sacos
+                                    </span>
+                                  ) : (
+                                    formatNumberBR(material.total)
+                                  )}
+                                </TableCell>
+                                <TableCell className="align-middle">
+                                  {typeGroup.type.toLowerCase().includes('fécula') ? 'sacos' : (material.unitOfMeasure === 'kg' ? 'unidades' : material.unitOfMeasure)}
+                                </TableCell>
                                 <TableCell className="text-right align-middle">
                                   <Button 
                                     variant="outline" 

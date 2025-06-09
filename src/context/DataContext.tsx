@@ -121,6 +121,23 @@ interface DataContextType {
   // Helper methods
   getAvailableMaterials: () => MaterialBatch[];
   getAvailableProducts: () => ProducedItem[];
+  
+  // Novas funções utilitárias para fécula
+  getFeculaInventory: () => {
+    totalUnits: number;
+    totalKg: number;
+    conversionFactor: number;
+    batches: MaterialBatch[];
+  };
+  
+  getProductiveCapacity: () => {
+    totalUnits: number;
+    totalKg: number;
+    conversionFactor: number;
+    batches: MaterialBatch[];
+    productionFactor: number;
+    capacityKg: number;
+  };
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -692,7 +709,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const totalFeculaInventoryKg = materialBatches.reduce((acc, batch) => {
       // Certifique-se de que materialType existe e é uma string antes de chamar toLowerCase()
       if (batch.materialType && typeof batch.materialType === 'string' && batch.materialType.toLowerCase().includes('fécula')) {
-        return acc + (batch.remainingQuantity || 0); // Adiciona remainingQuantity, tratando undefined como 0
+        // Aplicar fator de conversão: unidades × fator = KG
+        const globalFactor = globalSettings?.fecula_conversion_factor || 25; // valor padrão se não houver configuração
+        const kgFromThisBatch = (batch.remainingQuantity || 0) * globalFactor;
+        return acc + kgFromThisBatch;
       }
       return acc;
     }, 0);
@@ -1193,17 +1213,50 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Helper method to get available products
   const getAvailableProducts = () => {
-    const availableProducts: ProducedItem[] = [];
-    
-    productionBatches.forEach(batch => {
-      batch.producedItems.forEach(item => {
-        if (item.remainingQuantity > 0) {
-          availableProducts.push(item);
-        }
-      });
-    });
-    
-    return availableProducts;
+    return productionBatches
+      .flatMap(batch => 
+        batch.producedItems.map(item => ({
+          ...item,
+          batchNumber: batch.batchNumber,
+          productionDate: batch.productionDate,
+          unitOfMeasure: item.unitOfMeasure || "kg",
+          productName: products.find(p => p.id === item.productId)?.name || "Produto Desconhecido"
+        }))
+      )
+      .filter(item => item.remainingQuantity > 0);
+  };
+
+  // Novas funções utilitárias para fécula
+  const getFeculaInventory = () => {
+    const feculaBatches = materialBatches.filter(batch => 
+      batch.materialType && 
+      typeof batch.materialType === 'string' && 
+      batch.materialType.toLowerCase().includes('fécula') && 
+      batch.remainingQuantity > 0
+    );
+
+    const totalUnits = feculaBatches.reduce((sum, batch) => sum + batch.remainingQuantity, 0);
+    const conversionFactor = globalSettings?.fecula_conversion_factor || 25;
+    const totalKg = totalUnits * conversionFactor;
+
+    return {
+      totalUnits,
+      totalKg,
+      conversionFactor,
+      batches: feculaBatches
+    };
+  };
+
+  const getProductiveCapacity = () => {
+    const feculaInventory = getFeculaInventory();
+    const productionFactor = globalSettings?.production_prediction_factor || 1.5;
+    const capacityKg = feculaInventory.totalKg * productionFactor;
+
+    return {
+      ...feculaInventory,
+      productionFactor,
+      capacityKg
+    };
   };
 
   const value = {
@@ -1251,7 +1304,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateSupplier,
     deleteSupplier,
     getAvailableMaterials,
-    getAvailableProducts
+    getAvailableProducts,
+    getFeculaInventory,
+    getProductiveCapacity
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

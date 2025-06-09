@@ -26,7 +26,14 @@ import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsD
 import { motion } from "framer-motion";
 
 const Inventory = () => {
-  const { getAvailableProducts, getAvailableMaterials, materialBatches, isLoading } = useData();
+  const { 
+    getAvailableProducts, 
+    getAvailableMaterials, 
+    materialBatches, 
+    globalSettings, 
+    isLoading,
+    getFeculaInventory 
+  } = useData();
   const [productSearch, setProductSearch] = useState("");
   const [materialSearch, setMaterialSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -145,7 +152,16 @@ const Inventory = () => {
   // Calculate total quantity for each material type (memoized)
   const materialTypeTotals = useMemo(() => {
     return Object.entries(groupedMaterials).map(([type, materials]) => {
-      const total = materials.reduce((sum, m) => sum + m.remainingQuantity, 0);
+      // Aplicar conversão para fécula APENAS no total do tipo (título)
+      const isFecula = type.toLowerCase().includes('fécula');
+      const feculaConversionFactor = globalSettings?.fecula_conversion_factor || 25;
+      
+      // Para o total do tipo, aplicar conversão se for fécula
+      const total = materials.reduce((sum, m) => {
+        const quantity = m.remainingQuantity;
+        // Se é fécula, converter unidades para KG
+        return sum + (isFecula ? quantity * feculaConversionFactor : quantity);
+      }, 0);
       
       // Group materials by name within each type
       const groupedByName = materials.reduce((acc, material) => {
@@ -159,8 +175,15 @@ const Inventory = () => {
       
       // Calculate total for each material name
       const materialTotals = Object.entries(groupedByName).map(([name, materials]) => {
-        const total = materials.reduce((sum, m) => sum + m.remainingQuantity, 0);
-        const unitOfMeasure = materials[0]?.unitOfMeasure || "kg";
+        // Para materiais individuais de fécula, NÃO converter - manter unidades originais
+        const total = materials.reduce((sum, m) => {
+          const quantity = m.remainingQuantity;
+          // Não aplicar conversão aqui - manter unidades originais
+          return sum + quantity;
+        }, 0);
+        
+        // Para fécula, mostrar unidade original (sacos), para outros manter kg
+        const unitOfMeasure = isFecula ? "sacos" : (materials[0]?.unitOfMeasure || "kg");
         const firstMaterial = materials[0];
         
         // Check expiry status
@@ -186,18 +209,20 @@ const Inventory = () => {
           firstMaterial,
           batches: materials.length,
           hasExpired,
-          hasExpiringSoon
+          hasExpiringSoon,
+          isFecula // Adicionar flag para identificar fécula
         };
       });
       
       return {
         type,
-        total,
+        total, // Este continua convertido para o título
         materials: materialTotals,
-        totalBatches: materials.length
+        totalBatches: materials.length,
+        isFecula // Adicionar flag para o tipo
       };
     });
-  }, [groupedMaterials]);
+  }, [groupedMaterials, globalSettings]);
 
   // Calculate stats (memoized)
   const productStats = useMemo(() => {
@@ -572,7 +597,7 @@ const Inventory = () => {
                                 <div>
                                   <h3 className="text-lg font-semibold">{typeGroup.type}</h3>
                                   <p className="text-sm text-muted-foreground">
-                                    {typeGroup.totalBatches} lotes • {typeGroup.total.toFixed(1)} kg total
+                                    {typeGroup.totalBatches} lotes • {typeGroup.total.toFixed(1)} {typeGroup.isFecula ? 'kg (convertido)' : 'kg total'}
                                   </p>
                                 </div>
                               </div>
