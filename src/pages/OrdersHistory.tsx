@@ -362,7 +362,8 @@ const OrdersHistory = () => {
       quantity: 0,
       unitOfMeasure: "kg",
       batchNumber: "",
-      hasReport: false
+      hasReport: false,
+      expiryDate: undefined
     });
     
     setIsAddingItem(false);
@@ -391,31 +392,31 @@ const OrdersHistory = () => {
     const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
   
   return (
-      <Card className="group relative overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 dark:hover:shadow-orange-400/10 transition-all duration-500 hover:-translate-y-2">
+      <Card className="group relative overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/80 dark:to-gray-900 border border-gray-200/50 dark:border-gray-600/60 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 dark:hover:shadow-orange-400/20 transition-all duration-500 hover:-translate-y-2">
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-blue-500/5 dark:from-orange-400/10 dark:via-transparent dark:to-blue-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         
         {/* Sparkle effect */}
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <Sparkles className="h-4 w-4 text-orange-400 animate-pulse" />
+          <Sparkles className="h-4 w-4 text-orange-400 dark:text-orange-300 animate-pulse" />
         </div>
 
         <CardHeader className="relative pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg group-hover:shadow-orange-500/25 transition-shadow duration-300">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 dark:from-orange-400 dark:to-amber-500 text-white shadow-lg group-hover:shadow-orange-500/25 dark:group-hover:shadow-orange-400/30 transition-shadow duration-300">
                 <Truck className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle 
-                  className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors duration-300 cursor-pointer hover:underline"
+                  className="text-lg font-bold text-gray-900 dark:text-gray-50 group-hover:text-orange-600 dark:group-hover:text-orange-300 transition-colors duration-300 cursor-pointer hover:underline"
                   onClick={() => openDetailsDialog(order)}
                 >
                   {order.supplierName}
                 </CardTitle>
                 <div className="flex items-center gap-2 mt-1">
-                  <Calendar className="h-3 w-3 text-gray-500" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                  <Calendar className="h-3 w-3 text-gray-500 dark:text-gray-400" />
+                  <span className="text-sm text-gray-600 dark:text-gray-300">
                     {format(orderDate, "dd 'de' MMMM", { locale: ptBR })}
                   </span>
                 </div>
@@ -423,7 +424,7 @@ const OrdersHistory = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <Badge variant={status.variant} className="font-medium shadow-sm">
+              <Badge variant={status.variant} className="font-medium shadow-sm dark:shadow-gray-800/50">
                 {status.label}
               </Badge>
               <DropdownMenu>
@@ -431,7 +432,7 @@ const OrdersHistory = () => {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 ${
+                    className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-orange-50 dark:hover:bg-orange-900/30 ${
                       isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                     }`}
                   >
@@ -466,16 +467,16 @@ const OrdersHistory = () => {
 
         <CardContent className="relative space-y-4">
           {/* Informações do Pedido */}
-          <div className="bg-gradient-to-br from-orange-50/50 to-amber-50/50 dark:from-orange-900/20 dark:to-amber-900/20 p-4 rounded-lg border border-orange-200/30 dark:border-orange-700/30">
-            <h4 className="text-sm font-bold text-orange-700 dark:text-orange-300 mb-3 flex items-center gap-2">
+          <div className="bg-gradient-to-br from-orange-50/80 to-amber-50/80 dark:from-orange-900/30 dark:to-amber-900/30 p-4 rounded-lg border border-orange-200/50 dark:border-orange-700/50">
+            <h4 className="text-sm font-bold text-orange-700 dark:text-orange-200 mb-3 flex items-center gap-2">
               <Package2 className="h-4 w-4" />
               Informações do Pedido
             </h4>
             
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
-                <span className="text-gray-600 dark:text-gray-400 block">Lote</span>
-                <span className="font-bold text-gray-900 dark:text-gray-100 truncate block">
+                <span className="text-gray-600 dark:text-gray-300 block">Lote</span>
+                <span className="font-bold text-gray-900 dark:text-gray-50 truncate block">
                   {order.items.length > 0 ? order.items[0].batchNumber : "N/A"}
                 </span>
                 {order.items.length > 1 && (
@@ -485,36 +486,36 @@ const OrdersHistory = () => {
                 )}
               </div>
               <div>
-                <span className="text-gray-600 dark:text-gray-400 block">Total Insumos</span>
-                <span className="font-bold text-orange-600 dark:text-orange-400">
+                <span className="text-gray-600 dark:text-gray-300 block">Total Insumos</span>
+                <span className="font-bold text-orange-600 dark:text-orange-300">
                   {order.items.length} tipos
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Status de Qualidade - NOVO */}
-          <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg border border-blue-200/30 dark:border-blue-700/30">
-            <h4 className="text-sm font-bold text-blue-700 dark:text-blue-300 mb-3 flex items-center gap-2">
+          {/* Status de Qualidade - CORRIGIDO */}
+          <div className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80 dark:from-blue-900/30 dark:to-indigo-900/30 p-4 rounded-lg border border-blue-200/50 dark:border-blue-700/50">
+            <h4 className="text-sm font-bold text-blue-700 dark:text-blue-200 mb-3 flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Status de Qualidade
             </h4>
             
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="flex items-center gap-2">
-                <FileCheck className="h-3 w-3 text-blue-500" />
+                <FileCheck className="h-3 w-3 text-blue-500 dark:text-blue-400" />
                 <div>
-                  <span className="text-gray-600 dark:text-gray-400 block">Laudos</span>
-                  <span className={`font-bold ${healthMetrics.reportStatus === 'Ótimo' ? 'text-green-600' : healthMetrics.reportStatus === 'Bom' ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <span className="text-gray-600 dark:text-gray-300 block">Laudos</span>
+                  <span className={`font-bold ${healthMetrics.reportStatus === 'Ótimo' ? 'text-green-600 dark:text-green-400' : healthMetrics.reportStatus === 'Bom' ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
                     {healthMetrics.reportPercentage.toFixed(0)}% - {healthMetrics.reportStatus}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Calendar className="h-3 w-3 text-blue-500" />
+                <Calendar className="h-3 w-3 text-blue-500 dark:text-blue-400" />
                 <div>
-                  <span className="text-gray-600 dark:text-gray-400 block">Validade</span>
-                  <span className={`font-bold ${healthMetrics.validityStatus === 'Ótimo' ? 'text-green-600' : healthMetrics.validityStatus === 'Bom' ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <span className="text-gray-600 dark:text-gray-300 block">Validade</span>
+                  <span className={`font-bold ${healthMetrics.validityStatus === 'Ótimo' ? 'text-green-600 dark:text-green-400' : healthMetrics.validityStatus === 'Bom' ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
                     {healthMetrics.validityPercentage.toFixed(0)}% - {healthMetrics.validityStatus}
                   </span>
                 </div>
@@ -526,24 +527,24 @@ const OrdersHistory = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-orange-500" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <TrendingUp className="h-4 w-4 text-orange-500 dark:text-orange-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                   Quantidade Total
                 </span>
               </div>
-              <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              <p className="text-xl font-bold text-gray-900 dark:text-gray-50">
                 {formatNumberBR(totalQuantity)}
               </p>
             </div>
             
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Package2 className="h-4 w-4 text-indigo-500" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Package2 className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                   Insumos
                 </span>
               </div>
-              <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              <p className="text-xl font-bold text-gray-900 dark:text-gray-50">
                 {order.items.length}
               </p>
             </div>
@@ -551,7 +552,7 @@ const OrdersHistory = () => {
 
           {/* Materials Section */}
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
               <Package2 className="h-4 w-4" />
               Insumos ({order.items.length})
             </h4>
@@ -561,9 +562,9 @@ const OrdersHistory = () => {
                 const reportStatus = getReportStatus(item.hasReport);
                 
                 return (
-                  <div key={idx} className="flex justify-between items-center p-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg">
+                  <div key={idx} className="flex justify-between items-center p-2 bg-gray-50/80 dark:bg-gray-800/60 rounded-lg border border-gray-200/50 dark:border-gray-600/50">
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate block">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate block">
                         {item.materialName}
                       </span>
                       <div className="flex items-center gap-1 mt-1">
@@ -577,7 +578,7 @@ const OrdersHistory = () => {
                         </Badge>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-xs ml-2">
+                    <Badge variant="outline" className="text-xs ml-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
                       {formatNumberBR(item.quantity)} {item.unitOfMeasure}
                     </Badge>
                   </div>
@@ -594,12 +595,12 @@ const OrdersHistory = () => {
           </div>
 
           {/* Footer */}
-          <div className="pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
+          <div className="pt-2 border-t border-gray-200/60 dark:border-gray-600/60">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 NF: {order.invoiceNumber}
               </span>
-              <div className="h-2 w-16 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="h-2 w-16 bg-gradient-to-r from-orange-500 to-amber-500 dark:from-orange-400 dark:to-amber-400 rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
           </div>
         </CardContent>
@@ -659,62 +660,62 @@ const OrdersHistory = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border-orange-200/50 dark:border-orange-700/50">
+          <Card className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 border-orange-200/50 dark:border-orange-700/60">
             <CardContent className="flex items-center justify-between p-6">
               <div>
-                <p className="text-sm font-medium text-orange-600 dark:text-orange-400">
+                <p className="text-sm font-medium text-orange-600 dark:text-orange-300">
                   Total de Pedidos
                 </p>
                 <p className="text-3xl font-bold text-orange-900 dark:text-orange-100">
                   {totalOrders}
                 </p>
               </div>
-              <Truck className="h-12 w-12 text-orange-500" />
+              <Truck className="h-12 w-12 text-orange-500 dark:text-orange-400" />
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200/50 dark:border-blue-700/50">
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-200/50 dark:border-blue-700/60">
             <CardContent className="flex items-center justify-between p-6">
               <div>
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-300">
                   Quantidade Total
                 </p>
                 <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
                   {formatNumberBR(totalItems)}
                 </p>
               </div>
-              <TrendingUp className="h-12 w-12 text-blue-500" />
+              <TrendingUp className="h-12 w-12 text-blue-500 dark:text-blue-400" />
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border-purple-200/50 dark:border-purple-700/50">
+          <Card className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/30 dark:to-violet-900/30 border-purple-200/50 dark:border-purple-700/60">
             <CardContent className="flex items-center justify-between p-6">
               <div>
-                <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                <p className="text-sm font-medium text-purple-600 dark:text-purple-300">
                   Fornecedores Ativos
                 </p>
                 <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
                   {totalSuppliers}
                 </p>
               </div>
-              <Package2 className="h-12 w-12 text-purple-500" />
+              <Package2 className="h-12 w-12 text-purple-500 dark:text-purple-400" />
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200/50 dark:border-green-700/50">
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200/50 dark:border-green-700/60">
             <CardContent className="flex items-center justify-between p-6">
               <div>
-                <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                <p className="text-sm font-medium text-green-600 dark:text-green-300">
                   Qualidade Geral
                 </p>
                 <p className="text-3xl font-bold text-green-900 dark:text-green-100">
                   {overallQualityScore.toFixed(0)}%
                 </p>
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                <p className="text-xs text-green-600 dark:text-green-300 mt-1">
                   Laudos: {averageReportPercentage.toFixed(0)}% | Validade: {averageValidityPercentage.toFixed(0)}%
                 </p>
               </div>
-              <Shield className="h-12 w-12 text-green-500" />
+              <Shield className="h-12 w-12 text-green-500 dark:text-green-400" />
             </CardContent>
           </Card>
         </div>
@@ -723,22 +724,22 @@ const OrdersHistory = () => {
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
                 placeholder="Buscar por nota, fornecedor ou insumo..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 border-gray-200 dark:border-gray-700 focus:border-orange-500 dark:focus:border-orange-400"
+                className="pl-10 border-gray-200 dark:border-gray-600 focus:border-orange-500 dark:focus:border-orange-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
           </div>
           
-          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
             <Button
               variant={view === 'cards' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setView('cards')}
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+              className={`${view === 'cards' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}`}
             >
               Cards
             </Button>
@@ -746,7 +747,7 @@ const OrdersHistory = () => {
               variant={view === 'table' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setView('table')}
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+              className={`${view === 'table' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}`}
             >
               Tabela
             </Button>
@@ -762,15 +763,15 @@ const OrdersHistory = () => {
           ))}
           {filteredOrders.length === 0 && (
             <div className="col-span-full text-center py-12">
-              <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <Truck className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                 Nenhum pedido encontrado
               </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
                 {search ? 'Tente ajustar sua busca' : 'Não há registros de pedidos ainda'}
               </p>
               {hasPermission('orders', 'create') && !search && (
-                <Button onClick={() => navigate('/pedidos')}>
+                <Button onClick={() => navigate('/pedidos')} className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700">
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Primeiro Pedido
                 </Button>
@@ -780,18 +781,18 @@ const OrdersHistory = () => {
         </div>
       ) : (
         // Table view
-        <Card className="shadow-xl border-gray-200/50 dark:border-gray-700/50">
+        <Card className="shadow-xl border-gray-200/50 dark:border-gray-700/60 bg-white dark:bg-gray-900">
           <CardContent className="p-0">
           <Table>
             <TableHeader>
-                <TableRow className="bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-700/50">
-                  <TableHead className="font-semibold">Data</TableHead>
-                  <TableHead className="font-semibold">Nota Fiscal</TableHead>                
-                  <TableHead className="font-semibold">Fornecedor</TableHead>
-                  <TableHead className="font-semibold">Insumos</TableHead>
-                  <TableHead className="font-semibold">Quantidade Total</TableHead>
-                  <TableHead className="font-semibold">Status Laudos</TableHead>
-                  <TableHead className="font-semibold">Status Validade</TableHead>
+                <TableRow className="bg-gray-50/80 dark:bg-gray-800/80 hover:bg-gray-100/80 dark:hover:bg-gray-700/80 border-b border-gray-200 dark:border-gray-700">
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Data</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Nota Fiscal</TableHead>                
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Fornecedor</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Insumos</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Quantidade Total</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Status Laudos</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-200">Status Validade</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -802,27 +803,27 @@ const OrdersHistory = () => {
                   const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
                   
                   return (
-                    <TableRow key={order.id} className="hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-colors">
-                      <TableCell>
+                    <TableRow key={order.id} className="hover:bg-orange-50/50 dark:hover:bg-orange-900/20 transition-colors border-b border-gray-200/50 dark:border-gray-700/50">
+                      <TableCell className="text-gray-700 dark:text-gray-300">
                         {format(new Date(order.date), "dd/MM/yyyy")}
                       </TableCell>
-                      <TableCell className="font-medium">{order.invoiceNumber}</TableCell>
-                    <TableCell>{order.supplierName}</TableCell>
+                      <TableCell className="font-medium text-gray-900 dark:text-gray-100">{order.invoiceNumber}</TableCell>
+                    <TableCell className="text-gray-700 dark:text-gray-300">{order.supplierName}</TableCell>
                     <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {order.items.slice(0, 2).map((item, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
+                            <Badge key={idx} variant="outline" className="text-xs border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
                               {item.materialName}
                             </Badge>
                           ))}
                           {order.items.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                               +{order.items.length - 2}
                             </Badge>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium text-gray-900 dark:text-gray-100">
                         {formatNumberBR(totalQuantity)}
                     </TableCell>
                     <TableCell>
@@ -844,8 +845,8 @@ const OrdersHistory = () => {
                       <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <MoreVertical className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -879,11 +880,11 @@ const OrdersHistory = () => {
             
             {filteredOrders.length === 0 && (
               <div className="text-center py-12">
-                <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <Truck className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                   Nenhum pedido encontrado
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-600 dark:text-gray-300">
                   {search ? 'Tente ajustar sua busca' : 'Não há registros de pedidos ainda'}
                 </p>
               </div>
@@ -944,38 +945,38 @@ const OrdersHistory = () => {
           {selectedOrder && (
             <div className="space-y-6">
               {/* Basic Info */}
-              <Card className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20">
+              <Card className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 border border-orange-200/50 dark:border-orange-700/60">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Truck className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                    <Truck className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                     Informações do Pedido
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
               <div>
-                    <Label>Data do Pedido</Label>
-                    <p className="font-medium">{format(new Date(selectedOrder.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                    <Label className="text-gray-700 dark:text-gray-300">Data do Pedido</Label>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{format(new Date(selectedOrder.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
                   </div>
                 <div>
-                    <Label>Fornecedor</Label>
-                    <p className="font-medium">{selectedOrder.supplierName}</p>
+                    <Label className="text-gray-700 dark:text-gray-300">Fornecedor</Label>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{selectedOrder.supplierName}</p>
                 </div>
                   <div>
-                    <Label>Nota Fiscal</Label>
-                    <p className="font-medium">{selectedOrder.invoiceNumber}</p>
+                    <Label className="text-gray-700 dark:text-gray-300">Nota Fiscal</Label>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{selectedOrder.invoiceNumber}</p>
               </div>
-              <div>
-                    <Label>Total de Insumos</Label>
-                    <p className="font-medium">{selectedOrder.items.length} tipos</p>
+                <div>
+                    <Label className="text-gray-700 dark:text-gray-300">Total de Insumos</Label>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{selectedOrder.items.length} tipos</p>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Quality Summary */}
-              <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+              <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border border-blue-200/50 dark:border-blue-700/60">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                    <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     Resumo de Qualidade
                   </CardTitle>
                 </CardHeader>
@@ -986,8 +987,8 @@ const OrdersHistory = () => {
                       <div className="grid grid-cols-2 gap-6">
                         <div className="text-center">
                           <div className="flex items-center justify-center gap-2 mb-2">
-                            <FileCheck className="h-5 w-5 text-blue-500" />
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Status dos Laudos</span>
+                            <FileCheck className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+                            <span className="font-medium text-gray-700 dark:text-gray-200">Status dos Laudos</span>
                           </div>
                           <div className="text-3xl font-bold mb-1" style={{
                             color: healthMetrics.reportStatus === 'Ótimo' ? '#16a34a' : 
@@ -998,15 +999,15 @@ const OrdersHistory = () => {
                           <Badge variant={healthMetrics.reportStatus === 'Ótimo' ? 'default' : healthMetrics.reportStatus === 'Bom' ? 'secondary' : 'destructive'}>
                             {healthMetrics.reportStatus}
                           </Badge>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                             {selectedOrder.items.filter(item => item.hasReport).length} de {selectedOrder.items.length} com laudo
                           </p>
                         </div>
                         
                         <div className="text-center">
                           <div className="flex items-center justify-center gap-2 mb-2">
-                            <Calendar className="h-5 w-5 text-blue-500" />
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Status da Validade</span>
+                            <Calendar className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+                            <span className="font-medium text-gray-700 dark:text-gray-200">Status da Validade</span>
                           </div>
                           <div className="text-3xl font-bold mb-1" style={{
                             color: healthMetrics.validityStatus === 'Ótimo' ? '#16a34a' : 
@@ -1017,7 +1018,7 @@ const OrdersHistory = () => {
                           <Badge variant={healthMetrics.validityStatus === 'Ótimo' ? 'default' : healthMetrics.validityStatus === 'Bom' ? 'secondary' : 'destructive'}>
                             {healthMetrics.validityStatus}
                           </Badge>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                             {selectedOrder.items.filter(item => {
                               const status = getExpiryStatus(item.expiryDate);
                               return status.label === "Válido" || status.label === "Vence em breve";
@@ -1031,24 +1032,24 @@ const OrdersHistory = () => {
               </Card>
 
               {/* Materials */}
-              <Card>
+              <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package2 className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                    <Package2 className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     Insumos Recebidos ({selectedOrder.items.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                        <TableHead>Material</TableHead>
-                      <TableHead>Lote</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                        <TableHead>Unidade</TableHead>
-                      <TableHead>Validade</TableHead>
-                        <TableHead>Status Validade</TableHead>
-                      <TableHead>Laudo</TableHead>
+                    <TableRow className="border-b border-gray-200 dark:border-gray-700">
+                        <TableHead className="text-gray-700 dark:text-gray-200">Material</TableHead>
+                      <TableHead className="text-gray-700 dark:text-gray-200">Lote</TableHead>
+                      <TableHead className="text-gray-700 dark:text-gray-200">Quantidade</TableHead>
+                        <TableHead className="text-gray-700 dark:text-gray-200">Unidade</TableHead>
+                      <TableHead className="text-gray-700 dark:text-gray-200">Validade</TableHead>
+                        <TableHead className="text-gray-700 dark:text-gray-200">Status Validade</TableHead>
+                      <TableHead className="text-gray-700 dark:text-gray-200">Laudo</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1057,12 +1058,12 @@ const OrdersHistory = () => {
                         const reportStatus = getReportStatus(item.hasReport);
                         
                         return (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">{item.materialName}</TableCell>
-                        <TableCell>{item.batchNumber}</TableCell>
-                            <TableCell>{formatNumberBR(item.quantity)}</TableCell>
-                        <TableCell>{item.unitOfMeasure}</TableCell>
-                        <TableCell>
+                          <TableRow key={index} className="border-b border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                            <TableCell className="font-medium text-gray-900 dark:text-gray-100">{item.materialName}</TableCell>
+                        <TableCell className="text-gray-700 dark:text-gray-300">{item.batchNumber}</TableCell>
+                            <TableCell className="text-gray-700 dark:text-gray-300">{formatNumberBR(item.quantity)}</TableCell>
+                        <TableCell className="text-gray-700 dark:text-gray-300">{item.unitOfMeasure}</TableCell>
+                        <TableCell className="text-gray-700 dark:text-gray-300">
                               {item.expiryDate ? format(new Date(item.expiryDate), "dd/MM/yyyy") : "Não informado"}
                         </TableCell>
                         <TableCell>
@@ -1087,9 +1088,9 @@ const OrdersHistory = () => {
               
               {/* Notes */}
               {selectedOrder.notes && (
-                <Card>
+                <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                   <CardHeader>
-                    <CardTitle>Observações</CardTitle>
+                    <CardTitle className="text-gray-900 dark:text-gray-100">Observações</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-gray-700 dark:text-gray-300">{selectedOrder.notes}</p>
@@ -1121,93 +1122,216 @@ const OrdersHistory = () => {
           
           <div className="space-y-6">
             {/* Basic Info */}
-            <Card>
+            <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                  <Truck className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                   Informações Básicas
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="edit-invoice-number">Nota Fiscal</Label>
+                  <Label htmlFor="edit-invoice-number" className="text-gray-700 dark:text-gray-300">Nota Fiscal</Label>
                   <Input
                     id="edit-invoice-number"
                     value={editForm.invoiceNumber || ''}
                     onChange={(e) => setEditForm(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                    className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-date">Data do Pedido</Label>
+                  <Label htmlFor="edit-date" className="text-gray-700 dark:text-gray-300">Data do Pedido</Label>
                   <Input
                     id="edit-date"
                     type="date"
                     value={editForm.date ? (typeof editForm.date === 'string' ? editForm.date : new Date(editForm.date).toISOString().split('T')[0]) : ''}
                     onChange={(e) => setEditForm(prev => ({ ...prev, date: e.target.value ? new Date(e.target.value) : undefined }))}
+                    className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div className="col-span-2">
-                  <Label htmlFor="edit-notes">Observações</Label>
+                  <Label htmlFor="edit-notes" className="text-gray-700 dark:text-gray-300">Observações</Label>
                   <Input
                     id="edit-notes"
                     value={editForm.notes || ''}
                     onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
                     placeholder="Adicione observações sobre este pedido..."
+                    className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </CardContent>
             </Card>
 
             {/* Materials */}
-            <Card>
+            <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package2 className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                  <Package2 className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                   Insumos do Pedido ({editedItems.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {editedItems.map((item, index) => (
-                    <div key={index} className="grid grid-cols-4 gap-4 p-4 border rounded-lg">
-              <div>
-                        <Label>Material</Label>
+                    <div key={index} className="grid grid-cols-4 gap-4 p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50/50 dark:bg-gray-800/50">
+                      <div>
+                        <Label className="text-gray-700 dark:text-gray-300">Material</Label>
                         <Input
                           value={item.materialName}
                           disabled
-                />
-              </div>
-                      <div>
-                        <Label>Lote</Label>
-                          <Input
-                            value={item.batchNumber}
-                            onChange={(e) => {
-                              const updated = [...editedItems];
-                              updated[index] = { ...updated[index], batchNumber: e.target.value };
-                              setEditedItems(updated);
-                            }}
+                          className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                         />
                       </div>
                       <div>
-                        <Label>Quantidade</Label>
-                            <Input
-                              type="number"
-                              value={item.quantity}
+                        <Label className="text-gray-700 dark:text-gray-300">Lote</Label>
+                        <Input
+                          value={item.batchNumber}
+                          onChange={(e) => {
+                            const updated = [...editedItems];
+                            updated[index] = { ...updated[index], batchNumber: e.target.value };
+                            setEditedItems(updated);
+                          }}
+                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-gray-700 dark:text-gray-300">Quantidade</Label>
+                        <Input
+                          type="number"
+                          value={item.quantity}
                           onChange={(e) => updateItemQuantity(index, parseFloat(e.target.value) || 0)}
-                            />
+                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                        />
                       </div>
                       <div className="flex items-end">
-                            <Button
-                              variant="outline"
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleRemoveItem(index)}
-                          className="text-red-600"
+                          className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          </div>
+                        </Button>
+                      </div>
+                    </div>
                   ))}
+                  
+                  {/* Adicionar Novo Item */}
+                  {isAddingItem ? (
+                    <div className="space-y-4 p-4 border border-blue-200 dark:border-blue-700 rounded-lg bg-blue-50/50 dark:bg-blue-900/20">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-gray-700 dark:text-gray-300">Material</Label>
+                          <Select
+                            value={newItem.materialId}
+                            onValueChange={(value) => {
+                              const material = materials.find(m => m.id === value);
+                              setNewItem(prev => ({
+                                ...prev,
+                                materialId: value,
+                                materialName: material?.name || "",
+                                unitOfMeasure: material?.unitOfMeasure || "kg"
+                              }));
+                            }}
+                          >
+                            <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                              <SelectValue placeholder="Selecione..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {materials.map(material => (
+                                <SelectItem key={material.id} value={material.id}>
+                                  {material.name} ({material.unitOfMeasure})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-gray-700 dark:text-gray-300">Lote</Label>
+                          <Input
+                            value={newItem.batchNumber || ""}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, batchNumber: e.target.value }))}
+                            placeholder="Lote do fabricante"
+                            className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-gray-700 dark:text-gray-300">Quantidade</Label>
+                          <Input
+                            type="number"
+                            value={newItem.quantity || ""}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 0 }))}
+                            placeholder="0"
+                            className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 items-center">
+                        <div>
+                          <Label className="text-gray-700 dark:text-gray-300">Validade</Label>
+                          <Input
+                            type="date"
+                            value={newItem.expiryDate ? (typeof newItem.expiryDate === 'string' ? newItem.expiryDate : new Date(newItem.expiryDate).toISOString().split('T')[0]) : ""}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, expiryDate: e.target.value ? new Date(e.target.value) : undefined }))}
+                            className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2 pt-5">
+                          <input
+                            type="checkbox"
+                            id="new-item-has-report"
+                            checked={newItem.hasReport || false}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, hasReport: e.target.checked }))}
+                            className="rounded border-gray-300 dark:border-gray-600"
+                          />
+                          <Label htmlFor="new-item-has-report" className="font-normal text-gray-700 dark:text-gray-300">
+                            Possui Laudo?
+                          </Label>
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setIsAddingItem(false);
+                            setNewItem({
+                              materialId: "",
+                              materialName: "",
+                              quantity: 0,
+                              unitOfMeasure: "kg",
+                              batchNumber: "",
+                              hasReport: false,
+                              expiryDate: undefined
+                            });
+                          }}
+                          className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Cancelar
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={handleAddItem}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          Adicionar Item
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsAddingItem(true)}
+                      className="w-full border-dashed border-2 h-12 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Novo Insumo
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

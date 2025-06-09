@@ -669,8 +669,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const product = products.find(p => p.id === batch.producedItems[0]?.productId);
           const feculaConversionFactor = product?.feculaConversionFactor || 25;
           
-          // Calculate actual fécula used: quantity * mixCount * conversion factor
-          return acc + (material.quantity * batch.mixCount * feculaConversionFactor);
+          // LÓGICA CORRIGIDA: mixCount × sacos por mexida × fator de conversão
+          const totalSacosFeculas = material.quantity * batch.mixCount;
+          return acc + (totalSacosFeculas * feculaConversionFactor);
         }
         return acc;
       }, 0);

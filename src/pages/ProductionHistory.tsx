@@ -281,14 +281,16 @@ const ProductionHistory = () => {
   };
 
   const calculateProductionMetrics = (batch: ProductionBatch) => {
-    // Find fécula material in used materials (LÓGICA ORIGINAL)
+    // Find fécula material in used materials (LÓGICA ATUALIZADA)
     const feculaMaterial = batch.usedMaterials.find(
       m => m.materialType.toLowerCase() === "fécula" || m.materialName.toLowerCase().includes("fécula")
     );
     
-    // Calculate fécula utilizada (LÓGICA ORIGINAL)
-    const feculaQuantity = feculaMaterial ? feculaMaterial.quantity : 0;
-    const feculaUtilizada = batch.mixCount * feculaQuantity * globalFactors.feculaConversionFactor;
+    // Calculate fécula utilizada (LÓGICA CORRIGIDA)
+    // Agora: mixCount × sacos por mexida = total de sacos de fécula usados
+    const feculaSacosPorMexida = feculaMaterial ? feculaMaterial.quantity : 0;
+    const totalSacosFeculas = batch.mixCount * feculaSacosPorMexida;
+    const feculaUtilizada = totalSacosFeculas * globalFactors.feculaConversionFactor;
     
     // Calculate kg's previstos (LÓGICA ORIGINAL)
     const kgPrevistos = feculaUtilizada * globalFactors.productionPredictionFactor;

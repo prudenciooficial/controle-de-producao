@@ -79,11 +79,41 @@ const MixHistory = () => {
   const [editForm, setEditForm] = useState<Partial<MixBatch>>({});
   const [view, setView] = useState<'cards' | 'table'>('cards');
   const [usedMaterials, setUsedMaterials] = useState<UsedMaterialMix[]>([]);
+  
+  // Estados para fatores globais
+  const [globalFactors, setGlobalFactors] = useState({
+    feculaConversionFactor: 25,
+    productionPredictionFactor: 1.5
+  });
+  const [isLoadingFactors, setIsLoadingFactors] = useState(true);
 
-  // Fetch mix batches on component mount
+  // Fetch mix batches and global factors on component mount
   useEffect(() => {
     loadMixBatches();
+    fetchGlobalFactors();
   }, []);
+
+  const fetchGlobalFactors = async () => {
+    try {
+      setIsLoadingFactors(true);
+      const { data, error } = await supabase
+        .from("global_settings")
+        .select("fecula_conversion_factor, production_prediction_factor")
+        .limit(1)
+        .single();
+      
+      if (!error && data) {
+        setGlobalFactors({
+          feculaConversionFactor: data.fecula_conversion_factor || 25,
+          productionPredictionFactor: data.production_prediction_factor || 1.5
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching global factors:", error);
+    } finally {
+      setIsLoadingFactors(false);
+    }
+  };
 
   const loadMixBatches = async () => {
     try {
@@ -119,6 +149,24 @@ const MixHistory = () => {
   const availableMaterialBatches = materialBatches.filter(
     (batch) => batch.remainingQuantity > 0
   );
+
+  // Função para calcular kg previsto de produto final
+  const calculatePredictedKg = (mix: MixBatch) => {
+    // Encontrar material de fécula
+    const feculaMaterial = mix.usedMaterials.find(
+      m => m.materialType.toLowerCase().includes('fécula') || m.materialName.toLowerCase().includes('fécula')
+    );
+    
+    if (!feculaMaterial) return 0;
+    
+    // Calcular total de sacos de fécula (quantity × mixCount)
+    const totalSacosFeculas = feculaMaterial.quantity * mix.mixCount;
+    
+    // Aplicar fórmula: Total de sacos × Fator de Conversão × Fator de Previsão
+    const kgPrevisto = totalSacosFeculas * globalFactors.feculaConversionFactor * globalFactors.productionPredictionFactor;
+    
+    return kgPrevisto;
+  };
 
   const handleDelete = async (id: string) => {
     if (!hasPermission('production', 'delete')) {
@@ -331,7 +379,16 @@ const MixHistory = () => {
   };
 
   const MixCard = ({ mix, index }: { mix: MixBatch; index: number }) => {
-    const totalMaterialsWeight = mix.usedMaterials.reduce((total, material) => total + material.quantity, 0);
+    // Calcular peso total corrigido - para fécula usar quantidade × mixCount
+    const totalMaterialsWeight = mix.usedMaterials.reduce((total, material) => {
+      const isFecula = material.materialType.toLowerCase().includes('fécula') || 
+                       material.materialName.toLowerCase().includes('fécula');
+      const totalQuantity = isFecula ? material.quantity * mix.mixCount : material.quantity;
+      return total + totalQuantity;
+    }, 0);
+    
+    // Calcular kg previsto
+    const kgPrevisto = calculatePredictedKg(mix);
     
     return (
       <Card key={mix.id} className="relative group hover:shadow-md transition-shadow">
@@ -393,19 +450,43 @@ const MixHistory = () => {
               <p className="font-medium">{mix.usedMaterials.length} tipo(s)</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Peso Total:</span>
-              <p className="font-medium">{formatNumberBR(totalMaterialsWeight)} kg</p>
+              <span className="text-muted-foreground">Total de Sacos:</span>
+              <p className="font-medium">{formatNumberBR(totalMaterialsWeight)} sacos</p>
             </div>
           </div>
+          
+          {/* Nova seção de previsão de produção */}
+          {kgPrevisto > 0 && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-3 rounded-lg border border-green-200/50 dark:border-green-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                  Previsão de Produção
+                </span>
+              </div>
+              <p className="text-lg font-bold text-green-800 dark:text-green-200">
+                {formatNumberBR(kgPrevisto)} kg
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                Produto final previsto
+              </p>
+            </div>
+          )}
           
           <div className="space-y-2">
             <span className="text-sm text-muted-foreground">Principais Insumos:</span>
             <div className="flex flex-wrap gap-1">
-              {mix.usedMaterials.slice(0, 3).map((material, idx) => (
-                <Badge key={idx} variant="outline" className="text-xs">
-                  {material.materialName}
-                </Badge>
-              ))}
+              {mix.usedMaterials.slice(0, 3).map((material, idx) => {
+                const isFecula = material.materialType.toLowerCase().includes('fécula') || 
+                                 material.materialName.toLowerCase().includes('fécula');
+                const totalQuantity = isFecula ? material.quantity * mix.mixCount : material.quantity;
+                
+                return (
+                  <Badge key={idx} variant="outline" className="text-xs">
+                    {material.materialName} ({formatNumberBR(totalQuantity)} {material.unitOfMeasure})
+                  </Badge>
+                );
+              })}
               {mix.usedMaterials.length > 3 && (
                 <Badge variant="outline" className="text-xs">
                   +{mix.usedMaterials.length - 3} mais
@@ -640,6 +721,54 @@ const MixHistory = () => {
                 </div>
               </div>
 
+              {/* Previsão de Produção */}
+              {(() => {
+                const kgPrevisto = calculatePredictedKg(selectedMix);
+                if (kgPrevisto > 0) {
+                  return (
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg border border-green-200/50 dark:border-green-700/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="h-5 w-5 text-green-600" />
+                        <h4 className="font-medium text-green-700 dark:text-green-300">
+                          Previsão de Produção
+                        </h4>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-green-600 dark:text-green-400 mb-1">Total de Sacos de Fécula</p>
+                          <p className="text-lg font-bold text-green-800 dark:text-green-200">
+                            {(() => {
+                              const feculaMaterial = selectedMix.usedMaterials.find(
+                                m => m.materialType.toLowerCase().includes('fécula') || m.materialName.toLowerCase().includes('fécula')
+                              );
+                              return feculaMaterial ? formatNumberBR(feculaMaterial.quantity * selectedMix.mixCount) : '0';
+                            })()} sacos
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-green-600 dark:text-green-400 mb-1">Produto Final Previsto</p>
+                          <p className="text-lg font-bold text-green-800 dark:text-green-200">
+                            {formatNumberBR(kgPrevisto)} kg
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-green-200/50 dark:border-green-700/50">
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          Cálculo: {(() => {
+                            const feculaMaterial = selectedMix.usedMaterials.find(
+                              m => m.materialType.toLowerCase().includes('fécula') || m.materialName.toLowerCase().includes('fécula')
+                            );
+                            const totalSacos = feculaMaterial ? feculaMaterial.quantity * selectedMix.mixCount : 0;
+                            return `${formatNumberBR(totalSacos)} sacos × ${globalFactors.feculaConversionFactor} kg/saco × ${globalFactors.productionPredictionFactor} fator`;
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               {/* Notes */}
               {selectedMix.notes && (
                 <div>
@@ -658,21 +787,33 @@ const MixHistory = () => {
                     <TableRow>
                       <TableHead>Insumo</TableHead>
                       <TableHead>Lote</TableHead>
-                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Sacos/Mexida</TableHead>
+                      <TableHead>Total de Sacos</TableHead>
                       <TableHead>Unidade</TableHead>
                       <TableHead>Mexidas Usadas</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedMix.usedMaterials.map((material) => (
-                      <TableRow key={material.id}>
-                        <TableCell className="font-medium">{material.materialName}</TableCell>
-                        <TableCell>{material.batchNumber}</TableCell>
-                        <TableCell>{formatNumberBR(material.quantity)}</TableCell>
-                        <TableCell>{material.unitOfMeasure}</TableCell>
-                        <TableCell>{material.mixCountUsed || '-'}</TableCell>
-                      </TableRow>
-                    ))}
+                    {selectedMix.usedMaterials.map((material) => {
+                      const isFecula = material.materialType.toLowerCase().includes('fécula') || 
+                                       material.materialName.toLowerCase().includes('fécula');
+                      const totalQuantity = isFecula ? material.quantity * selectedMix.mixCount : material.quantity;
+                      
+                      return (
+                        <TableRow key={material.id}>
+                          <TableCell className="font-medium">{material.materialName}</TableCell>
+                          <TableCell>{material.batchNumber}</TableCell>
+                          <TableCell>
+                            {isFecula ? formatNumberBR(material.quantity) : '-'}
+                          </TableCell>
+                          <TableCell className="font-medium text-blue-600">
+                            {formatNumberBR(totalQuantity)}
+                          </TableCell>
+                          <TableCell>{material.unitOfMeasure}</TableCell>
+                          <TableCell>{material.mixCountUsed || '-'}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

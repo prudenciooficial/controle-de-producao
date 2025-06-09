@@ -171,9 +171,23 @@ export const createMixBatch = async (
         throw materialError;
       }
       
+      // Calcular quantidade total a ser descontada do estoque
+      // Para fécula: quantity (sacos por mexida) × mixCount (número de mexidas) = total de sacos
+      // Para outros materiais: quantity já é o total a ser descontado
+      let quantityToDeduct = material.quantity;
+      
+      // Verificar se é fécula para aplicar o cálculo correto
+      const isFecula = material.materialType.toLowerCase().includes('fécula') || 
+                       material.materialName.toLowerCase().includes('fécula');
+      
+      if (isFecula) {
+        quantityToDeduct = material.quantity * batch.mixCount;
+        console.log(`[MixService] Fécula detected - calculating total: ${material.quantity} sacos/mexida × ${batch.mixCount} mexidas = ${quantityToDeduct} sacos total`);
+      }
+      
       // Calculate new stock value
-      const newRemainingQuantity = materialBatchBefore.remaining_quantity - material.quantity;
-      console.log(`[MixService] Calculated new stock: ${materialBatchBefore.remaining_quantity} - ${material.quantity} = ${newRemainingQuantity}`);
+      const newRemainingQuantity = materialBatchBefore.remaining_quantity - quantityToDeduct;
+      console.log(`[MixService] Calculated new stock: ${materialBatchBefore.remaining_quantity} - ${quantityToDeduct} = ${newRemainingQuantity}`);
       
       // UPDATE STOCK
       const { error: stockUpdateError, data: updatedBatch } = await supabase
@@ -301,20 +315,56 @@ export const updateMixBatch = async (
       
       // NOVA LÓGICA: Calcular as diferenças por lote de material
       // Primeiro, construir um mapa dos materiais antigos e novos
-      const oldMaterialsMap = new Map<string, number>();
-      const newMaterialsMap = new Map<string, number>();
+      const oldMaterialsMap = new Map<string, { quantity: number, materialName?: string, materialType?: string }>();
+      const newMaterialsMap = new Map<string, { quantity: number, materialName?: string, materialType?: string }>();
       
       // Mapear materiais antigos
       if (existingUsedMaterials && existingUsedMaterials.length > 0) {
+        // Buscar detalhes dos materiais antigos para verificar se são fécula
         for (const oldMaterial of existingUsedMaterials) {
-          oldMaterialsMap.set(oldMaterial.material_batch_id, oldMaterial.quantity);
+          const { data: materialDetails, error: materialError } = await supabase
+            .from('material_batches')
+            .select(`
+              materials:material_id (
+                name,
+                type
+              )
+            `)
+            .eq('id', oldMaterial.material_batch_id)
+            .single();
+          
+          if (!materialError && materialDetails && materialDetails.materials) {
+            const isFecula = materialDetails.materials.type.toLowerCase().includes('fécula') || 
+                             materialDetails.materials.name.toLowerCase().includes('fécula');
+            
+            // Calcular quantidade total considerando o mixCount original
+            const oldMixCount = existingBatchData?.mix_count || 1;
+            const totalQuantity = isFecula ? oldMaterial.quantity * oldMixCount : oldMaterial.quantity;
+            
+            oldMaterialsMap.set(oldMaterial.material_batch_id, {
+              quantity: totalQuantity,
+              materialName: materialDetails.materials.name,
+              materialType: materialDetails.materials.type
+            });
+          }
         }
       }
       
       // Mapear novos materiais
+      const newMixCount = batch.mixCount !== undefined ? batch.mixCount : (existingBatchData?.mix_count || 1);
       for (const newMaterial of batch.usedMaterials) {
-        const currentQuantity = newMaterialsMap.get(newMaterial.materialBatchId) || 0;
-        newMaterialsMap.set(newMaterial.materialBatchId, currentQuantity + newMaterial.quantity);
+        const isFecula = newMaterial.materialType.toLowerCase().includes('fécula') || 
+                         newMaterial.materialName.toLowerCase().includes('fécula');
+        
+        // Calcular quantidade total considerando o novo mixCount
+        const totalQuantity = isFecula ? newMaterial.quantity * newMixCount : newMaterial.quantity;
+        
+        const currentData = newMaterialsMap.get(newMaterial.materialBatchId) || { quantity: 0 };
+        newMaterialsMap.set(newMaterial.materialBatchId, {
+          quantity: currentData.quantity + totalQuantity,
+          materialName: newMaterial.materialName,
+          materialType: newMaterial.materialType
+        });
       }
       
       console.log(`[UpdateMixBatch] Mapa de materiais antigos:`, Object.fromEntries(oldMaterialsMap));
@@ -324,11 +374,11 @@ export const updateMixBatch = async (
       const allMaterialBatchIds = new Set([...oldMaterialsMap.keys(), ...newMaterialsMap.keys()]);
       
       for (const materialBatchId of allMaterialBatchIds) {
-        const oldQuantity = oldMaterialsMap.get(materialBatchId) || 0;
-        const newQuantity = newMaterialsMap.get(materialBatchId) || 0;
-        const difference = newQuantity - oldQuantity; // Diferença que precisa ser ajustada
+        const oldData = oldMaterialsMap.get(materialBatchId) || { quantity: 0 };
+        const newData = newMaterialsMap.get(materialBatchId) || { quantity: 0 };
+        const difference = newData.quantity - oldData.quantity; // Diferença que precisa ser ajustada
         
-        console.log(`[UpdateMixBatch] Material ${materialBatchId}: Antigo=${oldQuantity}, Novo=${newQuantity}, Diferença=${difference}`);
+        console.log(`[UpdateMixBatch] Material ${materialBatchId} (${newData.materialName || oldData.materialName}): Antigo=${oldData.quantity}, Novo=${newData.quantity}, Diferença=${difference}`);
         
         if (difference !== 0) {
           // Buscar estoque atual
@@ -455,7 +505,16 @@ export const deleteMixBatch = async (
     // Get used materials to restore stock
     const { data: usedMaterialsToRestore, error: fetchUsedError } = await supabase
       .from("used_materials_mix")
-      .select("material_batch_id, quantity")
+      .select(`
+        material_batch_id, 
+        quantity,
+        material_batches:material_batch_id (
+          materials:material_id (
+            name,
+            type
+          )
+        )
+      `)
       .eq("mix_batch_id", id);
     
     if (fetchUsedError) {
@@ -463,9 +522,22 @@ export const deleteMixBatch = async (
       throw new Error(`Erro ao buscar materiais usados: ${fetchUsedError.message}`);
     }
     
-    // Restore stock
+    // Restore stock with correct calculation for fécula
     if (usedMaterialsToRestore && usedMaterialsToRestore.length > 0) {
       for (const usedMaterial of usedMaterialsToRestore) {
+        // Verificar se é fécula para calcular corretamente a quantidade a restaurar
+        const materialInfo = usedMaterial.material_batches?.materials;
+        const isFecula = materialInfo && (
+          materialInfo.type.toLowerCase().includes('fécula') || 
+          materialInfo.name.toLowerCase().includes('fécula')
+        );
+        
+        // Calcular quantidade total a restaurar
+        const mixCount = batchToDeleteForLog?.mix_count || 1;
+        const quantityToRestore = isFecula ? usedMaterial.quantity * mixCount : usedMaterial.quantity;
+        
+        console.log(`[DeleteMixBatch] Restaurando material ${materialInfo?.name}: ${usedMaterial.quantity} ${isFecula ? `× ${mixCount} mexidas = ${quantityToRestore}` : `= ${quantityToRestore}`} unidades`);
+        
         const { data: currentMaterialBatch, error: fetchCurrentError } = await supabase
           .from("material_batches")
           .select('remaining_quantity')
@@ -477,7 +549,7 @@ export const deleteMixBatch = async (
           throw new Error(`Erro ao buscar lote de material atual: ${fetchCurrentError?.message}`);
         }
         
-        const restoredQuantity = currentMaterialBatch.remaining_quantity + usedMaterial.quantity;
+        const restoredQuantity = currentMaterialBatch.remaining_quantity + quantityToRestore;
         
         const { error: stockRestoreError } = await supabase
           .from("material_batches")
@@ -490,6 +562,8 @@ export const deleteMixBatch = async (
           await abortTransaction();
           throw new Error(`Erro ao restaurar estoque do material: ${stockRestoreError.message}`);
         }
+        
+        console.log(`[DeleteMixBatch] Estoque restaurado: ${currentMaterialBatch.remaining_quantity} + ${quantityToRestore} = ${restoredQuantity}`);
       }
     }
 

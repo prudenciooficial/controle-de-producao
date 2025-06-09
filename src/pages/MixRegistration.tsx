@@ -45,7 +45,9 @@ const mixFormSchema = z.object({
       materialBatchId: z.string().nonempty({ message: "Insumo é obrigatório" }),
       quantity: z
         .number()
-        .min(0, { message: "Quantidade não pode ser negativa" }),
+        .min(0, { message: "Quantidade não pode ser negativa" })
+        .nullable()
+        .transform((val) => val ?? 0), // Transforma null em 0
     })
   ).nonempty({ message: "Adicione pelo menos um insumo utilizado" }),
 });
@@ -58,8 +60,8 @@ const TABS = [
   { id: "materials", name: "Insumos da Mexida", fields: ["usedMaterials"] as const, icon: Factory },
 ];
 
-// Função para gerar o nome da mexida no formato "Dia da Semana + Data DD/MM/AAAA"
-const generateMixBatchName = (dateString: string): string => {
+// Função para gerar o nome da mexida no formato "Dia da Semana + Data DD/MM/AAAA" + sufixo se necessário
+const generateMixBatchName = async (dateString: string): Promise<string> => {
   // Criar data local para obter o dia da semana correto
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
@@ -73,7 +75,32 @@ const generateMixBatchName = (dateString: string): string => {
   // Formatar data manualmente para DD/MM/AAAA
   const formattedDate = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
   
-  return `${dayName} ${formattedDate}`;
+  const baseName = `${dayName} ${formattedDate}`;
+  
+  // Verificar se já existe uma mexida com esse nome
+  const { data: existingMixes, error } = await supabase
+    .from("mix_batches")
+    .select("batch_number")
+    .like("batch_number", `${baseName}%`);
+  
+  if (error) {
+    console.error("Erro ao verificar mexidas existentes:", error);
+    return baseName; // Retorna o nome base em caso de erro
+  }
+  
+  if (!existingMixes || existingMixes.length === 0) {
+    return baseName; // Não há mexidas com esse nome
+  }
+  
+  // Encontrar o próximo número disponível
+  let nextNumber = 2;
+  const existingNames = existingMixes.map(mix => mix.batch_number);
+  
+  while (existingNames.includes(`${baseName} - ${nextNumber}`)) {
+    nextNumber++;
+  }
+  
+  return `${baseName} - ${nextNumber}`;
 };
 
 const MixRegistration = () => {
@@ -215,7 +242,9 @@ const MixRegistration = () => {
     conservantUsages.forEach((usage, idx) => {
       const matchingMaterial = conservantMaterials.find(cm => cm.materialBatchId === usage.materialBatchId);
       if (matchingMaterial) {
-        form.setValue(`usedMaterials.${matchingMaterial.index}.quantity`, usage.quantity, { shouldValidate: false });
+        // Garantir que a quantidade nunca seja null ou undefined
+        const quantity = typeof usage.quantity === 'number' ? usage.quantity : 0;
+        form.setValue(`usedMaterials.${matchingMaterial.index}.quantity`, quantity, { shouldValidate: false });
       }
     });
   }, [conservantUsages, conservantMaterials, form]);
@@ -258,8 +287,8 @@ const MixRegistration = () => {
         };
       });
 
-      // Gerar nome da mexida no formato "Dia da Semana + Data DD/MM/AAAA"
-      const mixBatchNumber = generateMixBatchName(data.mixDate);
+      // Gerar nome da mexida no formato "Dia da Semana + Data DD/MM/AAAA" + sufixo se necessário
+      const mixBatchNumber = await generateMixBatchName(data.mixDate);
 
       const mixBatchPayload = {
         batchNumber: mixBatchNumber,
@@ -369,7 +398,7 @@ const MixRegistration = () => {
                               onChange={e => {
                                 const inputValue = e.target.value;
                                 if (inputValue === "") {
-                                  field.onChange(null);
+                                  field.onChange(0);
                                 } else {
                                   const value = parseInt(inputValue, 10) || 0;
                                   field.onChange(value);
@@ -459,16 +488,20 @@ const MixRegistration = () => {
                             control={form.control} 
                             name={`usedMaterials.${index}.quantity`} 
                             render={({ field }) => {
-                              const currentQty = form.watch(`usedMaterials.${index}.quantity`);
+                              const currentQty = form.watch(`usedMaterials.${index}.quantity`) || 0;
                               
                               React.useEffect(() => {
                                 if (selMatBatchId) {
                                   const cBatchDetails = getMaterialBatchDetails(selMatBatchId);
                                   if (cBatchDetails && cBatchDetails.materialType !== "Conservante") { 
-                                    if (currentQty > cBatchDetails.remainingQuantity) {
+                                    // Para fécula, calcular o total que será descontado do estoque
+                                    const watchedMixCount = form.watch("mixCount") || 0;
+                                    const totalSacos = (currentQty || 0) * watchedMixCount;
+                                    
+                                    if (totalSacos > cBatchDetails.remainingQuantity) {
                                       form.setError(`usedMaterials.${index}.quantity`, { 
                                         type: 'manual', 
-                                        message: `Máx: ${cBatchDetails.remainingQuantity} ${cBatchDetails.unitOfMeasure}` 
+                                        message: `Total de sacos (${currentQty} × ${watchedMixCount} = ${totalSacos}) excede estoque: ${cBatchDetails.remainingQuantity} ${cBatchDetails.unitOfMeasure}` 
                                       });
                                     } else if (currentQty <= 0 && cBatchDetails.remainingQuantity > 0) { 
                                       const err = form.formState.errors.usedMaterials?.[index]?.quantity; 
@@ -509,18 +542,26 @@ const MixRegistration = () => {
                                   </FormItem>
                                 );
                               } else {
+                                const isFecula = matBatchDetails && 
+                                  (matBatchDetails.materialType.toLowerCase().includes('fécula') || 
+                                   matBatchDetails.materialName.toLowerCase().includes('fécula'));
+                                const watchedMixCount = form.watch("mixCount") || 0;
+                                const totalSacos = currentQty * watchedMixCount;
+                                
                                 return (
                                   <FormItem>
-                                    <FormLabel>Quantidade Utilizada</FormLabel>
+                                    <FormLabel>
+                                      {isFecula ? 'Sacos por Mexida' : 'Quantidade Utilizada'}
+                                    </FormLabel>
                                     <FormControl>
                                       <Input 
                                         type="number" 
                                         placeholder="0"
-                                        value={field.value == null || field.value === 0 ? "" : field.value}
+                                        value={field.value === null || field.value === undefined || field.value === 0 ? "" : field.value}
                                         onChange={e => {
                                           const inputValue = e.target.value;
                                           if (inputValue === "") {
-                                            field.onChange(null);
+                                            field.onChange(0);
                                           } else {
                                             const value = parseFloat(inputValue) || 0;
                                             field.onChange(value);
@@ -537,6 +578,11 @@ const MixRegistration = () => {
                                         }}
                                       />
                                     </FormControl>
+                                    {isFecula && watchedMixCount > 0 && currentQty > 0 && (
+                                      <FormDescription className="text-blue-600 font-medium">
+                                        Total de sacos que serão descontados do estoque: {totalSacos} sacos
+                                      </FormDescription>
+                                    )}
                                     <FormMessage />
                                   </FormItem>
                                 );
@@ -563,7 +609,7 @@ const MixRegistration = () => {
                     type="button" 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => appendUsedMaterial({ materialBatchId: "", quantity: null as any })} 
+                    onClick={() => appendUsedMaterial({ materialBatchId: "", quantity: 0 })} 
                     className="mt-4 w-full"
                   >
                     <Plus className="mr-2 h-4 w-4" /> Adicionar Insumo
