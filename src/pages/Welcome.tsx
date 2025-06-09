@@ -22,6 +22,7 @@ export default function Welcome() {
       orders: 'Pedidos',
       inventory: 'Estoque',
       losses: 'Perdas',
+      quality: 'Qualidade',
       traceability: 'Rastreabilidade',
       general_settings: 'Cadastro',
       human_resources: 'Recursos Humanos',

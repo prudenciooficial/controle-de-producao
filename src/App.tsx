@@ -36,6 +36,7 @@ import { FolhaPontoPage } from "./pages/print/FolhaPontoPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import { cn } from "./lib/utils";
 import SystemLogsPage from "./pages/SystemLogsPage/SystemLogsPage";
+import Reclamacoes from "./pages/Reclamacoes";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,7 @@ const AppContent = () => {
                   <Route path="/rastreabilidade" element={<Traceability />} />
                   <Route path="/cadastro" element={<Registration />} />
                   <Route path="/recursos-humanos" element={<RecursosHumanos />} />
+                  <Route path="/qualidade/reclamacoes" element={<Reclamacoes />} />
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
                   <Route path="*" element={<NotFound />} />
