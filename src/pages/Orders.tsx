@@ -51,7 +51,7 @@ const ORDER_TABS = [
 ];
 
 const Orders = () => {
-  const { suppliers, materials, addOrder } = useData();
+  const { suppliers, materials, addOrder, refetchOrders, refetchMaterialBatches } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
@@ -154,7 +154,7 @@ const Orders = () => {
     }
   };
   
-  const onSubmit = (data: OrdersFormValues) => {
+  const onSubmit = async (data: OrdersFormValues) => {
     if (!hasPermission('orders', 'create')) {
       toast({
         variant: "destructive",
@@ -219,9 +219,11 @@ const Orders = () => {
       
       addOrder(order);
       
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Refetch dados atualizados imediatamente
+      await Promise.all([
+        refetchOrders(),
+        refetchMaterialBatches()
+      ]);
       
       if (hasConversions) {
         toast({

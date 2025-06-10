@@ -104,7 +104,7 @@ const generateMixBatchName = async (dateString: string): Promise<string> => {
 };
 
 const MixRegistration = () => {
-  const { materialBatches, addProductionBatch } = useData();
+  const { materialBatches, addProductionBatch, refetchMaterialBatches, refetchProductionBatches } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission, user, getUserDisplayName } = useAuth();
@@ -304,10 +304,11 @@ const MixRegistration = () => {
       await createMixBatch(mixBatchPayload, user?.id, getUserDisplayName());
       toast({ title: "Mexida Registrada", description: `Mexida ${mixBatchNumber} registrada com sucesso.` });
       
-      // Refresh automático para sincronizar dados
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Refetch específico dos dados modificados em vez de reload completo
+      await Promise.all([
+        refetchMaterialBatches(), // Atualizar lotes de materiais (quantidades foram atualizadas)
+        refetchProductionBatches() // Atualizar lotes de produção (nova mexida foi criada)
+      ]);
       
       form.reset({
         mixDate: today, 
@@ -337,6 +338,31 @@ const MixRegistration = () => {
   
   const shouldShowMixFieldsSection = isDistributeSectionVisible && directlyCalculatedConservantMaterialsCount > 1;
   const conservantDataIsReadyForMixFields = shouldShowMixFieldsSection && conservantUsages.length === directlyCalculatedConservantMaterialsCount;
+
+  // Função para adicionar material sem duplicatas
+  const handleAppendUsedMaterial = () => {
+    // Verificar se ainda há materiais disponíveis que não foram selecionados
+    const currentlySelectedMaterials = form.getValues("usedMaterials");
+    const selectedMaterialIds = currentlySelectedMaterials
+      .map(material => material.materialBatchId)
+      .filter(id => id !== ""); // Filtrar IDs vazios
+    
+    const availableUnselectedMaterials = availableMaterialBatches.filter(
+      batch => !selectedMaterialIds.includes(batch.id)
+    );
+    
+    if (availableUnselectedMaterials.length === 0) {
+      toast({
+        variant: "default",
+        title: "Nenhum material disponível",
+        description: "Todos os materiais disponíveis já foram selecionados ou não há mais materiais em estoque.",
+      });
+      return;
+    }
+    
+    // Adicionar novo campo vazio
+    appendUsedMaterial({ materialBatchId: "", quantity: 0 });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -461,24 +487,54 @@ const MixRegistration = () => {
                           <Trash className="h-4 w-4" />
                         </Button>
                         
-                        <div className={cn("grid grid-cols-2 gap-4 items-end", isMobile && "grid-cols-1")}>
+                        <div className={cn("grid gap-4 items-start", isMobile ? "grid-cols-1" : "grid-cols-2")}>
                           <FormField 
                             control={form.control} 
                             name={`usedMaterials.${index}.materialBatchId`} 
                             render={({ field }) => (
-                              <FormItem className="flex flex-col">
+                              <FormItem className="flex flex-col h-full">
                                 <FormLabel>Insumo</FormLabel>
-                                <Combobox
-                                  options={availableMaterialBatches.map(batch => ({ 
-                                    value: batch.id, 
-                                    label: `${batch.materialName} / ${batch.batchNumber} (${batch.remainingQuantity} ${batch.unitOfMeasure})`
-                                  }))}
-                                  value={field.value}
-                                  onValueChange={field.onChange}
-                                  placeholder="Selecione um insumo"
-                                  searchPlaceholder="Buscar insumo..."
-                                  notFoundMessage="Nenhum insumo encontrado."
-                                />
+                                <div className="flex-grow">
+                                  <Combobox
+                                    options={availableMaterialBatches
+                                      .filter(batch => {
+                                        // Filtrar materiais já selecionados em outros campos
+                                        const currentlySelected = form.getValues("usedMaterials");
+                                        const selectedIds = currentlySelected
+                                          .map((material, idx) => idx !== index ? material.materialBatchId : null)
+                                          .filter(id => id && id !== "");
+                                        
+                                        return !selectedIds.includes(batch.id);
+                                      })
+                                      .map(batch => ({ 
+                                        value: batch.id, 
+                                        label: `${batch.materialName} / ${batch.batchNumber} (${batch.remainingQuantity} ${batch.unitOfMeasure})`
+                                      }))
+                                    }
+                                    value={field.value}
+                                    onValueChange={(value) => {
+                                      // Verificar se o material já foi selecionado em outro campo
+                                      const currentlySelected = form.getValues("usedMaterials");
+                                      const alreadySelected = currentlySelected.some((material, idx) => 
+                                        idx !== index && material.materialBatchId === value
+                                      );
+                                      
+                                      if (alreadySelected) {
+                                        toast({
+                                          variant: "destructive",
+                                          title: "Material já selecionado",
+                                          description: "Este material já foi selecionado em outro campo.",
+                                        });
+                                        return;
+                                      }
+                                      
+                                      field.onChange(value);
+                                    }}
+                                    placeholder="Selecione um insumo"
+                                    searchPlaceholder="Buscar insumo..."
+                                    notFoundMessage="Nenhum insumo encontrado."
+                                  />
+                                </div>
                                 <FormMessage />
                               </FormItem>
                             )} 
@@ -523,16 +579,18 @@ const MixRegistration = () => {
                                 const uInfo = conservantUsages.find(u => u.materialBatchId === selMatBatchId);
                                 const calcQty = uInfo ? uInfo.quantity : 0;
                                 return (
-                                  <FormItem>
+                                  <FormItem className="flex flex-col h-full">
                                     <FormLabel>Quantidade Utilizada (Calculada)</FormLabel>
-                                    <FormControl>
-                                      <Input 
-                                        type="number" 
-                                        value={calcQty.toFixed(3)} 
-                                        readOnly 
-                                        className="bg-muted/50 cursor-default"
-                                      />
-                                    </FormControl>
+                                    <div className="flex-grow">
+                                      <FormControl>
+                                        <Input 
+                                          type="number" 
+                                          value={calcQty.toFixed(3)} 
+                                          readOnly 
+                                          className="bg-muted/50 cursor-default"
+                                        />
+                                      </FormControl>
+                                    </div>
                                     {globalConservantUsageFactor !== null && watchedMixCount > 0 && matBatchDetails && (
                                       <FormDescription>
                                         Base: {watchedMixCount} mexida(s) × {globalConservantUsageFactor.toFixed(3)} {matBatchDetails.unitOfMeasure}/mexida
@@ -549,35 +607,37 @@ const MixRegistration = () => {
                                 const totalSacos = currentQty * watchedMixCount;
                                 
                                 return (
-                                  <FormItem>
+                                  <FormItem className="flex flex-col h-full">
                                     <FormLabel>
                                       {isFecula ? 'Sacos por Mexida' : 'Quantidade Utilizada'}
                                     </FormLabel>
-                                    <FormControl>
-                                      <Input 
-                                        type="number" 
-                                        placeholder="0"
-                                        value={field.value === null || field.value === undefined || field.value === 0 ? "" : field.value}
-                                        onChange={e => {
-                                          const inputValue = e.target.value;
-                                          if (inputValue === "") {
-                                            field.onChange(0);
-                                          } else {
-                                            const value = parseFloat(inputValue) || 0;
-                                            field.onChange(value);
-                                          }
-                                        }}
-                                        onBlur={e => {
-                                          const inputValue = e.target.value;
-                                          if (inputValue === "") {
-                                            field.onChange(0);
-                                          } else {
-                                            const value = parseFloat(inputValue) || 0;
-                                            field.onChange(value);
-                                          }
-                                        }}
-                                      />
-                                    </FormControl>
+                                    <div className="flex-grow">
+                                      <FormControl>
+                                        <Input 
+                                          type="number" 
+                                          placeholder="0"
+                                          value={field.value === null || field.value === undefined || field.value === 0 ? "" : field.value}
+                                          onChange={e => {
+                                            const inputValue = e.target.value;
+                                            if (inputValue === "") {
+                                              field.onChange(0);
+                                            } else {
+                                              const value = parseFloat(inputValue) || 0;
+                                              field.onChange(value);
+                                            }
+                                          }}
+                                          onBlur={e => {
+                                            const inputValue = e.target.value;
+                                            if (inputValue === "") {
+                                              field.onChange(0);
+                                            } else {
+                                              const value = parseFloat(inputValue) || 0;
+                                              field.onChange(value);
+                                            }
+                                          }}
+                                        />
+                                      </FormControl>
+                                    </div>
                                     {isFecula && watchedMixCount > 0 && currentQty > 0 && (
                                       <FormDescription className="text-blue-600 font-medium">
                                         Total de sacos que serão descontados do estoque: {totalSacos} sacos
@@ -609,7 +669,7 @@ const MixRegistration = () => {
                     type="button" 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => appendUsedMaterial({ materialBatchId: "", quantity: 0 })} 
+                    onClick={handleAppendUsedMaterial} 
                     className="mt-4 w-full"
                   >
                     <Plus className="mr-2 h-4 w-4" /> Adicionar Insumo

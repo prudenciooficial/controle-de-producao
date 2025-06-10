@@ -28,6 +28,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     name: string;
     path: string;
     icon: React.ElementType;
+    module?: string;
   };
 
   type MenuItem = {
@@ -47,15 +48,22 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       module: "production",
       subItems: [
         { name: "Mexidas", path: "/mexida", icon: FlaskConical },
-        { name: "Produção", path: "/producao", icon: Factory }
+        { name: "Produção", path: "/producao", icon: Factory },
+        { name: "Vendas", path: "/vendas", icon: ShoppingCart, module: "sales" },
+        { name: "Pedidos", path: "/pedidos", icon: Truck, module: "orders" },
+        { name: "Estoque", path: "/estoque", icon: Package, module: "inventory" },
+        { name: "Perdas", path: "/perdas", icon: PackageX, module: "losses" },
+        { name: "Cadastro", path: "/cadastro", icon: Settings, module: "general_settings" }
       ]
     },
-    { name: "Vendas", path: "/vendas", icon: ShoppingCart, module: "sales" },
-    { name: "Pedidos", path: "/pedidos", icon: Truck, module: "orders" },
-    { name: "Estoque", path: "/estoque", icon: Package, module: "inventory" },
-    { name: "Perdas", path: "/perdas", icon: PackageX, module: "losses" },
-    { name: "Cadastro", path: "/cadastro", icon: Settings, module: "general_settings" },
-    { name: "RH", path: "/recursos-humanos", icon: UserCheck, module: "human_resources" },
+    { 
+      name: "RH", 
+      icon: UserCheck, 
+      module: "human_resources",
+      subItems: [
+        { name: "Ponto", path: "/recursos-humanos", icon: History }
+      ]
+    },
     { 
       name: "Qualidade", 
       icon: ShieldCheck, 
@@ -112,7 +120,25 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
           console.log(`Módulo ${item.module} (${item.name}): ${hasAccess ? 'APROVADO' : 'NEGADO'}`);
           
           if (hasAccess) {
-            filteredItems.push(item);
+            // Se o item tem subitens, filtrar com base nas permissões individuais
+            if (item.subItems && item.subItems.length > 0) {
+              const filteredSubItems = item.subItems.filter(subItem => {
+                if (!subItem.module) return true; // Se não tem módulo, assume que tem acesso
+                const subItemAccess = getModuleAccess(subItem.module);
+                console.log(`Subitem ${subItem.name} (módulo: ${subItem.module}): ${subItemAccess ? 'APROVADO' : 'NEGADO'}`);
+                return subItemAccess;
+              });
+              
+              // Só adiciona o item principal se ele mesmo tem acesso OU se pelo menos um subitem tem acesso
+              if (filteredSubItems.length > 0) {
+                filteredItems.push({
+                  ...item,
+                  subItems: filteredSubItems
+                });
+              }
+            } else {
+              filteredItems.push(item);
+            }
           }
         }
       }
@@ -177,9 +203,10 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
 
   const sidebarContent = (isExpanded: boolean) => (
     <motion.nav 
-      className="space-y-1 px-2 py-6 flex-grow"
+      className="space-y-1 px-2 py-4 flex-grow overflow-y-auto scrollbar-hide"
       initial={false}
       animate={isExpanded ? "expanded" : "collapsed"}
+      style={{ maxHeight: 'calc(100vh - 8rem)' }}
     >
       {availableMenuItems.map((item) => {
         const isActive = isItemActive(item);
@@ -317,7 +344,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
 
   const sidebarLogo = (isExpanded: boolean) => (
     <motion.div 
-      className="p-4 mt-auto flex items-center justify-center"
+      className="p-3 flex items-center justify-center flex-shrink-0"
       variants={logoVariants}
       initial="collapsed"
       animate={isExpanded ? "expanded" : "collapsed"}
@@ -327,7 +354,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         alt="Nossa Goma Logo"
         className={cn(
           "transition-all duration-300 ease-in-out",
-          isExpanded ? "h-16 w-auto" : "h-10 w-auto"
+          isExpanded ? "h-12 w-auto" : "h-8 w-auto"
         )}
       />
     </motion.div>

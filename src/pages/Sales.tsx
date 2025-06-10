@@ -53,7 +53,7 @@ const SALE_TABS = [
 ];
 
 const Sales = () => {
-  const { getAvailableProducts, addSale } = useData();
+  const { getAvailableProducts, addSale, refetchSales, refetchProductionBatches } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
@@ -83,7 +83,7 @@ const Sales = () => {
     return availableProducts.find((p) => p.id === producedItemId);
   };
   
-  const onSubmit = (data: SalesFormValues) => {
+  const onSubmit = async (data: SalesFormValues) => {
     if (!hasPermission('sales', 'create')) {
       toast({
         variant: "destructive",
@@ -129,12 +129,12 @@ const Sales = () => {
       
       addSale(sale);
       
-      // Refresh automático para sincronizar dados
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Refetch dados atualizados imediatamente
+      await Promise.all([
+        refetchSales(),
+        refetchProductionBatches() // Atualizar lotes pois as quantidades foram reduzidas
+      ]);
       
-      // Reset form
       form.reset({
         date: getTodayDateString(),
         invoiceNumber: "",

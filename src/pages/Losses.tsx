@@ -37,7 +37,7 @@ const LOSS_TABS = [
 ];
 
 const Losses = () => {
-  const { productionBatches, addLoss, isLoading } = useData();
+  const { productionBatches, addLoss, refetchLosses, refetchProductionBatches, isLoading } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
@@ -72,10 +72,9 @@ const Losses = () => {
       const batch = getBatchDetails(data.productionBatchId);
       
       if (!batch) {
-        throw new Error(`Lote de produção não encontrado: ${data.productionBatchId}`);
+        throw new Error("Lote de produção não encontrado");
       }
       
-      // Create and add loss
       const loss = {
         date: parseDateString(data.date),
         productionBatchId: data.productionBatchId,
@@ -87,12 +86,14 @@ const Losses = () => {
         notes: data.notes,
       };
       
-      await addLoss(loss);
+      addLoss(loss);
+      toast({ title: "Perda Registrada", description: `Perda de ${data.quantity}kg do lote ${batch.batchNumber} registrada com sucesso.` });
       
-      // Refresh automático para sincronizar dados
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Refetch dados atualizados imediatamente
+      await Promise.all([
+        refetchLosses(),
+        refetchProductionBatches() // Atualizar lotes pois as quantidades foram reduzidas
+      ]);
       
       // Reset form
       form.reset({
