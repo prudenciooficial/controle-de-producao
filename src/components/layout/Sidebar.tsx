@@ -162,12 +162,14 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
   // Função para alternar expansão de menu
   const toggleMenuExpansion = (itemName: string) => {
     setExpandedMenus(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(itemName)) {
-        newSet.delete(itemName);
-      } else {
+      const newSet = new Set<string>();
+      
+      // Se o item já está expandido, feche-o (não adicione ao Set)
+      if (!prev.has(itemName)) {
+        // Se não está expandido, abra apenas este item (fechando todos os outros)
         newSet.add(itemName);
       }
+      
       return newSet;
     });
   };

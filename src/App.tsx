@@ -23,6 +23,7 @@ import SalesHistory from "./pages/SalesHistory";
 import Orders from "./pages/Orders";
 import OrdersHistory from "./pages/OrdersHistory";
 import Inventory from "./pages/Inventory";
+import StockReductionHistory from "./pages/StockReductionHistory";
 import Losses from "./pages/Losses";
 import LossesHistory from "./pages/LossesHistory";
 import Traceability from "./pages/Traceability";
@@ -79,6 +80,7 @@ const AppContent = () => {
                   <Route path="/pedidos" element={<Orders />} />
                   <Route path="/pedidos/historico" element={<OrdersHistory />} />
                   <Route path="/estoque" element={<Inventory />} />
+                  <Route path="/estoque/historico-baixas" element={<StockReductionHistory />} />
                   <Route path="/perdas" element={<Losses />} />
                   <Route path="/perdas/historico" element={<LossesHistory />} />
                   <Route path="/rastreabilidade" element={<Traceability />} />

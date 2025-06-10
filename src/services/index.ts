@@ -1,4 +1,3 @@
-
 // Re-export all services
 export * from './productsService';
 export * from './materialsService';
@@ -8,6 +7,7 @@ export * from './salesService';
 export * from './ordersService';
 export * from './lossesService';
 export * from './traceabilityService';
+export * from './stockReductionService';
 export * from './base/supabaseClient';
 export * from './logService';
 export * from './mixService';

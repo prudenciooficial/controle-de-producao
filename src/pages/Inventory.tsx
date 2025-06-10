@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useForm } from "react-hook-form";
@@ -29,36 +30,30 @@ import {
   Factory,
   Beaker,
   Archive,
-  Minus
+  Minus,
+  History
 } from "lucide-react";
 import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
 import { motion } from "framer-motion";
 import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
+import { createStockReduction } from "@/services/stockReductionService";
 
 // Schema para baixa de estoque
 const stockReductionSchema = z.object({
   date: z.string().nonempty({ message: "Data é obrigatória" }),
   materialBatchId: z.string().nonempty({ message: "Insumo/Lote é obrigatório" }),
   quantity: z.number().positive({ message: "Quantidade deve ser maior que zero" }),
-  productionBatchId: z.string().optional(),
-  mixBatchId: z.string().optional(),
-  reason: z.string().nonempty({ message: "Motivo é obrigatório" }),
   notes: z.string().optional(),
-}).refine(data => {
-  return data.productionBatchId || data.mixBatchId || data.reason;
-}, {
-  message: "Deve ser vinculado a uma produção, mexida ou ter um motivo específico",
-  path: ["reason"],
 });
 
 type StockReductionValues = z.infer<typeof stockReductionSchema>;
 
 const Inventory = () => {
+  const navigate = useNavigate();
   const { 
     getAvailableProducts, 
     getAvailableMaterials, 
     materialBatches, 
-    productionBatches,
     globalSettings, 
     isLoading,
     getFeculaInventory,
@@ -83,9 +78,6 @@ const Inventory = () => {
       date: getTodayDateString(),
       materialBatchId: "",
       quantity: 0,
-      productionBatchId: "",
-      mixBatchId: "",
-      reason: "",
       notes: "",
     },
   });
@@ -111,19 +103,17 @@ const Inventory = () => {
         throw new Error(`Quantidade maior que disponível em estoque (${materialBatch.remainingQuantity} ${materialBatch.unitOfMeasure})`);
       }
 
-      // Aqui você implementaria a lógica de baixa no estoque
-      // Por exemplo, chamar um serviço que atualize o banco de dados
-      
-      // Simulação da baixa
-      console.log("Processando baixa de estoque:", {
-        materialBatch: materialBatch.materialName,
-        batchNumber: materialBatch.batchNumber,
-        quantity: data.quantity,
-        reason: data.reason,
-        productionBatch: data.productionBatchId,
-        mixBatch: data.mixBatchId,
-        notes: data.notes
-      });
+      // Usar o novo serviço para processar a baixa
+      await createStockReduction(
+        {
+          date: data.date,
+          materialBatchId: data.materialBatchId,
+          quantity: data.quantity,
+          notes: data.notes,
+        },
+        user?.id,
+        user?.user_metadata?.full_name || user?.email
+      );
 
       toast({
         title: "Baixa Processada",
@@ -138,9 +128,6 @@ const Inventory = () => {
         date: getTodayDateString(),
         materialBatchId: "",
         quantity: 0,
-        productionBatchId: "",
-        mixBatchId: "",
-        reason: "",
         notes: "",
       });
 
@@ -779,13 +766,21 @@ const Inventory = () => {
         <TabsContent value="baixa" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Minus className="h-5 w-5" />
-                <span>Baixa de Estoque</span>
-              </CardTitle>
-              <CardDescription>
-                Registre a saída de materiais do estoque vinculando a produções ou mexidas
-              </CardDescription>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Minus className="h-5 w-5" />
+                    <span>Baixa de Estoque</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Registre a saída de materiais do estoque
+                  </CardDescription>
+                </div>
+                <Button variant="outline" onClick={() => navigate("/estoque/historico-baixas")}>
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Histórico de Baixas
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <Form {...stockForm}>
@@ -838,7 +833,7 @@ const Inventory = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={stockForm.control}
                       name="quantity"
@@ -848,7 +843,7 @@ const Inventory = () => {
                           <FormControl>
                             <Input 
                               type="number" 
-                              placeholder="0"
+                              placeholder="0.00"
                               value={field.value === 0 ? "" : field.value}
                               onChange={e => {
                                 const value = parseFloat(e.target.value) || 0;
@@ -863,83 +858,21 @@ const Inventory = () => {
 
                     <FormField
                       control={stockForm.control}
-                      name="productionBatchId"
+                      name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Produção (Opcional)</FormLabel>
-                          <Combobox
-                            options={productionBatches.map(batch => ({
-                              value: batch.id,
-                              label: `${batch.batchNumber} - ${new Date(batch.productionDate).toLocaleDateString()}`
-                            }))}
-                            value={field.value || ""}
-                            onValueChange={field.onChange}
-                            placeholder="Vincular à produção"
-                            searchPlaceholder="Buscar produção..."
-                            notFoundMessage="Nenhuma produção encontrada."
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={stockForm.control}
-                      name="mixBatchId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Mexida (Opcional)</FormLabel>
+                          <FormLabel>Observações (Opcional)</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="ID ou nome da mexida"
+                            <Textarea 
+                              placeholder="Observações adicionais sobre a baixa..."
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>
-                            Informe o ID ou nome da mexida relacionada
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-
-                  <FormField
-                    control={stockForm.control}
-                    name="reason"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Motivo da Baixa</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Ex: Utilizado na produção, Consumo na mexida, etc."
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Descreva o motivo da baixa no estoque
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={stockForm.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Observações (Opcional)</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Observações adicionais sobre a baixa..."
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
                   <Button type="submit" disabled={stockForm.formState.isSubmitting}>
                     {stockForm.formState.isSubmitting ? "Processando..." : "Processar Baixa"}
