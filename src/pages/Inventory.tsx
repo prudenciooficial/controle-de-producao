@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useForm } from "react-hook-form";
@@ -50,6 +50,7 @@ type StockReductionValues = z.infer<typeof stockReductionSchema>;
 
 const Inventory = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { 
     getAvailableProducts, 
     getAvailableMaterials, 
@@ -67,6 +68,7 @@ const Inventory = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"product" | "material">("product");
   const [selectedBatches, setSelectedBatches] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("produtos");
   
   const availableProducts = getAvailableProducts();
   const availableMaterials = getAvailableMaterials();
@@ -81,6 +83,14 @@ const Inventory = () => {
       notes: "",
     },
   });
+
+  // Verificar parâmetro de URL para aba ativa
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['produtos', 'materiais', 'baixa'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   // Função para processar baixa de estoque
   const onStockReductionSubmit = async (data: StockReductionValues) => {
@@ -620,15 +630,15 @@ const Inventory = () => {
         </div>
       </div>
       
-      <Tabs defaultValue="produtos" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="produtos" className="flex items-center space-x-2">
-            <PackageCheck className="h-4 w-4" />
+            <Package className="h-4 w-4" />
             <span>Produtos</span>
           </TabsTrigger>
           <TabsTrigger value="materiais" className="flex items-center space-x-2">
-            <Package className="h-4 w-4" />
-            <span>Matérias-Primas</span>
+            <Package2 className="h-4 w-4" />
+            <span>Materiais</span>
           </TabsTrigger>
           <TabsTrigger value="baixa" className="flex items-center space-x-2">
             <Minus className="h-4 w-4" />

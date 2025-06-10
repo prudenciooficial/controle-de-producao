@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getStockReductions, deleteStockReduction } from "@/services/stockReductionService";
+import { getStockReductions, deleteStockReduction, updateStockReduction } from "@/services/stockReductionService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ import {
   Minus,
   FileText,
   Filter,
+  Edit
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -78,15 +80,25 @@ const StockReductionHistory = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { hasPermission, user } = useAuth();
+  const { materialBatches, refetchMaterialBatches } = useData();
   
   const [stockReductions, setStockReductions] = useState<StockReduction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedReduction, setSelectedReduction] = useState<StockReduction | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [view, setView] = useState<'cards' | 'table'>('cards');
+  
+  // Estados para edição
+  const [editForm, setEditForm] = useState({
+    date: "",
+    quantity: 0,
+    notes: ""
+  });
 
   // Fetch stock reductions on component mount
   useEffect(() => {
@@ -109,8 +121,8 @@ const StockReductionHistory = () => {
         updatedAt: item.atualizado_em,
         materialBatch: item.material_batches ? {
           id: item.material_batches.id,
-          materialName: item.material_batches.material_name,
-          materialType: item.material_batches.material_type,
+          materialName: item.material_batches.materials?.name || "Material não identificado",
+          materialType: item.material_batches.materials?.type || "Tipo não identificado",
           batchNumber: item.material_batches.batch_number,
           unitOfMeasure: item.material_batches.unit_of_measure,
           remainingQuantity: item.material_batches.remaining_quantity,
@@ -150,6 +162,45 @@ const StockReductionHistory = () => {
     return reductionDate >= thirtyDaysAgo;
   }).length;
 
+  // Handle edit
+  const handleEdit = async () => {
+    if (!selectedReduction) return;
+
+    try {
+      setIsUpdating(true);
+      
+      await updateStockReduction(
+        selectedReduction.id,
+        {
+          date: editForm.date,
+          quantity: editForm.quantity,
+          notes: editForm.notes,
+        },
+        user?.id,
+        user?.user_metadata?.full_name || user?.email
+      );
+
+      toast({
+        title: "Baixa Atualizada",
+        description: "A baixa de estoque foi atualizada com sucesso.",
+      });
+
+      await loadStockReductions();
+      await refetchMaterialBatches();
+      setShowEditDialog(false);
+      setSelectedReduction(null);
+    } catch (error) {
+      console.error("Error updating stock reduction:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao atualizar a baixa de estoque.",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   // Handle delete
   const handleDelete = async () => {
     if (!selectedReduction) return;
@@ -187,6 +238,16 @@ const StockReductionHistory = () => {
   const openDetailsDialog = (reduction: StockReduction) => {
     setSelectedReduction(reduction);
     setShowDetailsDialog(true);
+  };
+
+  const openEditDialog = (reduction: StockReduction) => {
+    setSelectedReduction(reduction);
+    setEditForm({
+      date: reduction.date,
+      quantity: reduction.quantity,
+      notes: reduction.notes || ""
+    });
+    setShowEditDialog(true);
   };
 
   const openDeleteDialog = (reduction: StockReduction) => {
@@ -234,6 +295,12 @@ const StockReductionHistory = () => {
                     <Eye className="mr-2 h-4 w-4" />
                     Ver Detalhes
                   </DropdownMenuItem>
+                  {hasPermission('inventory', 'edit') && (
+                    <DropdownMenuItem onClick={() => openEditDialog(reduction)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar
+                    </DropdownMenuItem>
+                  )}
                   {hasPermission('inventory', 'delete') && (
                     <DropdownMenuItem 
                       onClick={() => openDeleteDialog(reduction)}
@@ -301,7 +368,7 @@ const StockReductionHistory = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => navigate("/estoque")}>
+          <Button onClick={() => navigate("/estoque?tab=baixa")}>
             <Minus className="mr-2 h-4 w-4" />
             Nova Baixa
           </Button>
@@ -451,6 +518,12 @@ const StockReductionHistory = () => {
                             <Eye className="mr-2 h-4 w-4" />
                             Ver Detalhes
                           </DropdownMenuItem>
+                          {hasPermission('inventory', 'edit') && (
+                            <DropdownMenuItem onClick={() => openEditDialog(reduction)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                          )}
                           {hasPermission('inventory', 'delete') && (
                             <DropdownMenuItem 
                               onClick={() => openDeleteDialog(reduction)}
@@ -522,6 +595,74 @@ const StockReductionHistory = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Baixa de Estoque</DialogTitle>
+            <DialogDescription>
+              Modifique os dados da baixa. A quantidade em estoque será ajustada automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedReduction && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Material</Label>
+                <p className="text-sm text-muted-foreground">
+                  {selectedReduction.materialBatch?.materialName} - Lote: {selectedReduction.materialBatch?.batchNumber}
+                </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-date">Data</Label>
+                <Input
+                  id="edit-date"
+                  type="date"
+                  value={editForm.date}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, date: e.target.value }))}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-quantity">Quantidade ({selectedReduction.materialBatch?.unitOfMeasure})</Label>
+                <Input
+                  id="edit-quantity"
+                  type="number"
+                  step="0.001"
+                  min="0.001"
+                  value={editForm.quantity}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-notes">Observações</Label>
+                <Textarea
+                  id="edit-notes"
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Observações sobre a baixa..."
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleEdit} 
+              disabled={isUpdating || editForm.quantity <= 0}
+            >
+              {isUpdating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

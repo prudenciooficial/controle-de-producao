@@ -23,7 +23,16 @@ export const createStockReduction = async (
     // Primeiro, verificar se o lote de material existe e tem quantidade suficiente
     const { data: materialBatch, error: materialError } = await (supabase as any)
       .from("material_batches")
-      .select("id, material_name, batch_number, remaining_quantity, unit_of_measure")
+      .select(`
+        id, 
+        batch_number, 
+        remaining_quantity, 
+        unit_of_measure,
+        materials:material_id (
+          name,
+          type
+        )
+      `)
       .eq("id", stockReduction.materialBatchId)
       .single();
 
@@ -86,7 +95,7 @@ export const createStockReduction = async (
         entityId: reductionData.id,
         newData: {
           ...reductionData,
-          material_name: materialBatch.material_name,
+          material_name: materialBatch.materials?.name,
           batch_number: materialBatch.batch_number,
           old_quantity: materialBatch.remaining_quantity,
           new_quantity: newRemainingQuantity
@@ -115,11 +124,13 @@ export const getStockReductions = async () => {
         *,
         material_batches:lote_material_id (
           id,
-          material_name,
-          material_type,
           batch_number,
           unit_of_measure,
-          remaining_quantity
+          remaining_quantity,
+          materials:material_id (
+            name,
+            type
+          )
         )
       `)
       .order("data", { ascending: false });
@@ -150,10 +161,13 @@ export const deleteStockReduction = async (
         *,
         material_batches:lote_material_id (
           id,
-          material_name,
           batch_number,
           remaining_quantity,
-          unit_of_measure
+          unit_of_measure,
+          materials:material_id (
+            name,
+            type
+          )
         )
       `)
       .eq("id", id)
@@ -208,7 +222,7 @@ export const deleteStockReduction = async (
         entityId: id,
         oldData: {
           ...reductionData,
-          material_name: materialBatch?.material_name,
+          material_name: materialBatch?.materials?.name,
           batch_number: materialBatch?.batch_number
         }
       });
@@ -218,6 +232,129 @@ export const deleteStockReduction = async (
     
   } catch (error) {
     console.error("Error deleting stock reduction:", error);
+    try {
+      await abortTransaction();
+    } catch (rollbackError) {
+      console.error("Error in rollback:", rollbackError);
+    }
+    throw error;
+  }
+};
+
+export const updateStockReduction = async (
+  id: string,
+  updates: Partial<Omit<StockReduction, "id" | "createdAt" | "updatedAt">>,
+  userId?: string,
+  userDisplayName?: string
+): Promise<void> => {
+  try {
+    await beginTransaction();
+
+    // Buscar dados atuais da baixa
+    const { data: currentReduction, error: fetchError } = await (supabase as any)
+      .from("baixas_estoque")
+      .select(`
+        *,
+        material_batches:lote_material_id (
+          id,
+          batch_number,
+          remaining_quantity,
+          unit_of_measure,
+          materials:material_id (
+            name,
+            type
+          )
+        )
+      `)
+      .eq("id", id)
+      .single();
+
+    if (fetchError) {
+      await abortTransaction();
+      throw new Error(`Erro ao buscar baixa de estoque: ${fetchError.message}`);
+    }
+
+    if (!currentReduction) {
+      await abortTransaction();
+      throw new Error("Baixa de estoque não encontrada");
+    }
+
+    const materialBatch = currentReduction.material_batches;
+    if (!materialBatch) {
+      await abortTransaction();
+      throw new Error("Lote de material não encontrado");
+    }
+
+    // Se a quantidade foi alterada, ajustar estoque
+    if (updates.quantity !== undefined && updates.quantity !== currentReduction.quantidade) {
+      const quantityDifference = updates.quantity - currentReduction.quantidade;
+      const newRemainingQuantity = materialBatch.remaining_quantity - quantityDifference;
+
+      // Verificar se há estoque suficiente para o ajuste
+      if (newRemainingQuantity < 0) {
+        await abortTransaction();
+        throw new Error(
+          `Estoque insuficiente para esta alteração. Disponível: ${materialBatch.remaining_quantity} ${materialBatch.unit_of_measure}`
+        );
+      }
+
+      // Atualizar quantidade restante do lote
+      const { error: updateStockError } = await (supabase as any)
+        .from("material_batches")
+        .update({ remaining_quantity: newRemainingQuantity })
+        .eq("id", currentReduction.lote_material_id);
+
+      if (updateStockError) {
+        await abortTransaction();
+        throw new Error(`Erro ao atualizar estoque: ${updateStockError.message}`);
+      }
+    }
+
+    // Atualizar registro da baixa
+    const updateData: any = {};
+    if (updates.date) updateData.data = updates.date;
+    if (updates.quantity !== undefined) updateData.quantidade = updates.quantity;
+    if (updates.notes !== undefined) updateData.observacoes = updates.notes;
+
+    const { data: updatedReduction, error: updateError } = await (supabase as any)
+      .from("baixas_estoque")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (updateError) {
+      await abortTransaction();
+      throw new Error(`Erro ao atualizar baixa de estoque: ${updateError.message}`);
+    }
+
+    await endTransaction();
+
+    // Log da operação
+    if (userId && userDisplayName) {
+      await logSystemEvent({
+        userId,
+        userDisplayName,
+        actionType: 'UPDATE',
+        entityTable: 'baixas_estoque',
+        entityId: id,
+        oldData: {
+          ...currentReduction,
+          material_name: materialBatch.materials?.name,
+          batch_number: materialBatch.batch_number
+        },
+        newData: {
+          ...updatedReduction,
+          material_name: materialBatch.materials?.name,
+          batch_number: materialBatch.batch_number
+        }
+      });
+    }
+
+    console.log(`[StockReductionService] Baixa de estoque atualizada com sucesso: ${id}`);
+    
+  } catch (error) {
+    console.error("Error updating stock reduction:", error);
     try {
       await abortTransaction();
     } catch (rollbackError) {
