@@ -123,7 +123,7 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
   }
   console.log(`[traceProductBatch] Itens produzidos no lote:`, allProducedItemsInBatch);
 
-  // 3. Materiais Utilizados (já usava productionBatch.id, o que está correto)
+  // 3. Materiais Utilizados - buscar da produção direta
   const { data: usedMaterialsData } = await supabase
     .from("used_materials")
     .select(`
@@ -134,10 +134,36 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
       )
     `)
     .eq("production_batch_id", productionBatch.id);
-  console.log(`[traceProductBatch] Dados brutos de materiais utilizados:`, usedMaterialsData);
+  console.log(`[traceProductBatch] Dados brutos de materiais utilizados na produção:`, usedMaterialsData);
+
+  // 4. Buscar materiais utilizados na mexida vinculada (se houver)
+  let usedMaterialsFromMix: any[] = [];
+  if (productionBatch.mix_batch_id) {
+    const { data: mixUsedMaterialsData } = await supabase
+      .from("used_materials_mix")
+      .select(`
+        *,
+        material_batches:material_batch_id (
+          *,
+          materials:material_id (name, type)
+        )
+      `)
+      .eq("mix_batch_id", productionBatch.mix_batch_id);
+    
+    console.log(`[traceProductBatch] Dados brutos de materiais utilizados na mexida vinculada:`, mixUsedMaterialsData);
+    usedMaterialsFromMix = mixUsedMaterialsData || [];
+  }
+
+  // 5. Combinar todos os materiais utilizados (produção + mexida)
+  const allUsedMaterials = [...(usedMaterialsData || []), ...usedMaterialsFromMix];
+  
+  // Remover duplicatas baseado no material_batch_id
+  const uniqueUsedMaterials = allUsedMaterials.filter((material, index, self) => 
+    index === self.findIndex(m => m.material_batch_id === material.material_batch_id)
+  );
 
   const usedMaterialsWithSupplier = await Promise.all(
-    (usedMaterialsData || []).map(async (usedMaterial) => {
+    uniqueUsedMaterials.map(async (usedMaterial) => {
       const supplierInfo = await getSupplierFromMaterialBatch(usedMaterial.material_batch_id);
       return {
         id: usedMaterial.id,
@@ -152,9 +178,9 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
       };
     })
   );
-  console.log(`[traceProductBatch] Materiais utilizados com fornecedor:`, usedMaterialsWithSupplier);
+  console.log(`[traceProductBatch] Materiais utilizados com fornecedor (produção + mexida):`, usedMaterialsWithSupplier);
 
-  // 4. Vendas (precisa buscar para todos os produced_item_ids do lote)
+  // 6. Vendas (precisa buscar para todos os produced_item_ids do lote)
   let sales: ProductTraceability['sales'] = [];
   if (allProducedItemsInBatch && allProducedItemsInBatch.length > 0) {
     const producedItemIds = allProducedItemsInBatch.map(pi => pi.id);
@@ -181,7 +207,7 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
   }
   console.log(`[traceProductBatch] Vendas processadas:`, sales);
 
-  // 5. "Related Products" agora são basicamente todos os itens no lote
+  // 7. "Related Products" agora são basicamente todos os itens no lote
   // A interface `ProductTraceability` pode precisar ser repensada se não houver um "produto principal" 
   // quando se rastreia um lote de produção inteiro.
   // Por ora, vamos listar todos os itens produzidos como "relatedProducts" se houver mais de um,
@@ -196,8 +222,8 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
   }));
   console.log(`[traceProductBatch] Produtos relacionados (todos no lote):`, relatedProducts);
 
-  // 6. Rastreabilidade Reversa (já usava material_batch_ids, o que é bom)
-  const materialBatchIds = (usedMaterialsData || []).map(um => um.material_batch_id).filter(id => id != null) as string[];
+  // 8. Rastreabilidade Reversa (agora usa todos os materiais: produção + mexida)
+  const materialBatchIds = uniqueUsedMaterials.map(um => um.material_batch_id).filter(id => id != null) as string[];
   const reverseTraceability = await getReverseTraceability(materialBatchIds, productionBatch.id);
   console.log(`[traceProductBatch] Rastreabilidade reversa:`, reverseTraceability);
 

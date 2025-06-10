@@ -955,7 +955,7 @@ const OrdersHistory = () => {
                 <CardContent className="grid grid-cols-2 gap-4">
               <div>
                     <Label className="text-gray-700 dark:text-gray-300">Data do Pedido</Label>
-                    <p className="font-medium text-gray-900 dark:text-gray-100">{format(new Date(selectedOrder.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{format(new Date(selectedOrder.date), "dd/MM/yyyy", { locale: ptBR })}</p>
                   </div>
                 <div>
                     <Label className="text-gray-700 dark:text-gray-300">Fornecedor</Label>

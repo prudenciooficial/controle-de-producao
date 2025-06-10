@@ -228,7 +228,7 @@ const Traceability = () => {
           <AccordionContent>
             {renderAccordionContent(
               trace.usedMaterials,
-              ["Material", "Tipo", "Lote", "Qtd", "Fornecedor", "NF", "Entrada", "Validade", "Laudo"],
+              ["Material", "Tipo", "Lote", "Fornecedor", "NF", "Entrada", "Validade", "Laudo"],
               (material, index) => (
                 <TableRow key={material.id || index}>
                   <TableCell className="font-medium">{material.materialName}</TableCell>
@@ -244,7 +244,6 @@ const Traceability = () => {
                       {material.batchNumber}
                     </Button>
                   </TableCell>
-                  <TableCell className="font-medium">{material.quantity} {material.unitOfMeasure}</TableCell>
                   <TableCell>{material.supplier?.name || "-"}</TableCell>
                   <TableCell>{material.supplier?.invoiceNumber || "-"}</TableCell>
                   <TableCell>{formatDate(material.supplier?.orderDate)}</TableCell>

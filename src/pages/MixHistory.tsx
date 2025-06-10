@@ -76,6 +76,8 @@ const MixHistory = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [errorDialogContent, setErrorDialogContent] = useState({ title: "", description: "" });
   const [editForm, setEditForm] = useState<Partial<MixBatch>>({});
   const [view, setView] = useState<'cards' | 'table'>('cards');
   const [usedMaterials, setUsedMaterials] = useState<UsedMaterialMix[]>([]);
@@ -190,19 +192,26 @@ const MixHistory = () => {
       // Refresh local data
       await loadMixBatches();
       
-      // Refresh automático da página para sincronização completa com outros componentes
-      setTimeout(() => {
-        console.log("🔄 Recarregando página para sincronização completa após exclusão...");
-        window.location.reload();
-      }, 1500);
-      
     } catch (error) {
       console.error("Erro ao excluir mexida:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Falha ao excluir a mexida.",
-      });
+      
+      const errorMessage = error instanceof Error ? error.message : "Falha ao excluir a mexida.";
+      
+      // Verificar se é erro de mexida vinculada a produções (mensagem mais longa e específica)
+      if (errorMessage.includes("vinculada às seguintes produções") || errorMessage.includes("Exclua primeiro")) {
+        setErrorDialogContent({
+          title: "Mexida Vinculada a Produções",
+          description: errorMessage
+        });
+        setShowErrorDialog(true);
+      } else {
+        // Para outros erros, usar toast normal
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: errorMessage,
+        });
+      }
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
@@ -224,70 +233,14 @@ const MixHistory = () => {
 
     // Validar se todos os insumos são válidos
     const invalidMaterials = usedMaterials.filter(material => 
-      !material.materialBatchId || material.quantity <= 0
+      !material.materialBatchId
     );
 
     if (invalidMaterials.length > 0) {
       toast({
         variant: "destructive",
         title: "Dados Inválidos",
-        description: "Todos os insumos devem ter um lote selecionado e quantidade maior que zero.",
-      });
-      return;
-    }
-
-    // Validar quantidades disponíveis (considerando que o estoque será ajustado por diferença)
-    const validationErrors: string[] = [];
-    
-    // Criar mapas de quantidades antigas e novas por lote
-    const oldMaterialsMap = new Map<string, number>();
-    const newMaterialsMap = new Map<string, number>();
-    
-    // Mapear materiais antigos
-    if (selectedMix.usedMaterials) {
-      for (const oldMaterial of selectedMix.usedMaterials) {
-        const currentQuantity = oldMaterialsMap.get(oldMaterial.materialBatchId) || 0;
-        oldMaterialsMap.set(oldMaterial.materialBatchId, currentQuantity + oldMaterial.quantity);
-      }
-    }
-    
-    // Mapear novos materiais
-    for (const newMaterial of usedMaterials) {
-      if (newMaterial.materialBatchId) {
-        const currentQuantity = newMaterialsMap.get(newMaterial.materialBatchId) || 0;
-        newMaterialsMap.set(newMaterial.materialBatchId, currentQuantity + newMaterial.quantity);
-      }
-    }
-    
-    // Verificar se há estoque suficiente para cada lote
-    for (const [materialBatchId, newQuantity] of newMaterialsMap.entries()) {
-      const batch = availableMaterialBatches.find(b => b.id === materialBatchId);
-      if (!batch) {
-        const material = usedMaterials.find(m => m.materialBatchId === materialBatchId);
-        validationErrors.push(`Lote do insumo ${material?.materialName || 'desconhecido'} não encontrado`);
-        continue;
-      }
-      
-      const oldQuantity = oldMaterialsMap.get(materialBatchId) || 0;
-      const difference = newQuantity - oldQuantity;
-      
-      // Se a diferença for positiva, estamos consumindo mais estoque
-      if (difference > 0) {
-        const availableForConsumption = batch.remainingQuantity;
-        if (difference > availableForConsumption) {
-          validationErrors.push(
-            `${batch.materialName} (${batch.batchNumber}): quantidade adicional solicitada ${difference} kg excede o disponível ${availableForConsumption} kg`
-          );
-        }
-      }
-      // Se a diferença for negativa, estamos restaurando estoque (sempre permitido)
-    }
-
-    if (validationErrors.length > 0) {
-      toast({
-        variant: "destructive",
-        title: "Quantidade Insuficiente",
-        description: validationErrors.join(". "),
+        description: "Todos os insumos devem ter um lote selecionado.",
       });
       return;
     }
@@ -303,13 +256,13 @@ const MixHistory = () => {
       const updatedMixData = {
         ...editForm,
         usedMaterials: usedMaterials.filter(material => 
-          material.materialBatchId && material.quantity > 0
+          material.materialBatchId
         ).map(material => ({
           materialBatchId: material.materialBatchId,
           materialName: material.materialName,
           materialType: material.materialType,
           batchNumber: material.batchNumber,
-          quantity: material.quantity,
+          quantity: 0, // Quantidade zerada pois não é mais controlada aqui
           unitOfMeasure: material.unitOfMeasure,
           mixCountUsed: material.mixCountUsed
         }))
@@ -318,17 +271,11 @@ const MixHistory = () => {
       await updateMixBatch(selectedMix.id, updatedMixData, user?.id, getUserDisplayName());
       toast({ 
         title: "Mexida Atualizada", 
-        description: "A mexida foi atualizada com sucesso e o estoque foi ajustado corretamente." 
+        description: "A mexida foi atualizada com sucesso." 
       });
       
       // Refresh local data
       await loadMixBatches();
-      
-      // Refresh automático da página para sincronização completa com outros componentes
-      setTimeout(() => {
-        console.log("🔄 Recarregando página para sincronização completa após edição...");
-        window.location.reload();
-      }, 1500);
       
       setShowEditDialog(false);
     } catch (error) {
@@ -379,14 +326,6 @@ const MixHistory = () => {
   };
 
   const MixCard = ({ mix, index }: { mix: MixBatch; index: number }) => {
-    // Calcular peso total corrigido - para fécula usar quantidade × mixCount
-    const totalMaterialsWeight = mix.usedMaterials.reduce((total, material) => {
-      const isFecula = material.materialType.toLowerCase().includes('fécula') || 
-                       material.materialName.toLowerCase().includes('fécula');
-      const totalQuantity = isFecula ? material.quantity * mix.mixCount : material.quantity;
-      return total + totalQuantity;
-    }, 0);
-    
     // Calcular kg previsto
     const kgPrevisto = calculatePredictedKg(mix);
     
@@ -450,8 +389,8 @@ const MixHistory = () => {
               <p className="font-medium">{mix.usedMaterials.length} tipo(s)</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Total de Sacos:</span>
-              <p className="font-medium">{formatNumberBR(totalMaterialsWeight)} sacos</p>
+              <span className="text-muted-foreground">KG Previstos:</span>
+              <p className="font-medium">{formatNumberBR(kgPrevisto)} kg</p>
             </div>
           </div>
           
@@ -477,13 +416,9 @@ const MixHistory = () => {
             <span className="text-sm text-muted-foreground">Principais Insumos:</span>
             <div className="flex flex-wrap gap-1">
               {mix.usedMaterials.slice(0, 3).map((material, idx) => {
-                const isFecula = material.materialType.toLowerCase().includes('fécula') || 
-                                 material.materialName.toLowerCase().includes('fécula');
-                const totalQuantity = isFecula ? material.quantity * mix.mixCount : material.quantity;
-                
                 return (
                   <Badge key={idx} variant="outline" className="text-xs">
-                    {material.materialName} ({formatNumberBR(totalQuantity)} {material.unitOfMeasure})
+                    {material.materialName} ({material.batchNumber})
                   </Badge>
                 );
               })}
@@ -787,30 +722,14 @@ const MixHistory = () => {
                     <TableRow>
                       <TableHead>Insumo</TableHead>
                       <TableHead>Lote</TableHead>
-                      <TableHead>Sacos/Mexida</TableHead>
-                      <TableHead>Total de Sacos</TableHead>
-                      <TableHead>Unidade</TableHead>
-                      <TableHead>Mexidas Usadas</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {selectedMix.usedMaterials.map((material) => {
-                      const isFecula = material.materialType.toLowerCase().includes('fécula') || 
-                                       material.materialName.toLowerCase().includes('fécula');
-                      const totalQuantity = isFecula ? material.quantity * selectedMix.mixCount : material.quantity;
-                      
                       return (
                         <TableRow key={material.id}>
                           <TableCell className="font-medium">{material.materialName}</TableCell>
                           <TableCell>{material.batchNumber}</TableCell>
-                          <TableCell>
-                            {isFecula ? formatNumberBR(material.quantity) : '-'}
-                          </TableCell>
-                          <TableCell className="font-medium text-blue-600">
-                            {formatNumberBR(totalQuantity)}
-                          </TableCell>
-                          <TableCell>{material.unitOfMeasure}</TableCell>
-                          <TableCell>{material.mixCountUsed || '-'}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -917,9 +836,9 @@ const MixHistory = () => {
                     <Trash className="h-4 w-4" />
                   </Button>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-8">
+                  <div className="grid grid-cols-1 gap-4 pr-8">
                     <div>
-                      <Label htmlFor={`material-${index}`}>Insumo</Label>
+                      <Label htmlFor={`material-${index}`}>Insumo e Lote</Label>
                       <Combobox
                         options={availableMaterialBatches.map(batch => {
                           return {
@@ -943,81 +862,16 @@ const MixHistory = () => {
                             ));
                           }
                         }}
-                        placeholder="Selecione um insumo"
+                        placeholder="Selecione um insumo e lote"
                         searchPlaceholder="Buscar insumo..."
                         notFoundMessage="Nenhum insumo encontrado."
                       />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor={`quantity-${index}`}>Quantidade</Label>
-                      <Input
-                        id={`quantity-${index}`}
-                        type="number"
-                        step="0.001"
-                        value={material.quantity}
-                        onChange={(e) => setUsedMaterials(prev => prev.map((m, i) => 
-                          i === index ? { ...m, quantity: parseFloat(e.target.value) || 0 } : m
-                        ))}
-                        placeholder="0.000"
-                      />
-                      {(() => {
-                        if (material.materialBatchId) {
-                          const batch = availableMaterialBatches.find(b => b.id === material.materialBatchId);
-                          if (batch) {
-                            // Calcular quantidades totais antigas e novas para este lote
-                            const oldTotalForThisBatch = selectedMix?.usedMaterials
-                              .filter(m => m.materialBatchId === batch.id)
-                              .reduce((sum, m) => sum + m.quantity, 0) || 0;
-                            
-                            const newTotalForThisBatch = usedMaterials
-                              .filter(m => m.materialBatchId === batch.id)
-                              .reduce((sum, m) => sum + m.quantity, 0);
-                            
-                            const difference = newTotalForThisBatch - oldTotalForThisBatch;
-                            
-                            // Se a diferença for positiva, verificar se há estoque suficiente
-                            if (difference > 0) {
-                              const isExceeding = difference > batch.remainingQuantity;
-                              return (
-                                <div className={`mt-1 text-xs ${isExceeding ? 'text-red-600' : 'text-muted-foreground'}`}>
-                                  {isExceeding ? (
-                                    `⚠️ Consumo adicional ${difference} kg excede o disponível (${batch.remainingQuantity} ${batch.unitOfMeasure})`
-                                  ) : (
-                                    `Consumo adicional: ${difference} kg de ${batch.remainingQuantity} ${batch.unitOfMeasure} disponível`
-                                  )}
-                                </div>
-                              );
-                            } else if (difference < 0) {
-                              return (
-                                <div className="mt-1 text-xs text-green-600">
-                                  ✓ Restaurando ${Math.abs(difference)} kg ao estoque
-                                </div>
-                              );
-                            } else {
-                              return (
-                                <div className="mt-1 text-xs text-muted-foreground">
-                                  Sem alteração no estoque
-                                </div>
-                              );
-                            }
-                          }
-                        }
-                        return null;
-                      })()}
                     </div>
                   </div>
                   
                   {material.materialBatchId && (
                     <div className="mt-2 text-xs text-muted-foreground">
                       Lote: {material.batchNumber} - Tipo: {material.materialType}
-                      {(() => {
-                        const originalMaterial = selectedMix?.usedMaterials.find(m => m.materialBatchId === material.materialBatchId);
-                        if (originalMaterial) {
-                          return ` - Quantidade original: ${originalMaterial.quantity} ${material.unitOfMeasure}`;
-                        }
-                        return '';
-                      })()}
                     </div>
                   )}
                 </Card>
@@ -1044,7 +898,7 @@ const MixHistory = () => {
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir a mexida "{selectedMix?.batchNumber}"? 
-              Esta ação não pode ser desfeita e irá restaurar o estoque dos insumos utilizados.
+              Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1057,6 +911,26 @@ const MixHistory = () => {
               {isDeleting ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               Excluir
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Error Dialog */}
+      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash className="h-5 w-5" />
+              {errorDialogContent.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base leading-relaxed whitespace-pre-line">
+              {errorDialogContent.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowErrorDialog(false)}>
+              Entendi
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

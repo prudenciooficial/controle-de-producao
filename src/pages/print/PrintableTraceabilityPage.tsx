@@ -197,7 +197,6 @@ const MyDocument: React.FC<MyDocumentProps> = ({ productTrace, materialTrace, fo
                       <View style={[styles.tableCol, styles.colMaterialName]}><Text style={styles.tableCellHeader}>Insumo</Text></View>
                       <View style={[styles.tableCol, styles.colMaterialType]}><Text style={styles.tableCellHeader}>Tipo</Text></View>
                       <View style={[styles.tableCol, styles.colMaterialBatch]}><Text style={styles.tableCellHeader}>Lote</Text></View>
-                      <View style={[styles.tableCol, styles.colMaterialQty]}><Text style={styles.tableCellHeader}>Qtd.</Text></View>
                       <View style={[styles.tableCol, styles.colMaterialSupplier]}><Text style={styles.tableCellHeader}>Fornecedor</Text></View>
                       <View style={[styles.tableCol, styles.colMaterialInvoice]}><Text style={styles.tableCellHeader}>NF</Text></View>
                       <View style={[styles.tableCol, styles.colMaterialEntryDate]}><Text style={styles.tableCellHeader}>Entrada</Text></View>
@@ -210,7 +209,6 @@ const MyDocument: React.FC<MyDocumentProps> = ({ productTrace, materialTrace, fo
                         <View style={[styles.tableCol, styles.colMaterialName]}><Text style={styles.tableCell}>{material.materialName}</Text></View>
                         <View style={[styles.tableCol, styles.colMaterialType]}><Text style={styles.tableCell}>{material.materialType || '-'}</Text></View>
                         <View style={[styles.tableCol, styles.colMaterialBatch]}><Text style={styles.tableCell}>{material.batchNumber}</Text></View>
-                        <View style={[styles.tableCol, styles.colMaterialQty]}><Text style={styles.tableCell}>{`${material.quantity} ${material.unitOfMeasure}`}</Text></View>
                         <View style={[styles.tableCol, styles.colMaterialSupplier]}><Text style={styles.tableCell}>{material.supplier?.name || '-'}</Text></View>
                         <View style={[styles.tableCol, styles.colMaterialInvoice]}><Text style={styles.tableCell}>{material.supplier?.invoiceNumber || '-'}</Text></View>
                         <View style={[styles.tableCol, styles.colMaterialEntryDate]}><Text style={styles.tableCell}>{material.supplier?.orderDate ? formatDate(material.supplier.orderDate) : '-'}</Text></View>

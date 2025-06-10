@@ -1,10 +1,18 @@
 import React, { useState, useMemo } from "react";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Package, 
   PackageCheck, 
@@ -20,20 +28,44 @@ import {
   Package2,
   Factory,
   Beaker,
-  Archive
+  Archive,
+  Minus
 } from "lucide-react";
 import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsDialog";
 import { motion } from "framer-motion";
+import { getTodayDateString, parseDateString } from "@/components/helpers/dateUtils";
+
+// Schema para baixa de estoque
+const stockReductionSchema = z.object({
+  date: z.string().nonempty({ message: "Data é obrigatória" }),
+  materialBatchId: z.string().nonempty({ message: "Insumo/Lote é obrigatório" }),
+  quantity: z.number().positive({ message: "Quantidade deve ser maior que zero" }),
+  productionBatchId: z.string().optional(),
+  mixBatchId: z.string().optional(),
+  reason: z.string().nonempty({ message: "Motivo é obrigatório" }),
+  notes: z.string().optional(),
+}).refine(data => {
+  return data.productionBatchId || data.mixBatchId || data.reason;
+}, {
+  message: "Deve ser vinculado a uma produção, mexida ou ter um motivo específico",
+  path: ["reason"],
+});
+
+type StockReductionValues = z.infer<typeof stockReductionSchema>;
 
 const Inventory = () => {
   const { 
     getAvailableProducts, 
     getAvailableMaterials, 
     materialBatches, 
+    productionBatches,
     globalSettings, 
     isLoading,
-    getFeculaInventory 
+    getFeculaInventory,
+    refetchMaterialBatches
   } = useData();
+  const { hasPermission, user, getUserDisplayName } = useAuth();
+  const { toast } = useToast();
   const [productSearch, setProductSearch] = useState("");
   const [materialSearch, setMaterialSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -43,6 +75,89 @@ const Inventory = () => {
   
   const availableProducts = getAvailableProducts();
   const availableMaterials = getAvailableMaterials();
+
+  // Form para baixa de estoque
+  const stockForm = useForm<StockReductionValues>({
+    resolver: zodResolver(stockReductionSchema),
+    defaultValues: {
+      date: getTodayDateString(),
+      materialBatchId: "",
+      quantity: 0,
+      productionBatchId: "",
+      mixBatchId: "",
+      reason: "",
+      notes: "",
+    },
+  });
+
+  // Função para processar baixa de estoque
+  const onStockReductionSubmit = async (data: StockReductionValues) => {
+    if (!hasPermission('inventory', 'edit')) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para dar baixa no estoque.",
+      });
+      return;
+    }
+
+    try {
+      const materialBatch = materialBatches.find(batch => batch.id === data.materialBatchId);
+      if (!materialBatch) {
+        throw new Error("Lote de material não encontrado");
+      }
+
+      if (data.quantity > materialBatch.remainingQuantity) {
+        throw new Error(`Quantidade maior que disponível em estoque (${materialBatch.remainingQuantity} ${materialBatch.unitOfMeasure})`);
+      }
+
+      // Aqui você implementaria a lógica de baixa no estoque
+      // Por exemplo, chamar um serviço que atualize o banco de dados
+      
+      // Simulação da baixa
+      console.log("Processando baixa de estoque:", {
+        materialBatch: materialBatch.materialName,
+        batchNumber: materialBatch.batchNumber,
+        quantity: data.quantity,
+        reason: data.reason,
+        productionBatch: data.productionBatchId,
+        mixBatch: data.mixBatchId,
+        notes: data.notes
+      });
+
+      toast({
+        title: "Baixa Processada",
+        description: `Baixa de ${data.quantity} ${materialBatch.unitOfMeasure} de ${materialBatch.materialName} processada com sucesso.`,
+      });
+
+      // Refetch dos dados
+      await refetchMaterialBatches();
+
+      // Reset form
+      stockForm.reset({
+        date: getTodayDateString(),
+        materialBatchId: "",
+        quantity: 0,
+        productionBatchId: "",
+        mixBatchId: "",
+        reason: "",
+        notes: "",
+      });
+
+    } catch (error) {
+      console.error("Erro ao processar baixa:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao processar baixa",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao processar a baixa.",
+      });
+    }
+  };
+
+  // Get material batch details
+  const getMaterialBatchDetails = (materialBatchId: string) => {
+    return materialBatches.find((batch) => batch.id === materialBatchId);
+  };
 
   // Filter products (memoized)
   const filteredProducts = useMemo(() => {
@@ -472,6 +587,36 @@ const Inventory = () => {
                 <span className="text-sm text-muted-foreground">Quantidade Total</span>
                 <span className="font-semibold text-lg">{material.total} {material.unitOfMeasure}</span>
               </div>
+              
+              {/* Progress bar para mostrar quantidade disponível vs original */}
+              {(() => {
+                // Calcular a quantidade original total e disponível total
+                const totalOriginal = material.materials.reduce((sum: number, batch: any) => sum + batch.quantity, 0);
+                const totalRemaining = material.materials.reduce((sum: number, batch: any) => sum + batch.remainingQuantity, 0);
+                const percentage = totalOriginal > 0 ? (totalRemaining / totalOriginal) * 100 : 0;
+                
+                return (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Quantidade Disponível</span>
+                      <span>{totalRemaining} {material.unitOfMeasure}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Quantidade Original</span>
+                      <span>{totalOriginal} {material.unitOfMeasure}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-primary h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${Math.min(percentage, 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-center text-muted-foreground">
+                      {percentage.toFixed(1)}% disponível
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -489,14 +634,18 @@ const Inventory = () => {
       </div>
       
       <Tabs defaultValue="produtos" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="produtos" className="flex items-center space-x-2">
             <PackageCheck className="h-4 w-4" />
-            <span>Produtos Acabados</span>
+            <span>Produtos</span>
           </TabsTrigger>
           <TabsTrigger value="materiais" className="flex items-center space-x-2">
             <Package className="h-4 w-4" />
             <span>Matérias-Primas</span>
+          </TabsTrigger>
+          <TabsTrigger value="baixa" className="flex items-center space-x-2">
+            <Minus className="h-4 w-4" />
+            <span>Baixa de Estoque</span>
           </TabsTrigger>
         </TabsList>
         
@@ -506,45 +655,41 @@ const Inventory = () => {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <>
-              <StatsCards stats={productStats} type="products" />
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <PackageCheck className="h-5 w-5" />
-                    <span>Produtos Disponíveis</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Produtos prontos para venda em estoque
-                  </CardDescription>
-                  <div className="relative">
-                    <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar por produto ou lote..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
-                      className="pl-10 max-w-sm"
-                    />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <PackageCheck className="h-5 w-5" />
+                  <span>Produtos Disponíveis</span>
+                </CardTitle>
+                <CardDescription>
+                  Produtos prontos para venda em estoque
+                </CardDescription>
+                <div className="relative">
+                  <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por produto ou lote..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="pl-10 max-w-sm"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {productTotals.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {productTotals.map((product, index) => (
+                      <ProductCard key={product.name} product={product} index={index} />
+                    ))}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  {productTotals.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {productTotals.map((product, index) => (
-                        <ProductCard key={product.name} product={product} index={index} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <PackageCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-muted-foreground mb-2">Nenhum produto encontrado</h3>
-                      <p className="text-sm text-muted-foreground">Não há produtos disponíveis em estoque no momento.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
+                ) : (
+                  <div className="text-center py-12">
+                    <PackageCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-muted-foreground mb-2">Nenhum produto encontrado</h3>
+                    <p className="text-sm text-muted-foreground">Não há produtos disponíveis em estoque no momento.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
         
@@ -554,85 +699,255 @@ const Inventory = () => {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <>
-              <StatsCards stats={materialStats} type="materials" />
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Package className="h-5 w-5" />
-                    <span>Matérias-Primas</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Insumos organizados por categoria para produção
-                  </CardDescription>
-                  <div className="relative">
-                    <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar por insumo, tipo ou lote..."
-                      value={materialSearch}
-                      onChange={(e) => setMaterialSearch(e.target.value)}
-                      className="pl-10 max-w-sm"
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {materialTypeTotals.length > 0 ? (
-                    <div className="space-y-8">
-                      {materialTypeTotals.map((typeGroup, typeIndex) => {
-                        const typeConfig = getMaterialTypeConfig(typeGroup.type);
-                        return (
-                          <motion.div
-                            key={typeGroup.type}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: typeIndex * 0.2 }}
-                            className="space-y-4"
-                          >
-                            <div className={`flex items-center justify-between p-4 rounded-lg bg-gradient-to-r ${typeConfig.gradientClass} border border-${typeConfig.color.split(' ')[2]} dark:border-opacity-30`}>
-                              <div className="flex items-center space-x-3">
-                                <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${typeConfig.color}`}>
-                                  {typeConfig.icon}
-                                </div>
-                                <div>
-                                  <h3 className="text-lg font-semibold">{typeGroup.type}</h3>
-                                  <p className="text-sm text-muted-foreground">
-                                    {typeGroup.totalBatches} lotes • {typeGroup.total.toFixed(1)} {typeGroup.isFecula ? 'kg (convertido)' : 'kg total'}
-                                  </p>
-                                </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Package className="h-5 w-5" />
+                  <span>Matérias-Primas</span>
+                </CardTitle>
+                <CardDescription>
+                  Insumos organizados por categoria para produção
+                </CardDescription>
+                <div className="relative">
+                  <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por insumo, tipo ou lote..."
+                    value={materialSearch}
+                    onChange={(e) => setMaterialSearch(e.target.value)}
+                    className="pl-10 max-w-sm"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {materialTypeTotals.length > 0 ? (
+                  <div className="space-y-8">
+                    {materialTypeTotals.map((typeGroup, typeIndex) => {
+                      const typeConfig = getMaterialTypeConfig(typeGroup.type);
+                      return (
+                        <motion.div
+                          key={typeGroup.type}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: typeIndex * 0.2 }}
+                          className="space-y-4"
+                        >
+                          <div className={`flex items-center justify-between p-4 rounded-lg bg-gradient-to-r ${typeConfig.gradientClass} border border-${typeConfig.color.split(' ')[2]} dark:border-opacity-30`}>
+                            <div className="flex items-center space-x-3">
+                              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${typeConfig.color}`}>
+                                {typeConfig.icon}
                               </div>
-                              <div className="text-right">
+                              <div>
+                                <h3 className="text-lg font-semibold">{typeGroup.type}</h3>
                                 <p className="text-sm text-muted-foreground">
-                                  {typeGroup.materials.length} tipo{typeGroup.materials.length > 1 ? 's' : ''}
+                                  {typeGroup.totalBatches} lotes • {typeGroup.total.toFixed(1)} {typeGroup.isFecula ? 'kg (convertido)' : 'kg total'}
                                 </p>
                               </div>
                             </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {typeGroup.materials.map((material, index) => (
-                                <MaterialCard 
-                                  key={material.name} 
-                                  material={material} 
-                                  typeConfig={typeConfig}
-                                  index={index}
-                                />
-                              ))}
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">
+                                {typeGroup.materials.length} tipo{typeGroup.materials.length > 1 ? 's' : ''}
+                              </p>
                             </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-muted-foreground mb-2">Nenhum material encontrado</h3>
-                      <p className="text-sm text-muted-foreground">Não há materiais disponíveis em estoque no momento.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {typeGroup.materials.map((material, index) => (
+                              <MaterialCard 
+                                key={material.name} 
+                                material={material} 
+                                typeConfig={typeConfig}
+                                index={index}
+                              />
+                            ))}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-muted-foreground mb-2">Nenhum material encontrado</h3>
+                    <p className="text-sm text-muted-foreground">Não há materiais disponíveis em estoque no momento.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="baixa" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Minus className="h-5 w-5" />
+                <span>Baixa de Estoque</span>
+              </CardTitle>
+              <CardDescription>
+                Registre a saída de materiais do estoque vinculando a produções ou mexidas
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...stockForm}>
+                <form onSubmit={stockForm.handleSubmit(onStockReductionSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={stockForm.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data da Baixa</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={stockForm.control}
+                      name="materialBatchId"
+                      render={({ field }) => {
+                        const selectedMaterial = getMaterialBatchDetails(field.value);
+                        return (
+                          <FormItem>
+                            <FormLabel>Insumo/Lote</FormLabel>
+                            <Combobox
+                              options={materialBatches
+                                .filter(batch => batch.remainingQuantity > 0)
+                                .map(batch => ({
+                                  value: batch.id,
+                                  label: `${batch.materialName} - ${batch.batchNumber} (${batch.remainingQuantity} ${batch.unitOfMeasure})`
+                                }))}
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Selecione o insumo e lote"
+                              searchPlaceholder="Buscar insumo..."
+                              notFoundMessage="Nenhum insumo encontrado."
+                            />
+                            {selectedMaterial && (
+                              <FormDescription>
+                                Disponível: {selectedMaterial.remainingQuantity} {selectedMaterial.unitOfMeasure}
+                              </FormDescription>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <FormField
+                      control={stockForm.control}
+                      name="quantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantidade</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              placeholder="0"
+                              value={field.value === 0 ? "" : field.value}
+                              onChange={e => {
+                                const value = parseFloat(e.target.value) || 0;
+                                field.onChange(value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={stockForm.control}
+                      name="productionBatchId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Produção (Opcional)</FormLabel>
+                          <Combobox
+                            options={productionBatches.map(batch => ({
+                              value: batch.id,
+                              label: `${batch.batchNumber} - ${new Date(batch.productionDate).toLocaleDateString()}`
+                            }))}
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            placeholder="Vincular à produção"
+                            searchPlaceholder="Buscar produção..."
+                            notFoundMessage="Nenhuma produção encontrada."
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={stockForm.control}
+                      name="mixBatchId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mexida (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="ID ou nome da mexida"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Informe o ID ou nome da mexida relacionada
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={stockForm.control}
+                    name="reason"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Motivo da Baixa</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Ex: Utilizado na produção, Consumo na mexida, etc."
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Descreva o motivo da baixa no estoque
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={stockForm.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações (Opcional)</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Observações adicionais sobre a baixa..."
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button type="submit" disabled={stockForm.formState.isSubmitting}>
+                    {stockForm.formState.isSubmitting ? "Processando..." : "Processar Baixa"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
       

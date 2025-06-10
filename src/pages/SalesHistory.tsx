@@ -809,7 +809,7 @@ const SalesHistory = () => {
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                     <Label className="text-sm">Data da Venda</Label>
-                    <p className="font-medium text-sm md:text-base">{format(new Date(selectedSale.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                    <p className="font-medium text-sm md:text-base">{format(new Date(selectedSale.date), "dd/MM/yyyy", { locale: ptBR })}</p>
                   </div>
                   <div>
                     <Label className="text-sm">Cliente</Label>

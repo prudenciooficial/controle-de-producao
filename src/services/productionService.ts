@@ -207,26 +207,12 @@ export const createProductionBatch = async (
       }
     }
     
-    // Insert used materials AND UPDATE STOCK (only for additional materials, not mix materials)
+    // Insert used materials - APENAS REGISTRO, SEM AFETAR ESTOQUE
     if (batch.usedMaterials && batch.usedMaterials.length > 0) {
       for (const material of batch.usedMaterials) {
-        console.log(`[ProductionService] Processing additional material: ${material.materialName}, Batch: ${material.batchNumber}, Quantity: ${material.quantity}`);
+        console.log(`[ProductionService] Registrando material adicional: ${material.materialName}, Lote: ${material.batchNumber}, Quantidade: ${material.quantity}`);
         
-        // Get current stock BEFORE any operations
-        const { data: materialBatchBefore, error: fetchBeforeError } = await supabase
-          .from('material_batches')
-          .select('remaining_quantity, batch_number')
-          .eq('id', material.materialBatchId)
-          .single();
-        
-        if (fetchBeforeError || !materialBatchBefore) {
-          await abortTransaction();
-          throw new Error(`Erro ao buscar lote de material ANTES da operação: ${fetchBeforeError?.message}`);
-        }
-        
-        console.log(`[ProductionService] Stock BEFORE: ${materialBatchBefore.remaining_quantity} for batch ${materialBatchBefore.batch_number}`);
-        
-        // Insert used material record
+        // Insert used material record - apenas para documentação
         const { error: materialError } = await supabase
           .from("used_materials")
           .insert({
@@ -241,27 +227,6 @@ export const createProductionBatch = async (
           await abortTransaction();
           throw materialError;
         }
-        
-        // Calculate new stock value
-        const newRemainingQuantity = materialBatchBefore.remaining_quantity - material.quantity;
-        console.log(`[ProductionService] Calculated new stock: ${materialBatchBefore.remaining_quantity} - ${material.quantity} = ${newRemainingQuantity}`);
-        
-        // UPDATE STOCK
-        const { error: stockUpdateError, data: updatedBatch } = await supabase
-          .from('material_batches')
-          .update({ 
-            remaining_quantity: newRemainingQuantity
-          })
-          .eq('id', material.materialBatchId)
-          .select('remaining_quantity')
-          .single();
-        
-        if (stockUpdateError) {
-          await abortTransaction();
-          throw new Error(`Erro ao atualizar estoque do material: ${stockUpdateError.message}`);
-        }
-        
-        console.log(`[ProductionService] Stock AFTER update: ${updatedBatch?.remaining_quantity} for material ${material.materialName}`);
       }
     }
     
@@ -368,47 +333,9 @@ export const updateProductionBatch = async (
       }
     }
 
-    // Update used materials if provided (only for additional materials in production)
+    // Update used materials if provided - APENAS REGISTROS, SEM AFETAR ESTOQUE
     if (batch.usedMaterials && batch.usedMaterials.length > 0) {
-      const { data: existingUsedMaterials, error: fetchUsedError } = await supabase
-        .from("used_materials")
-        .select("material_batch_id, quantity")
-        .eq("production_batch_id", id);
-      
-      if (fetchUsedError) {
-        await abortTransaction();
-        throw fetchUsedError;
-      }
-      
-      // Restore stock from existing used materials
-      if (existingUsedMaterials && existingUsedMaterials.length > 0) {
-        for (const existingMaterial of existingUsedMaterials) {
-          const { data: currentBatch, error: fetchCurrentError } = await supabase
-            .from("material_batches")
-            .select('remaining_quantity')
-            .eq('id', existingMaterial.material_batch_id)
-            .single();
-          
-          if (fetchCurrentError || !currentBatch) {
-            await abortTransaction();
-            throw new Error(`Erro ao buscar lote atual: ${fetchCurrentError?.message}`);
-          }
-          
-          const restoredQuantity = currentBatch.remaining_quantity + existingMaterial.quantity;
-          
-          const { error: stockRestoreError } = await supabase
-            .from("material_batches")
-            .update({ 
-              remaining_quantity: restoredQuantity
-            })
-            .eq('id', existingMaterial.material_batch_id);
-          
-          if (stockRestoreError) {
-            await abortTransaction();
-            throw new Error(`Erro ao restaurar estoque: ${stockRestoreError.message}`);
-          }
-        }
-      }
+      console.log(`[UpdateProductionBatch] Atualizando insumos utilizados (apenas registros)...`);
       
       // Delete existing used materials
       const { error: deleteUsedError } = await supabase
@@ -421,8 +348,11 @@ export const updateProductionBatch = async (
         throw deleteUsedError;
       }
       
-      // Insert updated used materials and consume new stock
+      // Insert updated used materials
       for (const material of batch.usedMaterials) {
+        console.log(`[UpdateProductionBatch] Inserindo insumo: ${material.materialName}, Quantidade: ${material.quantity}`);
+        
+        // Insert used material record - apenas para documentação
         const { error: materialError } = await supabase
           .from("used_materials")
           .insert({
@@ -436,31 +366,6 @@ export const updateProductionBatch = async (
         if (materialError) {
           await abortTransaction();
           throw materialError;
-        }
-        
-        const { data: currentMaterialBatch, error: fetchCurrentMaterialError } = await supabase
-          .from("material_batches")
-          .select('remaining_quantity')
-          .eq('id', material.materialBatchId)
-          .single();
-        
-        if (fetchCurrentMaterialError || !currentMaterialBatch) {
-          await abortTransaction();
-          throw new Error(`Erro ao buscar lote de material: ${fetchCurrentMaterialError?.message}`);
-        }
-        
-        const newConsumedQuantity = currentMaterialBatch.remaining_quantity - material.quantity;
-        
-        const { error: stockConsumeError } = await supabase
-          .from("material_batches")
-          .update({ 
-            remaining_quantity: newConsumedQuantity
-          })
-          .eq('id', material.materialBatchId);
-        
-        if (stockConsumeError) {
-          await abortTransaction();
-          throw new Error(`Erro ao consumir estoque: ${stockConsumeError.message}`);
         }
       }
     }
@@ -505,46 +410,7 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
       batchToDeleteForLog = fetchedBatch;
     }
 
-    // Get used materials to restore stock (only additional materials, not mix materials)
-    const { data: usedMaterialsToRestore, error: fetchUsedError } = await supabase
-      .from("used_materials")
-      .select("material_batch_id, quantity")
-      .eq("production_batch_id", id);
-    
-    if (fetchUsedError) {
-      await abortTransaction();
-      throw new Error(`Erro ao buscar materiais usados: ${fetchUsedError.message}`);
-    }
-
-    // Restore stock only for additional materials (not mix materials)
-    if (usedMaterialsToRestore && usedMaterialsToRestore.length > 0) {
-      for (const usedMaterial of usedMaterialsToRestore) {
-        const { data: currentMaterialBatch, error: fetchCurrentError } = await supabase
-          .from("material_batches")
-          .select('remaining_quantity')
-          .eq('id', usedMaterial.material_batch_id)
-          .single();
-        
-        if (fetchCurrentError || !currentMaterialBatch) {
-          await abortTransaction();
-          throw new Error(`Erro ao buscar lote de material atual: ${fetchCurrentError?.message}`);
-        }
-        
-        const restoredQuantity = currentMaterialBatch.remaining_quantity + usedMaterial.quantity;
-        
-        const { error: stockRestoreError } = await supabase
-          .from("material_batches")
-          .update({ 
-            remaining_quantity: restoredQuantity
-          })
-          .eq('id', usedMaterial.material_batch_id);
-        
-        if (stockRestoreError) {
-          await abortTransaction();
-          throw new Error(`Erro ao restaurar estoque do material: ${stockRestoreError.message}`);
-        }
-      }
-    }
+    console.log(`[DeleteProductionBatch] Excluindo produção ${batchToDeleteForLog.batch_number} - APENAS REGISTROS, SEM AFETAR ESTOQUE`);
 
     // Delete produced items
     const { error: producedItemsError } = await supabase
@@ -566,11 +432,9 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
       throw usedMaterialsDeleteError; 
     }
 
-    // Free the associated mix if it exists
-    if (fetchedBatch?.mix_batch_id) {
-      console.log(`[ProductionService] Liberando mexida: ${fetchedBatch.mix_batch_id}`);
-      await markMixAsAvailable(fetchedBatch.mix_batch_id);
-      console.log(`[ProductionService] Mexida liberada com sucesso!`);
+    // If the production was linked to a mix, mark the mix as available again
+    if (batchToDeleteForLog.mix_batch_id) {
+      await markMixAsAvailable(batchToDeleteForLog.mix_batch_id);
     }
 
     // Delete the production batch
@@ -584,6 +448,8 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
     }
 
     await endTransaction();
+    
+    console.log(`[DeleteProductionBatch] Produção excluída com sucesso: ${id}`);
     
     if (userId && userDisplayName) {
       await logSystemEvent({
