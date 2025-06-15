@@ -364,74 +364,84 @@ const StockReductionHistory = () => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Histórico de Baixas</h1>
-            <p className="text-muted-foreground text-sm">Visualize todas as baixas de estoque registradas</p>
+            <p className="text-muted-foreground">Visualize todas as baixas de estoque registradas</p>
           </div>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button onClick={() => navigate("/estoque?tab=baixa")} className="w-full sm:w-auto">
+        <div className="flex gap-2">
+          <Button onClick={() => navigate("/estoque?tab=baixa")}>
             <Minus className="mr-2 h-4 w-4" />
             Nova Baixa
           </Button>
         </div>
       </div>
 
-      {/* Statistics Cards - Mobile First */}
-      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4 md:p-6 flex items-center">
-            <TrendingDown className="h-7 w-7 text-red-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-muted-foreground">Total de Baixas</p>
-              <p className="text-xl md:text-2xl font-bold">{totalReductions}</p>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <TrendingDown className="h-8 w-8 text-red-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Total de Baixas</p>
+                <p className="text-2xl font-bold">{totalReductions}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
+        
         <Card>
-          <CardContent className="p-4 md:p-6 flex items-center">
-            <Package className="h-7 w-7 text-orange-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-muted-foreground">Materiais Diferentes</p>
-              <p className="text-xl md:text-2xl font-bold">{uniqueMaterials}</p>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Package className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Materiais Diferentes</p>
+                <p className="text-2xl font-bold">{uniqueMaterials}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
+        
         <Card>
-          <CardContent className="p-4 md:p-6 flex items-center">
-            <Calendar className="h-7 w-7 text-blue-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-muted-foreground">Últimos 30 dias</p>
-              <p className="text-xl md:text-2xl font-bold">{recentReductions}</p>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Calendar className="h-8 w-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Últimos 30 dias</p>
+                <p className="text-2xl font-bold">{recentReductions}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
+        
         <Card>
-          <CardContent className="p-4 md:p-6 flex items-center">
-            <FileText className="h-7 w-7 text-purple-600" />
-            <div className="ml-3">
-              <p className="text-xs font-medium text-muted-foreground">Quantidade Total</p>
-              <p className="text-xl md:text-2xl font-bold">{formatNumberBR(totalQuantity)}</p>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <FileText className="h-8 w-8 text-purple-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Quantidade Total</p>
+                <p className="text-2xl font-bold">{formatNumberBR(totalQuantity)}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search and View Controls - stack on mobile */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+      {/* Search and View Controls */}
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Buscar por material, lote ou tipo..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 py-2"
+            className="pl-10"
           />
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2">
           <Button
             variant={view === 'cards' ? 'default' : 'outline'}
             onClick={() => setView('cards')}
             size="sm"
-            className="w-full sm:w-auto"
           >
             Cards
           </Button>
@@ -439,7 +449,6 @@ const StockReductionHistory = () => {
             variant={view === 'table' ? 'default' : 'outline'}
             onClick={() => setView('table')}
             size="sm"
-            className="w-full sm:w-auto"
           >
             Tabela
           </Button>
@@ -460,79 +469,79 @@ const StockReductionHistory = () => {
           </CardContent>
         </Card>
       ) : view === 'cards' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredReductions.map((reduction, index) => (
             <StockReductionCard key={reduction.id} reduction={reduction} index={index} />
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-md">
-          <Card>
-            <CardContent className="p-0">
-              <Table className="min-w-[700px] sm:min-w-0 text-xs md:text-sm">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Material</TableHead>
-                    <TableHead>Lote</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Quantidade</TableHead>
-                    <TableHead className="w-[80px] md:w-[100px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredReductions.map((reduction) => (
-                    <TableRow key={reduction.id}>
-                      <TableCell className="font-medium">{reduction.materialBatch?.materialName || "N/A"}</TableCell>
-                      <TableCell>{reduction.materialBatch?.batchNumber || "N/A"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {reduction.materialBatch?.materialType || "N/A"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(reduction.date), "dd/MM/yyyy", { locale: ptBR })}
-                      </TableCell>
-                      <TableCell>
-                        {formatNumberBR(reduction.quantity)} {reduction.materialBatch?.unitOfMeasure || ""}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openDetailsDialog(reduction)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver Detalhes
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Material</TableHead>
+                  <TableHead>Lote</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Quantidade</TableHead>
+                  <TableHead className="w-[100px]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredReductions.map((reduction) => (
+                  <TableRow key={reduction.id}>
+                    <TableCell className="font-medium">
+                      {reduction.materialBatch?.materialName || "N/A"}
+                    </TableCell>
+                    <TableCell>{reduction.materialBatch?.batchNumber || "N/A"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {reduction.materialBatch?.materialType || "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(reduction.date), "dd/MM/yyyy", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell>
+                      {formatNumberBR(reduction.quantity)} {reduction.materialBatch?.unitOfMeasure || ""}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openDetailsDialog(reduction)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver Detalhes
+                          </DropdownMenuItem>
+                          {hasPermission('inventory', 'edit') && (
+                            <DropdownMenuItem onClick={() => openEditDialog(reduction)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
                             </DropdownMenuItem>
-                            {hasPermission('inventory', 'edit') && (
-                              <DropdownMenuItem onClick={() => openEditDialog(reduction)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                            )}
-                            {hasPermission('inventory', 'delete') && (
-                              <DropdownMenuItem 
-                                onClick={() => openDeleteDialog(reduction)}
-                                className="text-destructive"
-                              >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
+                          )}
+                          {hasPermission('inventory', 'delete') && (
+                            <DropdownMenuItem 
+                              onClick={() => openDeleteDialog(reduction)}
+                              className="text-destructive"
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       {/* Details Dialog */}
@@ -683,4 +692,4 @@ const StockReductionHistory = () => {
   );
 };
 
-export default StockReductionHistory;
+export default StockReductionHistory; 
