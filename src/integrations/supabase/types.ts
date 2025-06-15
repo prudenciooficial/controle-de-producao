@@ -9,54 +9,8 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      baixas_estoque: {
-        Row: {
-          atualizado_em: string | null
-          criado_em: string | null
-          data: string
-          id: string
-          lote_material_id: string
-          observacoes: string | null
-          quantidade: number
-        }
-        Insert: {
-          atualizado_em?: string | null
-          criado_em?: string | null
-          data: string
-          id?: string
-          lote_material_id: string
-          observacoes?: string | null
-          quantidade: number
-        }
-        Update: {
-          atualizado_em?: string | null
-          criado_em?: string | null
-          data?: string
-          id?: string
-          lote_material_id?: string
-          observacoes?: string | null
-          quantidade?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "baixas_estoque_lote_material_id_fkey"
-            columns: ["lote_material_id"]
-            isOneToOne: false
-            referencedRelation: "material_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "baixas_estoque_lote_material_id_fkey"
-            columns: ["lote_material_id"]
-            isOneToOne: false
-            referencedRelation: "v_current_material_stock"
-            referencedColumns: ["batch_id"]
-          },
-        ]
-      }
       configuracoes_empresa: {
         Row: {
-          ativa: boolean | null
           cnpj: string
           created_at: string
           email: string | null
@@ -68,7 +22,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          ativa?: boolean | null
           cnpj: string
           created_at?: string
           email?: string | null
@@ -80,7 +33,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          ativa?: boolean | null
           cnpj?: string
           created_at?: string
           email?: string | null
@@ -96,6 +48,7 @@ export type Database = {
       feriados: {
         Row: {
           ano: number
+          ativo: boolean
           created_at: string
           data: string
           descricao: string | null
@@ -106,6 +59,7 @@ export type Database = {
         }
         Insert: {
           ano: number
+          ativo?: boolean
           created_at?: string
           data: string
           descricao?: string | null
@@ -116,6 +70,7 @@ export type Database = {
         }
         Update: {
           ano?: number
+          ativo?: boolean
           created_at?: string
           data?: string
           descricao?: string | null
@@ -132,7 +87,6 @@ export type Database = {
           cpf: string
           created_at: string
           data_admissao: string
-          empresa_id: string | null
           id: string
           jornada_id: string | null
           nome_completo: string
@@ -145,7 +99,6 @@ export type Database = {
           cpf: string
           created_at?: string
           data_admissao: string
-          empresa_id?: string | null
           id?: string
           jornada_id?: string | null
           nome_completo: string
@@ -158,7 +111,6 @@ export type Database = {
           cpf?: string
           created_at?: string
           data_admissao?: string
-          empresa_id?: string | null
           id?: string
           jornada_id?: string | null
           nome_completo?: string
@@ -167,13 +119,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "funcionarios_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "configuracoes_empresa"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "funcionarios_jornada_id_fkey"
             columns: ["jornada_id"]
@@ -692,60 +637,6 @@ export type Database = {
         }
         Relationships: []
       }
-      reclamacoes: {
-        Row: {
-          cidade_estado: string | null
-          contato_wa: string | null
-          created_at: string
-          data_resolucao: string | null
-          descricao_reclamacao: string | null
-          id: number
-          link_contato_wa: string | null
-          nome_cliente: string | null
-          protocolo: string | null
-          status: string
-          supermercado: string | null
-          tipo_resolucao: string | null
-          url_foto_lote: string | null
-          url_foto_problema: string | null
-          valor_ressarcimento: number | null
-        }
-        Insert: {
-          cidade_estado?: string | null
-          contato_wa?: string | null
-          created_at?: string
-          data_resolucao?: string | null
-          descricao_reclamacao?: string | null
-          id?: number
-          link_contato_wa?: string | null
-          nome_cliente?: string | null
-          protocolo?: string | null
-          status?: string
-          supermercado?: string | null
-          tipo_resolucao?: string | null
-          url_foto_lote?: string | null
-          url_foto_problema?: string | null
-          valor_ressarcimento?: number | null
-        }
-        Update: {
-          cidade_estado?: string | null
-          contato_wa?: string | null
-          created_at?: string
-          data_resolucao?: string | null
-          descricao_reclamacao?: string | null
-          id?: number
-          link_contato_wa?: string | null
-          nome_cliente?: string | null
-          protocolo?: string | null
-          status?: string
-          supermercado?: string | null
-          tipo_resolucao?: string | null
-          url_foto_lote?: string | null
-          url_foto_problema?: string | null
-          valor_ressarcimento?: number | null
-        }
-        Relationships: []
-      }
       sale_items: {
         Row: {
           created_at: string
@@ -845,33 +736,6 @@ export type Database = {
           notes?: string | null
           type?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      sessoes_chat: {
-        Row: {
-          chat_id: string
-          dados_coletados: Json | null
-          historico_conversa: Json | null
-          id: number
-          status: string | null
-          ultima_interacao: string | null
-        }
-        Insert: {
-          chat_id: string
-          dados_coletados?: Json | null
-          historico_conversa?: Json | null
-          id?: never
-          status?: string | null
-          ultima_interacao?: string | null
-        }
-        Update: {
-          chat_id?: string
-          dados_coletados?: Json | null
-          historico_conversa?: Json | null
-          id?: never
-          status?: string | null
-          ultima_interacao?: string | null
         }
         Relationships: []
       }
