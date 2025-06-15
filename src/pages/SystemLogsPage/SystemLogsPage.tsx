@@ -22,6 +22,9 @@ import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { LogCard } from "./LogCard";
+import { useMediaQuery } from "react-responsive";
+import { motion, AnimatePresence } from "framer-motion";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -67,6 +70,9 @@ export default function SystemLogsPage() {
       enabled: !!user && canViewSystemLogs(),
     }
   );
+
+  // Nova: detectar se está em tela reduzida (mobile)
+  const isMobile = useMediaQuery({ maxWidth: 768 });
 
   if (authLoading) {
     return (
@@ -313,26 +319,121 @@ export default function SystemLogsPage() {
   const logUsersForSelect = logUsersData || [];
   const logEntityTablesForSelect = logEntityTablesData || [];
 
+  // Ajuste dos filtros para mobile
+  const FiltersSection = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Filtros</CardTitle>
+        <CardDescription>
+          Refine a busca por logs específicos.{" "}
+          {isLoadingFilters && (
+            <span className="text-xs animate-pulse">Carregando filtros...</span>
+          )}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div
+          className={
+            isMobile
+              ? "flex flex-col gap-3"
+              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          }
+        >
+          <Select
+            onValueChange={(value) => handleFilterChange("userId", value)}
+            disabled={isLoadingUsers || isFetchingLogs}
+            value={filters.userId || "all"}
+          >
+            <SelectTrigger className={isLoadingUsers ? "animate-pulse" : ""}>
+              <SelectValue placeholder="Filtrar por usuário..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Usuários</SelectItem>
+              {logUsersForSelect.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.display_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            onValueChange={(value) => handleFilterChange("entityTable", value)}
+            disabled={isLoadingEntityTables || isFetchingLogs}
+            value={filters.entityTable || "all"}
+          >
+            <SelectTrigger className={isLoadingEntityTables ? "animate-pulse" : ""}>
+              <SelectValue placeholder="Filtrar por módulo..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Módulos</SelectItem>
+              {logEntityTablesForSelect.map((et) => (
+                <SelectItem key={et.name} value={et.name}>
+                  {et.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <DateRangePicker
+            dateRange={currentDateRange}
+            onDateRangeChange={handleDateRangeChange}
+            className="w-full"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Paginação mais responsiva
+  const PaginationBar = (
+    <div className={isMobile ? "flex flex-col gap-2 items-center mt-4" : "flex items-center justify-between mt-4"}>
+      <Button
+        onClick={() => handlePageChange(filters.page! - 1)}
+        disabled={filters.page === 1 || isFetchingLogs}
+        variant="outline"
+        size={isMobile ? "sm" : "default"}
+        className={isMobile ? "w-full" : ""}
+      >
+        Anterior
+      </Button>
+      <span className="text-sm">{`Página ${filters.page} de ${totalPages}`}</span>
+      <Button
+        onClick={() => handlePageChange(filters.page! + 1)}
+        disabled={filters.page === totalPages || isFetchingLogs}
+        variant="outline"
+        size={isMobile ? "sm" : "default"}
+        className={isMobile ? "w-full" : ""}
+      >
+        Próxima
+      </Button>
+    </div>
+  );
+
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-2 md:p-4 animate-fade-in">
+      <div className={isMobile ? "flex flex-col gap-2" : "flex items-center justify-between"}>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Logs do Sistema</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Logs do Sistema
+          </h1>
           <p className="text-muted-foreground">
             Acompanhe todas as alterações realizadas no sistema.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button 
+        <div className={isMobile ? "flex gap-2 mt-2" : "flex gap-2"}>
+          <Button
             onClick={handleTestQuery}
             variant="outline"
+            size={isMobile ? "sm" : "default"}
             className="flex items-center gap-2"
           >
             🔍 Consultar Tabela
           </Button>
-          <Button 
+          <Button
             onClick={handleTestLog}
             variant="outline"
+            size={isMobile ? "sm" : "default"}
             className="flex items-center gap-2"
           >
             <TestTube className="h-4 w-4" />
@@ -341,56 +442,14 @@ export default function SystemLogsPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>Refine a busca por logs específicos. {isLoadingFilters && <span className="text-xs animate-pulse">Carregando filtros...</span>}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Select
-            onValueChange={(value) => handleFilterChange('userId', value)}
-            disabled={isLoadingUsers || isFetchingLogs}
-            value={filters.userId || 'all'}
-          >
-            <SelectTrigger className={isLoadingUsers ? 'animate-pulse' : ''}>
-              <SelectValue placeholder="Filtrar por usuário..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Usuários</SelectItem>
-              {logUsersForSelect.map(u => (
-                <SelectItem key={u.id} value={u.id}>{u.display_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            onValueChange={(value) => handleFilterChange('entityTable', value)}
-            disabled={isLoadingEntityTables || isFetchingLogs}
-            value={filters.entityTable || 'all'}
-          >
-            <SelectTrigger className={isLoadingEntityTables ? 'animate-pulse' : ''}>
-              <SelectValue placeholder="Filtrar por módulo..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Módulos</SelectItem>
-              {logEntityTablesForSelect.map(et => (
-                <SelectItem key={et.name} value={et.name}>{et.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <DateRangePicker 
-            dateRange={currentDateRange}
-            onDateRangeChange={handleDateRangeChange}
-            className="w-full"
-          />
-        </CardContent>
-      </Card>
+      {FiltersSection}
 
       <Card>
         <CardHeader>
           <CardTitle>Resultados ({totalCount})</CardTitle>
-          <CardDescription>Lista de logs conforme os filtros aplicados.</CardDescription>
+          <CardDescription>
+            Lista de logs conforme os filtros aplicados.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {(isLoadingLogs || (isFetchingLogs && logs.length === 0)) && (
@@ -400,69 +459,87 @@ export default function SystemLogsPage() {
             </div>
           )}
           {errorLogs && (
-             <Alert variant="destructive">
+            <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Erro ao Carregar Logs</AlertTitle>
               <AlertDescription>{errorLogs.message}</AlertDescription>
             </Alert>
           )}
           {!isFetchingLogs && !isLoadingLogs && logs.length === 0 && !errorLogs && (
-            <div className="text-center py-8">Nenhum log encontrado para os filtros aplicados.</div>
+            <div className="text-center py-8">
+              Nenhum log encontrado para os filtros aplicados.
+            </div>
           )}
-          {logs.length > 0 && (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[150px]">Data/Hora</TableHead>
-                    <TableHead>Usuário</TableHead>
-                    <TableHead>Ação</TableHead>
-                    <TableHead>Módulo</TableHead>
-                    <TableHead>ID da Entidade</TableHead>
-                    <TableHead>Detalhes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.map(log => (
-                    <TableRow key={log.id}>
-                      <TableCell>{format(new Date(log.created_at), 'dd/MM/yy HH:mm:ss', { locale: ptBR })}</TableCell>
-                      <TableCell>{log.user_display_name || log.user_id || 'N/A'}</TableCell>
-                      <TableCell>{getActionLabel(log)}</TableCell>
-                      <TableCell>{log.entity_table || 'N/A'}</TableCell>
-                      <TableCell>{log.entity_id || 'N/A'}</TableCell>
-                      <TableCell className="text-xs max-w-sm break-words whitespace-pre-wrap" title={formatLogDetails(log)}>
-                        {formatLogDetails(log)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
 
-              {totalPages > 0 && (
-                <div className="flex items-center justify-between mt-4">
-                  <Button 
-                    onClick={() => handlePageChange(filters.page! - 1)} 
-                    disabled={filters.page === 1 || isFetchingLogs}
-                    variant="outline"
-                  >
-                    Anterior
-                  </Button>
-                  <span className="text-sm">
-                    Página {filters.page} de {totalPages}
-                  </span>
-                  <Button 
-                    onClick={() => handlePageChange(filters.page! + 1)} 
-                    disabled={filters.page === totalPages || isFetchingLogs}
-                    variant="outline"
-                  >
-                    Próxima
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
+          {/* Mobile: Cards, Desktop: Tabela */}
+          <AnimatePresence>
+            {isMobile ? (
+              <motion.div
+                key="mobile-cards"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 24 }}
+                transition={{ duration: 0.25 }}
+                className="grid grid-cols-1 gap-3"
+              >
+                {logs.map((log) => (
+                  <LogCard
+                    key={log.id}
+                    log={log}
+                    actionLabel={getActionLabel(log)}
+                    details={formatLogDetails(log)}
+                  />
+                ))}
+              </motion.div>
+            ) : (
+              logs.length > 0 && (
+                <motion.div
+                  key="desktop-table"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.24 }}
+                >
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[850px]">
+                      <TableHeader sticky={true}>
+                        <TableRow>
+                          <TableHead className="w-[150px]">Data/Hora</TableHead>
+                          <TableHead>Usuário</TableHead>
+                          <TableHead>Ação</TableHead>
+                          <TableHead>Módulo</TableHead>
+                          <TableHead>ID da Entidade</TableHead>
+                          <TableHead>Detalhes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {logs.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell>
+                              {format(new Date(log.created_at), "dd/MM/yy HH:mm:ss", { locale: ptBR })}
+                            </TableCell>
+                            <TableCell>
+                              {log.user_display_name || log.user_id || "N/A"}
+                            </TableCell>
+                            <TableCell>{getActionLabel(log)}</TableCell>
+                            <TableCell>{log.entity_table || "N/A"}</TableCell>
+                            <TableCell>{log.entity_id || "N/A"}</TableCell>
+                            <TableCell className="text-xs max-w-sm break-words whitespace-pre-wrap" title={formatLogDetails(log)}>
+                              {formatLogDetails(log)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </motion.div>
+              )
+            )}
+          </AnimatePresence>
+          {/* Paginação */}
+          {totalPages > 0 && PaginationBar}
         </CardContent>
       </Card>
     </div>
   );
-} 
+}
