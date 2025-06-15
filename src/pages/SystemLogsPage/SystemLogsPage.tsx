@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Loader2, TestTube } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -23,7 +23,7 @@ import { DateRange } from 'react-day-picker';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { LogCard } from "./LogCard";
-import { useMediaQuery } from "react-responsive";
+import { useIsMobile } from '@/hooks/use-mobile';
 import { motion, AnimatePresence } from "framer-motion";
 
 const ITEMS_PER_PAGE = 20;
@@ -71,8 +71,8 @@ export default function SystemLogsPage() {
     }
   );
 
-  // Nova: detectar se está em tela reduzida (mobile)
-  const isMobile = useMediaQuery({ maxWidth: 768 });
+  // Use custom hook
+  const isMobile = useIsMobile();
 
   if (authLoading) {
     return (
