@@ -141,92 +141,45 @@ export const fetchMaterialBatches = async (): Promise<MaterialBatch[]> => {
   }));
 };
 
-// Get Material Batches with Material names and types
+// Get Material Batches with Material names and types - VERSÃO OTIMIZADA
 export const fetchMaterialBatchesWithDetails = async (): Promise<MaterialBatch[]> => {
-  // First, identify and remove duplicate material batches
-  try {
-    console.log("Cleaning up duplicate material batches");
-    
-    // Instead of calling the SQL function directly, we'll manually perform the cleanup in JS
-    // Step 1: Get all material batches
-    const { data: allBatches, error: fetchError } = await supabase
-      .from("material_batches")
-      .select("*");
-    
-    if (fetchError) {
-      console.error("Error fetching material batches:", fetchError);
-    } else {
-      // Step 2: Identify duplicate batches (same material_id and batch_number)
-      // Group by material_id + batch_number
-      const batchGroups = new Map();
-      
-      allBatches.forEach(batch => {
-        const key = `${batch.material_id}-${batch.batch_number}`;
-        if (!batchGroups.has(key)) {
-          batchGroups.set(key, []);
-        }
-        batchGroups.get(key).push(batch);
-      });
-      
-      // Step 3: For each group that has duplicates, keep only the most recent one
-      const batchesToDelete = [];
-      
-      batchGroups.forEach(batches => {
-        if (batches.length > 1) {
-          // Sort by id in descending order (assuming higher id = more recent)
-          batches.sort((a, b) => b.id.localeCompare(a.id));
-          
-          // Keep the first one (most recent), mark rest for deletion
-          for (let i = 1; i < batches.length; i++) {
-            batchesToDelete.push(batches[i].id);
-          }
-        }
-      });
-      
-      // Step 4: Delete the duplicate batches
-      if (batchesToDelete.length > 0) {
-        console.log(`Found ${batchesToDelete.length} duplicate batches to delete`);
-        
-        const { error: deleteError } = await supabase
-          .from("material_batches")
-          .delete()
-          .in("id", batchesToDelete);
-        
-        if (deleteError) {
-          console.error("Error deleting duplicate batches:", deleteError);
-        } else {
-          console.log(`Successfully deleted ${batchesToDelete.length} duplicate batches`);
-        }
-      } else {
-        console.log("No duplicate material batches found");
-      }
-    }
-  } catch (cleanupErr) {
-    console.error("Exception during duplicate cleanup:", cleanupErr);
-    // Continue with the fetch despite the error
-  }
+  console.time('🔍 Fetch MaterialBatches');
   
-  // Now fetch the clean data
+  // Carregamento otimizado sem limpeza de duplicatas a cada request
   const { data, error } = await supabase
     .from("material_batches")
     .select(`
-      *,
+      id,
+      material_id,
+      batch_number,
+      quantity,
+      supplied_quantity,
+      remaining_quantity,
+      unit_of_measure,
+      expiry_date,
+      has_report,
+      created_at,
+      updated_at,
       materials:material_id (
         name,
         type
       )
     `)
+    .gt('remaining_quantity', 0) // Apenas lotes com estoque disponível
     .order("created_at", { ascending: false });
   
-  if (error) throw error;
+  if (error) {
+    console.timeEnd('🔍 Fetch MaterialBatches');
+    throw error;
+  }
   
-  return data.map(batch => ({
+  const result = data.map(batch => ({
     ...batch,
     id: batch.id,
     materialId: batch.material_id,
     materialName: batch.materials?.name || "",
     materialType: batch.materials?.type || "",
-    supplierId: "",  // Add empty supplier fields to match type
+    supplierId: "",  
     supplierName: "",
     batchNumber: batch.batch_number,
     quantity: batch.quantity,
@@ -238,6 +191,63 @@ export const fetchMaterialBatchesWithDetails = async (): Promise<MaterialBatch[]
     createdAt: new Date(batch.created_at),
     updatedAt: new Date(batch.updated_at)
   }));
+  
+  console.timeEnd('🔍 Fetch MaterialBatches');
+  console.log(`📦 Carregados ${result.length} lotes de materiais`);
+  
+  return result;
+};
+
+// Função específica para buscar apenas fécula (para cálculo de capacidade produtiva)
+export const fetchFeculaBatchesOnly = async (): Promise<MaterialBatch[]> => {
+  console.time('🌾 Fetch Fécula Only');
+  
+  const { data, error } = await supabase
+    .from("material_batches")
+    .select(`
+      id,
+      material_id,
+      batch_number,
+      remaining_quantity,
+      unit_of_measure,
+      created_at,
+      materials:material_id (
+        name,
+        type
+      )
+    `)
+    .gt('remaining_quantity', 0)
+    .eq('materials.type', 'Fécula')
+    .order("created_at", { ascending: false });
+  
+  if (error) {
+    console.timeEnd('🌾 Fetch Fécula Only');
+    throw error;
+  }
+  
+  const result = data.map(batch => ({
+    ...batch,
+    id: batch.id,
+    materialId: batch.material_id,
+    materialName: batch.materials?.name || "",
+    materialType: batch.materials?.type || "",
+    supplierId: "",  
+    supplierName: "",
+    batchNumber: batch.batch_number,
+    quantity: batch.remaining_quantity,
+    suppliedQuantity: batch.remaining_quantity,
+    remainingQuantity: batch.remaining_quantity,
+    unitOfMeasure: batch.unit_of_measure,
+    expiryDate: undefined,
+    hasReport: false,
+    createdAt: new Date(batch.created_at),
+    updatedAt: new Date(batch.created_at)
+  }));
+  
+  console.timeEnd('🌾 Fetch Fécula Only');
+  console.log(`🌾 Carregados ${result.length} lotes de fécula`);
+  
+  return result;
 };
 
 export const createMaterialBatch = async (

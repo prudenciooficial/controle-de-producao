@@ -1,0 +1,20 @@
+services:
+  controle-producao-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Montar código fonte para hot reload
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - app-network-dev
+
+networks:
+  app-network-dev:
+    driver: bridge 

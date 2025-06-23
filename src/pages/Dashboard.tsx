@@ -118,15 +118,20 @@ const Dashboard = () => {
     }
   }, [previousMonthRange, productionBatches, sales, dashboardStats, products, globalSettings]);
   
-  // Calcular capacidade produtiva atual usando a função utilitária
+  // Calcular capacidade produtiva atual usando a função utilitária OTIMIZADA
   const currentCapacidadeProdutiva = React.useMemo(() => {
     if (isLoading.globalSettings || !globalSettings || isLoading.materialBatches) {
       return 0; // Ou algum valor de carregamento/padrão
     }
     
-    const productiveCapacity = getProductiveCapacity();
-    return productiveCapacity.capacityKg;
-  }, [getProductiveCapacity, isLoading.globalSettings, isLoading.materialBatches]);
+    try {
+      const productiveCapacity = getProductiveCapacity();
+      return productiveCapacity.capacityKg;
+    } catch (error) {
+      console.error('Erro ao calcular capacidade produtiva:', error);
+      return 0;
+    }
+  }, [isLoading.globalSettings, isLoading.materialBatches, globalSettings, getProductiveCapacity]);
   
   // Calculate percentage changes
   const percentChanges = {

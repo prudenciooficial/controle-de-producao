@@ -122,7 +122,7 @@ interface DataContextType {
   getAvailableMaterials: () => MaterialBatch[];
   getAvailableProducts: () => ProducedItem[];
   
-  // Novas funções utilitárias para fécula
+  // Novas funções utilitárias para fécula - OTIMIZADAS COM CACHE
   getFeculaInventory: () => {
     totalUnits: number;
     totalKg: number;
@@ -249,6 +249,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     averageProfitability: 0,
     totalFeculaInventoryKg: 0
   });
+
+  // Cache para capacidade produtiva
+  const [capacityCache, setCapacityCache] = React.useState<{
+    data: any;
+    timestamp: number;
+    materialBatchesCount: number;
+  } | null>(null);
 
   // Fetch all data from Supabase
   useEffect(() => {
@@ -1226,8 +1233,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .filter(item => item.remainingQuantity > 0);
   };
 
-  // Novas funções utilitárias para fécula
-  const getFeculaInventory = () => {
+  // Novas funções utilitárias para fécula - OTIMIZADAS COM CACHE
+  const feculaInventoryData = React.useMemo(() => {
+    // Verificar cache
+    const now = Date.now();
+    const cacheValid = capacityCache && 
+      (now - capacityCache.timestamp < 30000) && // Cache válido por 30 segundos
+      capacityCache.materialBatchesCount === materialBatches.length;
+    
+    if (cacheValid) {
+      console.log('📊 Cache hit - usando dados em cache da fécula');
+      return capacityCache.data.feculaInventory;
+    }
+    
     const feculaBatches = materialBatches.filter(batch => 
       batch.materialType && 
       typeof batch.materialType === 'string' && 
@@ -1239,25 +1257,66 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const conversionFactor = globalSettings?.fecula_conversion_factor || 25;
     const totalKg = totalUnits * conversionFactor;
 
-    return {
+    const result = {
       totalUnits,
       totalKg,
       conversionFactor,
       batches: feculaBatches
     };
-  };
+    
+    console.log('📊 Fécula Inventory calculado:', { 
+      batchesCount: feculaBatches.length, 
+      totalUnits, 
+      totalKg,
+      conversionFactor 
+    });
+    
+    return result;
+  }, [materialBatches, globalSettings?.fecula_conversion_factor, capacityCache]);
 
-  const getProductiveCapacity = () => {
-    const feculaInventory = getFeculaInventory();
+  const productiveCapacityData = React.useMemo(() => {
+    // Verificar cache
+    const now = Date.now();
+    const cacheValid = capacityCache && 
+      (now - capacityCache.timestamp < 30000) && // Cache válido por 30 segundos
+      capacityCache.materialBatchesCount === materialBatches.length;
+    
+    if (cacheValid) {
+      console.log('🏭 Cache hit - usando dados em cache da capacidade produtiva');
+      return capacityCache.data.productiveCapacity;
+    }
+    
     const productionFactor = globalSettings?.production_prediction_factor || 1.5;
-    const capacityKg = feculaInventory.totalKg * productionFactor;
+    const capacityKg = feculaInventoryData.totalKg * productionFactor;
 
-    return {
-      ...feculaInventory,
+    const result = {
+      ...feculaInventoryData,
       productionFactor,
       capacityKg
     };
-  };
+    
+    console.log('🏭 Capacidade Produtiva calculada:', { 
+      capacityKg, 
+      productionFactor,
+      feculaKg: feculaInventoryData.totalKg 
+    });
+    
+    // Atualizar cache
+    setCapacityCache({
+      data: {
+        feculaInventory: feculaInventoryData,
+        productiveCapacity: result
+      },
+      timestamp: Date.now(),
+      materialBatchesCount: materialBatches.length
+    });
+    
+    return result;
+  }, [feculaInventoryData, globalSettings?.production_prediction_factor, capacityCache, materialBatches.length]);
+
+  // Funções que retornam os dados memoizados
+  const getFeculaInventory = () => feculaInventoryData;
+  const getProductiveCapacity = () => productiveCapacityData;
 
   const value = {
     productionBatches,
