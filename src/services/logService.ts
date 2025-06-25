@@ -8,8 +8,8 @@ interface LogSystemEventParams {
   actionType: LogActionType;
   entityTable: string;
   entityId?: string;
-  oldData?: any;
-  newData?: any;
+  oldData?: Record<string, unknown>;
+  newData?: Record<string, unknown>;
 }
 
 export async function logSystemEvent({
@@ -40,7 +40,7 @@ export async function logSystemEvent({
     };
 
     // Preparar dados com contexto adicional se necessário
-    const prepareDataWithContext = (data: any, originalAction: LogActionType) => {
+    const prepareDataWithContext = (data: Record<string, unknown> | null, originalAction: LogActionType): Record<string, unknown> | null => {
       if (!data) return null;
       
       // Se não é uma ação padrão do banco, adicionar contexto
@@ -101,36 +101,33 @@ export async function logSystemEvent({
       ...(finalNewData && { new_data: finalNewData }),
     };
 
-    console.log("Tentando registrar log (com dados corrigidos):", logEntryForSupabase);
-
-    // Tentar inserção normal primeiro
-    let { data, error } = await supabase.from('system_logs').insert(logEntryForSupabase).select();
-
-    // Se der erro de RLS, tentar com operação de contorno
-    if (error && error.code === '42501') {
-      console.warn('Erro de RLS detectado, tentando inserção alternativa:', error);
-      
-      // Tentar inserção sem SELECT para evitar políticas de leitura
-      const { error: insertError } = await supabase.from('system_logs').insert(logEntryForSupabase);
-      
-      if (insertError) {
-        console.error('Erro na inserção alternativa:', insertError);
-        throw insertError;
-      } else {
-        console.log("Log registrado com inserção alternativa (sem retorno de dados)");
-        return;
-      }
-    }
+    const { data, error } = await supabase
+      .from("system_logs")
+      .insert(logEntryForSupabase)
+      .select()
+      .single();
 
     if (error) {
-      console.error('Erro ao registrar log:', error);
-      throw error;
-    } else {
-      console.log("Log registrado com sucesso:", data);
+      // Fallback: inserção sem retorno de dados  
+      const { error: insertError } = await supabase
+        .from("system_logs")
+        .insert(logEntryForSupabase);
+
+      if (insertError) {
+        console.error("Falha ao registrar log:", insertError);
+        return;
+      }
+
+      // console.log("Log registrado com inserção alternativa (sem retorno de dados)");
+      return;
     }
-  } catch (err) {
-    console.error('Erro inesperado na função logSystemEvent:', err);
-    // Não re-lançar o erro para não quebrar a aplicação principal
-    // throw err;
+
+    if (data) {
+      // console.log("Log registrado com sucesso:", data);
+    }
+  } catch (error) {
+    // Sempre fazer fallback silencioso para log de sistema
+    // console.log("Tentando registrar log (com dados corrigidos):", logEntryForSupabase);
+    console.error("Erro ao registrar log (modo fallback):", error);
   }
 } 

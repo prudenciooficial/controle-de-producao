@@ -87,6 +87,7 @@ const Production = () => {
     productionBatches, 
     isLoading,
     refetchProductionBatches,
+    refetchMaterialBatches,
   } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -99,26 +100,23 @@ const Production = () => {
 
   const loadAvailableMixes = useCallback(async () => {
     try {
-      // console.log("🔄 Buscando mexidas disponíveis...");
       const mixes = await fetchAvailableMixBatches();
-      // console.log("✅ Mexidas carregadas:", mixes.length, "mexidas encontradas");
       setAvailableMixes(mixes);
       
       if (mixes.length === 0) {
-        // console.warn("⚠️ Nenhuma mexida disponível encontrada");
         toast({
           title: "Aviso",
           description: "Nenhuma mexida disponível para produção. Registre uma mexida primeiro.",
           variant: "default",
         });
       }
+      return mixes;
     } catch (error) {
       console.error("❌ Erro ao buscar mexidas:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar mexidas disponíveis.",
-        variant: "destructive",
-      });
+      setAvailableMixes([]);
+      return [];
+    } finally {
+      setIsLoadingMixes(false);
     }
   }, [toast]);
   
@@ -264,17 +262,13 @@ const Production = () => {
       
       // Refresh dos dados do contexto
       try {
-        console.log("🔄 Atualizando dados do contexto...");
-        await refetchProductionBatches();
-        console.log("✅ Dados do contexto atualizados com sucesso");
+        await Promise.all([refetchProductionBatches(), refetchMaterialBatches()]);
         
         // Atualizar também as mexidas disponíveis
-        console.log("🔄 Atualizando mexidas disponíveis...");
-        const updatedMixes = await fetchAvailableMixBatches();
+        const updatedMixes = await loadAvailableMixes();
         setAvailableMixes(updatedMixes);
-        console.log("✅ Mexidas atualizadas:", updatedMixes.length, "mexidas disponíveis");
       } catch (error) {
-        console.error("❌ Erro ao atualizar dados do contexto:", error);
+        console.error("Erro ao atualizar dados:", error);
       }
       
       form.reset({

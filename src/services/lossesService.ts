@@ -79,120 +79,32 @@ export const createLoss = async (
   return newLoss;
 };
 
-export const updateLoss = async (
-  id: string,
-  loss: Partial<Loss>,
-  userId?: string,
-  userDisplayName?: string
-): Promise<void> => {
-  try {
-    console.log("Beginning update process for loss:", id);
-    
-    // Start a transaction
-    await beginTransaction();
-    console.log("Transaction started for loss update");
-    
-    const updates: any = {};
-    
-    if (loss.date) {
-      updates.date = loss.date instanceof Date ? loss.date.toISOString() : loss.date;
-    }
-    if (loss.productionBatchId) updates.production_batch_id = loss.productionBatchId;
-    if (loss.batchNumber) updates.batch_number = loss.batchNumber;
-    if (loss.machine) updates.machine = loss.machine;
-    if (loss.quantity !== undefined) updates.quantity = loss.quantity;
-    if (loss.unitOfMeasure) updates.unit_of_measure = loss.unitOfMeasure;
-    if (loss.productType) updates.product_type = loss.productType;
-    if (loss.notes !== undefined) updates.notes = loss.notes;
-    
-    const { error } = await supabase
-      .from("losses")
-      .update(updates)
-      .eq("id", id);
-    
-    if (error) {
-      console.error("Error updating loss:", error);
-      await abortTransaction();
-      console.log("Transaction aborted due to error");
-      throw error;
-    }
-    
-    console.log("Loss updated successfully");
-    
-    // Commit the transaction
-    await endTransaction();
-    console.log("Transaction committed successfully");
-    
-    await logSystemEvent({
-      userId: userId!,
-      userDisplayName: userDisplayName!,
-      actionType: 'UPDATE',
-      entityTable: 'losses',
-      entityId: id,
-      oldData: { id, ...loss },
-      newData: { id, ...updates }
-    });
-  } catch (error) {
-    console.error("Error in update loss operation:", error);
-    try {
-      // Only abort if we didn't already
-      await abortTransaction();
-      console.log("Transaction aborted in catch block");
-    } catch (rollbackError) {
-      console.error("Error during rollback:", rollbackError);
-    }
+export const updateLoss = async (id: string, updatedData: Partial<Loss>): Promise<void> => {
+  const { error } = await supabase
+    .from("losses")
+    .update({
+      date: updatedData.date?.toISOString(),
+      batch_number: updatedData.batchNumber,
+      machine: updatedData.machine,
+      quantity: updatedData.quantity,
+      unit_of_measure: updatedData.unitOfMeasure,
+      product_type: updatedData.productType,
+      notes: updatedData.notes,
+    })
+    .eq("id", id);
+
+  if (error) {
     throw error;
   }
 };
 
-export const deleteLoss = async (
-  id: string,
-  userId?: string,
-  userDisplayName?: string
-): Promise<void> => {
-  try {
-    console.log("Beginning deletion process for loss:", id);
-    
-    // Start a transaction
-    await beginTransaction();
-    console.log("Transaction started for loss deletion");
-    
-    // Delete the loss
-    const { error } = await supabase
-      .from("losses")
-      .delete()
-      .eq("id", id);
-    
-    if (error) {
-      console.error("Error deleting loss:", error);
-      await abortTransaction();
-      console.log("Transaction aborted due to error");
-      throw error;
-    }
-    
-    console.log("Loss deleted successfully");
-    
-    // Commit the transaction
-    await endTransaction();
-    console.log("Transaction committed successfully");
-    
-    await logSystemEvent({
-      userId: userId!,
-      userDisplayName: userDisplayName!,
-      actionType: 'DELETE',
-      entityTable: 'losses',
-      entityId: id,
-      oldData: { id }
-    });
-  } catch (error) {
-    console.error("Error in delete loss operation:", error);
-    try {
-      // Only abort if we didn't already
-      await abortTransaction();
-      console.log("Transaction aborted in catch block");
-    } catch (rollbackError) {
-      console.error("Error during rollback:", rollbackError);
-    }
+export const deleteLoss = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from("losses")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
     throw error;
   }
 };

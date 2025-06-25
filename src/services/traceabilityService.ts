@@ -170,7 +170,7 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
 
   const usedMaterialsWithSupplier = await Promise.all(
     uniqueUsedMaterials.map(async (usedMaterial) => {
-      const supplierInfo = await getSupplierFromMaterialBatch(usedMaterial.material_batch_id);
+      const supplierInfo = await getSupplierForMaterialBatch(usedMaterial.material_batch_id);
       return {
         id: usedMaterial.id,
         materialName: usedMaterial.material_batches?.materials?.name || 'Nome Indisponível',
@@ -267,7 +267,7 @@ export const traceMaterialBatch = async (batchNumber: string): Promise<MaterialT
   }
 
   // Get supplier info
-  const supplier = await getSupplierFromMaterialBatch(materialBatch.id);
+  const supplier = await getSupplierForMaterialBatch(materialBatch.id);
 
   // Get productions that used this material batch
   const { data: usedMaterials } = await supabase
@@ -353,107 +353,110 @@ export const traceMaterialBatch = async (batchNumber: string): Promise<MaterialT
   };
 };
 
-export const getSupplierFromMaterialBatch = async (materialBatchId: string): Promise<{ name: string; invoiceNumber: string; orderDate: Date } | undefined> => {
-  // console.log(`[GSFMB] Iniciando busca de fornecedor para materialBatchId: ${materialBatchId}`);
-
+const getSupplierForMaterialBatch = async (materialBatchId: string) => {
   if (!materialBatchId) {
     // console.warn('[GSFMB] materialBatchId não fornecido.');
-    return undefined;
+    return { name: "Fornecedor Desconhecido", invoiceNumber: "N/A", orderDate: new Date() };
   }
 
-  // Passo 1: Buscar o batch_number textual do material_batch usando o materialBatchId (UUID)
+  // Busca lote de material específico
   const { data: matBatchDetails, error: matBatchErr } = await supabase
     .from("material_batches")
-    .select("batch_number") // Selecionar o batch_number textual
+    .select("batch_number")
     .eq("id", materialBatchId)
     .single();
 
-  if (matBatchErr || !matBatchDetails) {
+  if (matBatchErr) {
     // console.error(`[GSFMB] Erro ao buscar detalhes do lote de material (ID: ${materialBatchId}):`, matBatchErr);
-    return undefined;
+    return { name: "Fornecedor Desconhecido", invoiceNumber: "N/A", orderDate: new Date() };
   }
 
-  const textualBatchNumber = matBatchDetails.batch_number;
-
+  const textualBatchNumber = matBatchDetails?.batch_number;
   if (!textualBatchNumber) {
     // console.warn(`[GSFMB] Lote de material (ID: ${materialBatchId}) não possui um batch_number textual associado. matBatchDetails:`, matBatchDetails);
-    console.warn(`[GSFMB] Lote de material (ID: ${materialBatchId}) não possui um batch_number textual associado. matBatchDetails:`, matBatchDetails);
-    return undefined;
+    return { name: "Fornecedor Desconhecido", invoiceNumber: "N/A", orderDate: new Date() };
   }
-  console.log(`[GSFMB] Lote de material (ID: ${materialBatchId}) tem batch_number textual: ${textualBatchNumber}`);
 
-  // Passo 2: Usar o batch_number textual para encontrar o order_item correspondente
+  // console.log(`[GSFMB] Lote de material (ID: ${materialBatchId}) tem batch_number textual: ${textualBatchNumber}`);
+
+  // Busca order_item associado pelo batch_number
   const { data: orderItem, error: orderItemErr } = await supabase
     .from("order_items")
-    .select("order_id") // Precisamos do order_id para o próximo passo
-    .eq("batch_number", textualBatchNumber) // Ligação via batch_number textual
-    .maybeSingle(); // Usar maybeSingle pois não sabemos se é único ou pode não existir
+    .select("order_id")
+    .eq("batch_number", textualBatchNumber)
+    .single();
 
   if (orderItemErr) {
-    console.error(`[GSFMB] Erro ao buscar order_item com batch_number ${textualBatchNumber}:`, orderItemErr);
-    return undefined;
+    // console.error(`[GSFMB] Erro ao buscar order_item com batch_number ${textualBatchNumber}:`, orderItemErr);
+    return { name: "Fornecedor Desconhecido", invoiceNumber: "N/A", orderDate: new Date() };
   }
 
   if (!orderItem) {
-    console.warn(`[GSFMB] Nenhum order_item encontrado com batch_number: ${textualBatchNumber}`);
-    return undefined;
+    // console.warn(`[GSFMB] Nenhum order_item encontrado com batch_number: ${textualBatchNumber}`);
+    return { name: "Fornecedor Desconhecido", invoiceNumber: "N/A", orderDate: new Date() };
   }
-  
+
   const orderIdFromOrderItem = orderItem.order_id;
-
   if (!orderIdFromOrderItem) {
-    console.warn(`[GSFMB] order_item encontrado para batch_number ${textualBatchNumber}, mas não possui order_id. OrderItem:`, orderItem);
-    return undefined;
+    // console.warn(`[GSFMB] order_item encontrado para batch_number ${textualBatchNumber}, mas não possui order_id. OrderItem:`, orderItem);
+    return { name: "Fornecedor Desconhecido", invoiceNumber: "N/A", orderDate: new Date() };
   }
-  console.log(`[GSFMB] order_item para batch_number ${textualBatchNumber} tem order_id: ${orderIdFromOrderItem}`);
 
-  // Passo 3: Usar o order_id para encontrar o pedido na tabela orders
+  // console.log(`[GSFMB] order_item para batch_number ${textualBatchNumber} tem order_id: ${orderIdFromOrderItem}`);
+
+  // Busca informações do pedido usando campos corretos da tabela orders
   const { data: orderData, error: orderErr } = await supabase
     .from("orders")
-    .select('date, invoice_number, supplier_id, suppliers:supplier_id (name)')
+    .select(`
+      supplier_id,
+      invoice_number,
+      date,
+      suppliers:supplier_id (
+        name
+      )
+    `)
     .eq("id", orderIdFromOrderItem)
     .single();
 
-  if (orderErr || !orderData) {
-    console.error(`[GSFMB] Erro ao buscar pedido com ID ${orderIdFromOrderItem}:`, orderErr);
-    return undefined;
+  if (orderErr) {
+    // console.error(`[GSFMB] Erro ao buscar pedido com ID ${orderIdFromOrderItem}:`, orderErr);
+    return { name: "Fornecedor Desconhecido", invoiceNumber: "N/A", orderDate: new Date() };
   }
 
-  // Passo 4: Verificar e extrair dados do fornecedor
-  const supplierName = orderData.suppliers ? (orderData.suppliers as { name: string }).name : null;
-  const invoiceNumberFromOrder = orderData.invoice_number;
-  const dateFromOrder = orderData.date;
+  if (!orderData) {
+    return { name: "Fornecedor Desconhecido", invoiceNumber: "N/A", orderDate: new Date() };
+  }
 
-  if (!supplierName) {
-    console.warn(`[GSFMB] Fornecedor não encontrado (ou nome do fornecedor ausente) para o pedido ${orderIdFromOrderItem}. Detalhes do pedido:`, orderData);
-     // Fallback se a junção aninhada não funcionar como esperado mas supplier_id existir
-    if (orderData.supplier_id) {
-        console.log(`[GSFMB] Tentando buscar fornecedor separadamente com supplier_id: ${orderData.supplier_id}`);
-        const { data: directSupplier, error: directSupplierErr } = await supabase
-            .from('suppliers')
-            .select('name')
-            .eq('id', orderData.supplier_id)
-            .single();
-        if (directSupplierErr || !directSupplier) {
-            console.error(`[GSFMB] Falha ao buscar fornecedor diretamente com ID: ${orderData.supplier_id}`, directSupplierErr);
-            return undefined; // Ou retornar com nome do fornecedor como '-' 
-        }
-        console.log(`[GSFMB] Fornecedor encontrado diretamente: ${directSupplier.name}`);
-        return {
-            name: directSupplier.name,
-            invoiceNumber: invoiceNumberFromOrder,
-            orderDate: new Date(dateFromOrder),
-        };
+  let supplierName = orderData.suppliers?.name || "Fornecedor Desconhecido";
+  const invoiceNumberFromOrder = orderData.invoice_number || "N/A";
+  const dateFromOrder = orderData.date || "N/A";
+
+  // Se supplier name não foi encontrado via join, tenta buscar o fornecedor diretamente
+  if (!orderData.suppliers?.name && orderData.supplier_id) {
+    // console.log(`[GSFMB] Tentando buscar fornecedor separadamente com supplier_id: ${orderData.supplier_id}`);
+    
+    const { data: directSupplier, error: directSupplierErr } = await supabase
+      .from("suppliers")
+      .select("name")
+      .eq("id", orderData.supplier_id)
+      .single();
+
+    if (directSupplierErr) {
+      // console.error(`[GSFMB] Falha ao buscar fornecedor diretamente com ID: ${orderData.supplier_id}`, directSupplierErr);
+    } else if (directSupplier?.name) {
+      // console.log(`[GSFMB] Fornecedor encontrado diretamente: ${directSupplier.name}`);
+      supplierName = directSupplier.name;
     }
-    return undefined; // Se não encontrou o nome do fornecedor nem pelo fallback
   }
-  
-  console.log(`[GSFMB] Informações completas encontradas para materialBatchId ${materialBatchId}: Fornecedor: ${supplierName}, NF: ${invoiceNumberFromOrder}, Data: ${dateFromOrder}`);
+
+  if (supplierName !== "Fornecedor Desconhecido") {
+    // console.log(`[GSFMB] Informações completas encontradas para materialBatchId ${materialBatchId}: Fornecedor: ${supplierName}, NF: ${invoiceNumberFromOrder}, Data: ${dateFromOrder}`);
+  }
 
   return {
     name: supplierName,
     invoiceNumber: invoiceNumberFromOrder,
-    orderDate: new Date(dateFromOrder),
+    orderDate: dateFromOrder !== "N/A" ? new Date(dateFromOrder) : new Date()
   };
 };
 
@@ -494,51 +497,56 @@ const getReverseTraceability = async (materialBatchIds: string[], excludeProduct
   return reverseTraceability;
 };
 
-export const findRelatedBatches = async (batchNumber: string): Promise<{type: 'product' | 'material', exists: boolean, id?: string}> => {
-  console.log(`[findRelatedBatches] Buscando lote: ${batchNumber}`);
-  // 1. Verificar em produced_items (mais específico para um item de produto já fabricado com esse lote)
-  // Se encontrarmos aqui, ele já é um produto e tem um production_batch_id associado.
+interface RelatedBatch {
+  type: 'product' | 'production' | 'material';
+  data: unknown;
+}
+
+export const findRelatedBatches = async (batchNumber: string): Promise<RelatedBatch | null> => {
+  // console.log(`[findRelatedBatches] Buscando lote: ${batchNumber}`);
+
+  // Buscar em produced_items
   const { data: producedItem, error: piError } = await supabase
     .from("produced_items")
-    .select("id, production_batch_id")
+    .select("*")
     .eq("batch_number", batchNumber)
-    .maybeSingle(); // Usar maybeSingle para não dar erro se não encontrar
+    .single();
 
-  if (piError) console.warn('[findRelatedBatches] Erro ao buscar em produced_items:', piError);
-  
-  if (producedItem) {
-    console.log(`[findRelatedBatches] Encontrado em produced_items:`, producedItem);
-    return { type: 'product', exists: true, id: producedItem.production_batch_id || producedItem.id };
+  if (piError) { 
+    // console.warn('[findRelatedBatches] Erro ao buscar em produced_items:', piError);
+  } else if (producedItem) {
+    // console.log(`[findRelatedBatches] Encontrado em produced_items:`, producedItem);
+    return { type: "product", data: producedItem };
   }
 
-  // 2. Verificar em production_batches (se o batchNumber é de um lote de produção geral)
+  // Buscar em production_batches
   const { data: productionBatch, error: pbError } = await supabase
     .from("production_batches")
-    .select("id")
+    .select("*")
     .eq("batch_number", batchNumber)
-    .maybeSingle();
-  
-  if (pbError) console.warn('[findRelatedBatches] Erro ao buscar em production_batches:', pbError);
+    .single();
 
-  if (productionBatch) {
-    console.log(`[findRelatedBatches] Encontrado em production_batches:`, productionBatch);
-    return { type: 'product', exists: true, id: productionBatch.id };
+  if (pbError) { 
+    // console.warn('[findRelatedBatches] Erro ao buscar em production_batches:', pbError);
+  } else if (productionBatch) {
+    // console.log(`[findRelatedBatches] Encontrado em production_batches:`, productionBatch);
+    return { type: "production", data: productionBatch };
   }
 
-  // 3. Verificar em material_batches
+  // Buscar em material_batches
   const { data: materialBatch, error: mbError } = await supabase
     .from("material_batches")
-    .select("id")
+    .select("*")
     .eq("batch_number", batchNumber)
-    .maybeSingle();
+    .single();
 
-  if (mbError) console.warn('[findRelatedBatches] Erro ao buscar em material_batches:', mbError);
-
-  if (materialBatch) {
-    console.log(`[findRelatedBatches] Encontrado em material_batches:`, materialBatch);
-    return { type: 'material', exists: true, id: materialBatch.id };
+  if (mbError) { 
+    // console.warn('[findRelatedBatches] Erro ao buscar em material_batches:', mbError);
+  } else if (materialBatch) {
+    // console.log(`[findRelatedBatches] Encontrado em material_batches:`, materialBatch);
+    return { type: "material", data: materialBatch };
   }
-  
-  console.log(`[findRelatedBatches] Lote ${batchNumber} não encontrado em nenhuma tabela principal.`);
-  return { type: 'product', exists: false }; // Default para product se não encontrado, mas com exists: false
+
+  // console.log(`[findRelatedBatches] Lote ${batchNumber} não encontrado em nenhuma tabela principal.`);
+  return null;
 };

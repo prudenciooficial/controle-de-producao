@@ -1,5 +1,18 @@
-
 import { supabase } from "@/integrations/supabase/client";
+
+// Teste de conexão com Supabase
+supabase
+  .from("materials") // Testando com tabela que existe no schema
+  .select("count", { count: "exact", head: true })
+  .then(({ data, error }) => {
+    if (error) {
+      console.error("Supabase connection failed:", error);
+    } else {
+      // console.log("Supabase connection successful:", data);
+    }
+  });
+
+export { supabase };
 
 // Helper function for debugging
 export const checkSupabaseConnection = async (): Promise<boolean> => {

@@ -248,9 +248,9 @@ const MixHistory = () => {
     try {
       setIsSaving(true);
       
-      console.log(`[MixHistory] Atualizando mexida ${selectedMix.id}`);
-      console.log(`[MixHistory] Insumos originais:`, selectedMix.usedMaterials);
-      console.log(`[MixHistory] Novos insumos:`, usedMaterials);
+      // console.log(`[MixHistory] Atualizando mexida ${selectedMix.id}`);
+      // console.log(`[MixHistory] Insumos originais:`, selectedMix.usedMaterials);
+      // console.log(`[MixHistory] Novos insumos:`, usedMaterials);
       
       // Preparar dados dos insumos atualizados
       const updatedMixData = {

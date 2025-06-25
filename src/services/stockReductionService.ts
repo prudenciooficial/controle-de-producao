@@ -21,7 +21,7 @@ export const createStockReduction = async (
     await beginTransaction();
 
     // Primeiro, verificar se o lote de material existe e tem quantidade suficiente
-    const { data: materialBatch, error: materialError } = await (supabase as any)
+    const { data: materialBatch, error: materialError } = await supabase
       .from("material_batches")
       .select(`
         id, 
@@ -53,7 +53,8 @@ export const createStockReduction = async (
       );
     }
 
-    // Inserir registro da baixa de estoque usando SQL direto
+    // Inserir registro da baixa de estoque
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: reductionData, error: reductionError } = await (supabase as any)
       .from("baixas_estoque")
       .insert({
@@ -73,7 +74,7 @@ export const createStockReduction = async (
     // Atualizar quantidade restante do lote de material
     const newRemainingQuantity = materialBatch.remaining_quantity - stockReduction.quantity;
     
-    const { error: updateError } = await (supabase as any)
+    const { error: updateError } = await supabase
       .from("material_batches")
       .update({ remaining_quantity: newRemainingQuantity })
       .eq("id", stockReduction.materialBatchId);
@@ -102,22 +103,17 @@ export const createStockReduction = async (
         }
       });
     }
-
-    console.log(`[StockReductionService] Baixa de estoque processada com sucesso: ${reductionData.id}`);
     
   } catch (error) {
     console.error("Error creating stock reduction:", error);
-    try {
-      await abortTransaction();
-    } catch (rollbackError) {
-      console.error("Error in rollback:", rollbackError);
-    }
+    await abortTransaction();
     throw error;
   }
 };
 
 export const getStockReductions = async () => {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from("baixas_estoque")
       .select(`
@@ -155,6 +151,7 @@ export const deleteStockReduction = async (
     await beginTransaction();
 
     // Buscar dados da baixa antes de excluir
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: reductionData, error: fetchError } = await (supabase as any)
       .from("baixas_estoque")
       .select(`
@@ -188,7 +185,7 @@ export const deleteStockReduction = async (
     if (materialBatch) {
       const newRemainingQuantity = materialBatch.remaining_quantity + reductionData.quantidade;
       
-      const { error: updateError } = await (supabase as any)
+      const { error: updateError } = await supabase
         .from("material_batches")
         .update({ remaining_quantity: newRemainingQuantity })
         .eq("id", reductionData.lote_material_id);
@@ -200,6 +197,7 @@ export const deleteStockReduction = async (
     }
 
     // Excluir registro da baixa
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: deleteError } = await (supabase as any)
       .from("baixas_estoque")
       .delete()
@@ -227,16 +225,10 @@ export const deleteStockReduction = async (
         }
       });
     }
-
-    console.log(`[StockReductionService] Baixa de estoque excluída com sucesso: ${id}`);
     
   } catch (error) {
     console.error("Error deleting stock reduction:", error);
-    try {
-      await abortTransaction();
-    } catch (rollbackError) {
-      console.error("Error in rollback:", rollbackError);
-    }
+    await abortTransaction();
     throw error;
   }
 };
@@ -251,6 +243,7 @@ export const updateStockReduction = async (
     await beginTransaction();
 
     // Buscar dados atuais da baixa
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: currentReduction, error: fetchError } = await (supabase as any)
       .from("baixas_estoque")
       .select(`
@@ -299,7 +292,7 @@ export const updateStockReduction = async (
       }
 
       // Atualizar quantidade restante do lote
-      const { error: updateStockError } = await (supabase as any)
+      const { error: updateStockError } = await supabase
         .from("material_batches")
         .update({ remaining_quantity: newRemainingQuantity })
         .eq("id", currentReduction.lote_material_id);
@@ -311,11 +304,12 @@ export const updateStockReduction = async (
     }
 
     // Atualizar registro da baixa
-    const updateData: any = {};
+    const updateData: Record<string, string | number | undefined> = {};
     if (updates.date) updateData.data = updates.date;
     if (updates.quantity !== undefined) updateData.quantidade = updates.quantity;
     if (updates.notes !== undefined) updateData.observacoes = updates.notes;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: updatedReduction, error: updateError } = await (supabase as any)
       .from("baixas_estoque")
       .update(updateData)
@@ -350,16 +344,10 @@ export const updateStockReduction = async (
         }
       });
     }
-
-    console.log(`[StockReductionService] Baixa de estoque atualizada com sucesso: ${id}`);
     
   } catch (error) {
     console.error("Error updating stock reduction:", error);
-    try {
-      await abortTransaction();
-    } catch (rollbackError) {
-      console.error("Error in rollback:", rollbackError);
-    }
+    await abortTransaction();
     throw error;
   }
 }; 

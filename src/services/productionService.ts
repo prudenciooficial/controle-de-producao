@@ -154,30 +154,18 @@ export const createProductionBatch = async (
   try {
     await beginTransaction();
     
-    console.log(`[ProductionService] Creating production batch: ${batch.batchNumber}`);
-    
-    // Insert the production batch
-    const batchInsertData: any = {
-      batch_number: batch.batchNumber,
-      production_date: batch.productionDate.toISOString(),
-      mix_day: batch.mixDay,
-      mix_count: batch.mixCount,
-      notes: batch.notes,
-    };
-
-    // Add status only if provided and not undefined
-    if (batch.status && batch.status !== undefined) {
-      batchInsertData.status = batch.status;
-    }
-
-    // Add mix_batch_id if provided (linking to a mix)
-    if (batch.mixProductionBatchId) {
-      batchInsertData.mix_batch_id = batch.mixProductionBatchId;
-    }
-
+    // Criar lote de produção
+    // console.log(`[ProductionService] Creating production batch: ${batch.batchNumber}`);
     const { data: batchData, error: batchError } = await supabase
       .from("production_batches")
-      .insert(batchInsertData)
+      .insert({
+        batch_number: batch.batchNumber,
+        production_date: batch.productionDate.toISOString(),
+        mix_day: batch.mixDay,
+        mix_count: batch.mixCount,
+        mix_batch_id: batch.mixProductionBatchId,
+        notes: batch.notes,
+      })
       .select()
       .single();
     
@@ -210,7 +198,7 @@ export const createProductionBatch = async (
     // Insert used materials - APENAS REGISTRO, SEM AFETAR ESTOQUE
     if (batch.usedMaterials && batch.usedMaterials.length > 0) {
       for (const material of batch.usedMaterials) {
-        console.log(`[ProductionService] Registrando material adicional: ${material.materialName}, Lote: ${material.batchNumber}, Quantidade: ${material.quantity}`);
+        // console.log(`[ProductionService] Registrando material adicional: ${material.materialName}, Lote: ${material.batchNumber}, Quantidade: ${material.quantity}`);
         
         // Insert used material record - apenas para documentação
         const { error: materialError } = await supabase
@@ -237,7 +225,7 @@ export const createProductionBatch = async (
     
     await endTransaction();
     
-    console.log(`[ProductionService] Production batch created successfully: ${batchData.id}`);
+    // console.log(`[ProductionService] Production batch created successfully: ${batchData.id}`);
     
     if (userId && userDisplayName) {
       await logSystemEvent({
@@ -268,7 +256,7 @@ export const updateProductionBatch = async (
   userId?: string,
   userDisplayName?: string
 ): Promise<void> => {
-  let existingBatchData: any = null;
+  let existingBatchData: Record<string, unknown> | null = null;
   try {
     await beginTransaction();
     
@@ -283,7 +271,7 @@ export const updateProductionBatch = async (
     }
 
     // Apply updates to main production batch
-    const batchUpdates: any = {};
+    const batchUpdates: Record<string, string | number | undefined> = {};
     if (batch.batchNumber !== undefined) batchUpdates.batch_number = batch.batchNumber;
     if (batch.productionDate !== undefined) batchUpdates.production_date = batch.productionDate.toISOString();
     if (batch.mixDay !== undefined) batchUpdates.mix_day = batch.mixDay;
@@ -335,7 +323,7 @@ export const updateProductionBatch = async (
 
     // Update used materials if provided - APENAS REGISTROS, SEM AFETAR ESTOQUE
     if (batch.usedMaterials && batch.usedMaterials.length > 0) {
-      console.log(`[UpdateProductionBatch] Atualizando insumos utilizados (apenas registros)...`);
+      // console.log(`[UpdateProductionBatch] Atualizando insumos utilizados (apenas registros)...`);
       
       // Delete existing used materials
       const { error: deleteUsedError } = await supabase
@@ -350,7 +338,7 @@ export const updateProductionBatch = async (
       
       // Insert updated used materials
       for (const material of batch.usedMaterials) {
-        console.log(`[UpdateProductionBatch] Inserindo insumo: ${material.materialName}, Quantidade: ${material.quantity}`);
+        // console.log(`[UpdateProductionBatch] Inserindo insumo: ${material.materialName}, Quantidade: ${material.quantity}`);
         
         // Insert used material record - apenas para documentação
         const { error: materialError } = await supabase
@@ -395,7 +383,7 @@ export const updateProductionBatch = async (
 };
 
 export const deleteProductionBatch = async (id: string, userId?: string, userDisplayName?: string): Promise<void> => {
-  let batchToDeleteForLog: any = { id };
+  let batchToDeleteForLog: Record<string, unknown> = { id };
   try {
     await beginTransaction();
 
@@ -410,7 +398,7 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
       batchToDeleteForLog = fetchedBatch;
     }
 
-    console.log(`[DeleteProductionBatch] Excluindo produção ${batchToDeleteForLog.batch_number} - APENAS REGISTROS, SEM AFETAR ESTOQUE`);
+    // console.log(`[DeleteProductionBatch] Excluindo produção ${batchToDeleteForLog.batch_number} - APENAS REGISTROS, SEM AFETAR ESTOQUE`);
 
     // Delete produced items
     const { error: producedItemsError } = await supabase
@@ -433,7 +421,7 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
     }
 
     // If the production was linked to a mix, mark the mix as available again
-    if (batchToDeleteForLog.mix_batch_id) {
+    if (batchToDeleteForLog.mix_batch_id && typeof batchToDeleteForLog.mix_batch_id === 'string') {
       await markMixAsAvailable(batchToDeleteForLog.mix_batch_id);
     }
 
@@ -449,7 +437,7 @@ export const deleteProductionBatch = async (id: string, userId?: string, userDis
 
     await endTransaction();
     
-    console.log(`[DeleteProductionBatch] Produção excluída com sucesso: ${id}`);
+    // console.log(`[DeleteProductionBatch] Produção excluída com sucesso: ${id}`);
     
     if (userId && userDisplayName) {
       await logSystemEvent({
