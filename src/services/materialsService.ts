@@ -71,7 +71,7 @@ export const updateMaterial = async (
   userId?: string,
   userDisplayName?: string
 ): Promise<void> => {
-  const updates: any = {};
+  const updates: Record<string, string | undefined> = {};
   
   if (material.name) updates.name = material.name;
   if (material.code !== undefined) updates.code = material.code;
@@ -143,7 +143,7 @@ export const fetchMaterialBatches = async (): Promise<MaterialBatch[]> => {
 
 // Get Material Batches with Material names and types - VERSÃO OTIMIZADA
 export const fetchMaterialBatchesWithDetails = async (): Promise<MaterialBatch[]> => {
-  console.time('🔍 Fetch MaterialBatches');
+  // console.time('🔍 Fetch MaterialBatches');
   
   // Carregamento otimizado sem limpeza de duplicatas a cada request
   const { data, error } = await supabase
@@ -169,7 +169,7 @@ export const fetchMaterialBatchesWithDetails = async (): Promise<MaterialBatch[]
     .order("created_at", { ascending: false });
   
   if (error) {
-    console.timeEnd('🔍 Fetch MaterialBatches');
+    // console.timeEnd('🔍 Fetch MaterialBatches');
     throw error;
   }
   
@@ -192,15 +192,15 @@ export const fetchMaterialBatchesWithDetails = async (): Promise<MaterialBatch[]
     updatedAt: new Date(batch.updated_at)
   }));
   
-  console.timeEnd('🔍 Fetch MaterialBatches');
-  console.log(`📦 Carregados ${result.length} lotes de materiais`);
+  // console.timeEnd('🔍 Fetch MaterialBatches');
+  // console.log(`📦 Carregados ${result.length} lotes de materiais`);
   
   return result;
 };
 
 // Função específica para buscar apenas fécula (para cálculo de capacidade produtiva)
 export const fetchFeculaBatchesOnly = async (): Promise<MaterialBatch[]> => {
-  console.time('🌾 Fetch Fécula Only');
+  // console.time('🌾 Fetch Fécula Only');
   
   const { data, error } = await supabase
     .from("material_batches")
@@ -221,7 +221,7 @@ export const fetchFeculaBatchesOnly = async (): Promise<MaterialBatch[]> => {
     .order("created_at", { ascending: false });
   
   if (error) {
-    console.timeEnd('🌾 Fetch Fécula Only');
+    // console.timeEnd('🌾 Fetch Fécula Only');
     throw error;
   }
   
@@ -244,8 +244,8 @@ export const fetchFeculaBatchesOnly = async (): Promise<MaterialBatch[]> => {
     updatedAt: new Date(batch.created_at)
   }));
   
-  console.timeEnd('🌾 Fetch Fécula Only');
-  console.log(`🌾 Carregados ${result.length} lotes de fécula`);
+  // console.timeEnd('🌾 Fetch Fécula Only');
+  // console.log(`🌾 Carregados ${result.length} lotes de fécula`);
   
   return result;
 };
@@ -294,7 +294,7 @@ export const updateMaterialBatch = async (
   id: string,
   batch: Partial<MaterialBatch>
 ): Promise<void> => {
-  const updates: any = {};
+  const updates: Record<string, string | number | Date | boolean | undefined> = {};
   
   if (batch.materialId) updates.material_id = batch.materialId;
   if (batch.batchNumber) updates.batch_number = batch.batchNumber;

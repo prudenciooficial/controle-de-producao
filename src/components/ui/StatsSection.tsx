@@ -103,8 +103,7 @@ const StatsSection: React.FC<StatsSectionProps> = ({ stats, changes }) => {
       {statItems.map((item) => {
         const isPositiveChange = item.change >= 0;
         const IconComponent = item.metricIcon;
-        // @ts-ignore
-        const styles = cardStyles[item.id] || cardStyles.production;
+        const styles = cardStyles[item.id as keyof typeof cardStyles] || cardStyles.production;
 
         return (
           <Card 
@@ -197,26 +196,14 @@ const StatsSection: React.FC<StatsSectionProps> = ({ stats, changes }) => {
                     <span>vs. mês anterior</span>
                   </div>
                 )}
-      </div>
+              </div>
 
               {/* Efeito de borda animada */}
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" 
-                   style={{
-                     background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)`,
-                     transform: 'translateX(-100%)',
-                     animation: 'shine 2s infinite'
-                   }} />
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none animate-shine" />
             </CardContent>
           </Card>
         );
       })}
-      
-      <style jsx>{`
-        @keyframes shine {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
     </div>
   );
 };

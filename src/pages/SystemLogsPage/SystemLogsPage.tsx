@@ -91,7 +91,7 @@ export default function SystemLogsPage() {
     );
   }
   
-  const handleFilterChange = (filterName: keyof LogFilters, value: any) => {
+  const handleFilterChange = (filterName: keyof LogFilters, value: string | undefined) => {
     setFilters(prev => ({ 
       ...prev, 
       [filterName]: value === 'all' ? undefined : value, 
@@ -118,17 +118,13 @@ export default function SystemLogsPage() {
 
   const handleTestQuery = async () => {
     try {
-      console.log('=== TESTE DE CONSULTA DIRETA ===');
-      
       // Primeiro teste: consulta simples
-      console.log('1. Testando consulta básica...');
       const { data: basicData, error: basicError } = await supabase
         .from('system_logs')
         .select('*')
         .limit(5);
       
       if (basicError) {
-        console.error('Erro na consulta básica:', basicError);
         toast({
           title: "Erro na consulta básica",
           description: `Erro: ${basicError.message}`,
@@ -137,35 +133,30 @@ export default function SystemLogsPage() {
         return;
       }
       
-      console.log('2. Consulta básica bem-sucedida:', basicData);
-      
       // Segundo teste: consulta com count
-      console.log('3. Testando consulta com count...');
       const { data: countData, error: countError, count } = await supabase
         .from('system_logs')
         .select('id', { count: 'exact' })
         .limit(5);
       
       if (countError) {
-        console.error('Erro na consulta com count:', countError);
-      } else {
-        console.log('4. Consulta com count bem-sucedida:', { data: countData, count });
+        toast({
+          title: "Erro na consulta com count",
+          description: `Erro: ${countError.message}`,
+          variant: "destructive",
+        });
+        return;
       }
-      
-      // Terceiro teste: verificar se o usuário atual pode inserir
-      console.log('5. Testando permissões do usuário atual...');
-      console.log('Usuário atual:', user);
       
       toast({
         title: "Consulta direta realizada",
-        description: `Encontrados ${basicData?.length || 0} registros. Total estimado: ${count || 'N/A'}. Verifique o console para detalhes.`,
+        description: `Encontrados ${basicData?.length || 0} registros. Total estimado: ${count || 'N/A'}.`,
       });
       
     } catch (error) {
-      console.error('Erro inesperado na consulta:', error);
       toast({
         title: "Erro inesperado",
-        description: "Verifique o console para mais detalhes",
+        description: "Erro inesperado na consulta aos logs",
         variant: "destructive",
       });
     }
@@ -173,17 +164,12 @@ export default function SystemLogsPage() {
 
   const handleTestLog = async () => {
     try {
-      console.log('=== TESTE DE CRIAÇÃO DE LOG ===');
-      console.log('Usuário atual:', user);
-      
       const testData = {
         message: 'Este é um log de teste',
         timestamp: new Date().toISOString(),
         user: user?.email,
         test_id: 'test-' + Date.now()
       };
-      
-      console.log('Dados do teste:', testData);
       
       await logSystemEvent({
         userId: user?.id,
@@ -194,19 +180,15 @@ export default function SystemLogsPage() {
         newData: testData
       });
       
-      console.log('Log de teste criado com sucesso!');
-      
       toast({
         title: "Log de teste criado",
         description: "Um log de teste foi registrado com sucesso!",
       });
       
       // Recarregar os logs automaticamente
-      console.log('Recarregando logs...');
       window.location.reload();
       
     } catch (error) {
-      console.error('Erro ao criar log de teste:', error);
       toast({
         title: "Erro",
         description: `Falha ao criar log de teste: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,

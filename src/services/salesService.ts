@@ -4,7 +4,7 @@ import { beginTransaction, endTransaction, abortTransaction } from "./base/supab
 import { logSystemEvent } from "./logService";
 
 export const fetchSales = async (): Promise<Sale[]> => {
-  console.log("Fetching sales...");
+  // console.log("Fetching sales...");
   
   // First, fetch the sales
   const { data: salesData, error: salesError } = await supabase
@@ -17,7 +17,7 @@ export const fetchSales = async (): Promise<Sale[]> => {
     throw salesError;
   }
   
-  console.log(`Found ${salesData?.length || 0} sales`);
+  // console.log(`Found ${salesData?.length || 0} sales`);
   
   // Create an array to store complete sales
   const sales: Sale[] = [];
@@ -68,7 +68,7 @@ export const fetchSales = async (): Promise<Sale[]> => {
     });
   }
   
-  console.log("Sales fetched successfully");
+  // console.log("Sales fetched successfully");
   return sales;
 };
 
@@ -77,12 +77,12 @@ export const createSale = async (
   userId?: string,
   userDisplayName?: string
 ): Promise<Sale> => {
-  console.log("Creating sale:", sale);
+  // console.log("Creating sale:", sale);
   
   try {
     // Start a transaction
     await beginTransaction();
-    console.log("Transaction started");
+    // console.log("Transaction started");
     
     // Insert the sale
     const { data: saleData, error: saleError } = await supabase
@@ -102,13 +102,13 @@ export const createSale = async (
       throw saleError;
     }
     
-    console.log("Sale created:", saleData);
+    // console.log("Sale created:", saleData);
     const saleId = saleData.id;
     
     // Insert sale items - let Supabase generate the IDs
     for (let i = 0; i < sale.items.length; i++) {
       const item = sale.items[i];
-      console.log(`Processing sale item ${i + 1}/${sale.items.length}:`, item);
+      // console.log(`Processing sale item ${i + 1}/${sale.items.length}:`, item);
       
       // Check available quantity before processing
       const { data: producedItem, error: checkError } = await supabase
@@ -147,7 +147,7 @@ export const createSale = async (
     
     // Commit the transaction
     await endTransaction();
-    console.log("Transaction committed successfully");
+    // console.log("Transaction committed successfully");
     
     // Log the operation (non-blocking)
     await logSystemEvent({
@@ -194,7 +194,7 @@ export const createSale = async (
       updatedAt: new Date(saleData.updated_at)
     };
     
-    console.log("Sale created successfully:", completeSale);
+    // console.log("Sale created successfully:", completeSale);
     return completeSale;
   } catch (error) {
     // Rollback on error

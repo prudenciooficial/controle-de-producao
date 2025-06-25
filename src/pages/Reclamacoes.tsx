@@ -224,7 +224,7 @@ const Reclamacoes: React.FC = () => {
       };
 
       if (tipoResolucao === 'Ressarcimento via pix') {
-        dadosResolucao.valor_ressarcimento = parseFloat(valorRessarcimento.replace(',', '.'));
+        dadosResolucao.valor_ressarcimento = parseFloat(valorRessarcimento.replace(/[^0-9,.]/g, ''));
       }
 
       const updatedReclamacao = await resolverReclamacao(reclamacaoParaResolver.id, dadosResolucao);
@@ -307,7 +307,7 @@ const Reclamacoes: React.FC = () => {
       };
 
       // Só incluir campos que podem ser editados se foram alterados
-      const fieldsToUpdate: any = { ...updateData };
+      const fieldsToUpdate: ReclamacaoUpdate = { ...updateData };
       
       // Como a API só permite atualizar status por enquanto, mantemos assim
       // mas preparamos a estrutura para futuras expansões
@@ -340,24 +340,18 @@ const Reclamacoes: React.FC = () => {
     
     if (totalPages <= 1) return null;
 
-    const generatePageNumbers = () => {
-      const pages = [];
-      const showPages = 5; // Máximo de páginas para mostrar
-      let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
-      let endPage = Math.min(totalPages, startPage + showPages - 1);
+    const showPages = 5; // Máximo de páginas para mostrar
+    let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
+    const endPage = Math.min(totalPages, startPage + showPages - 1);
 
-      if (endPage - startPage + 1 < showPages) {
-        startPage = Math.max(1, endPage - showPages + 1);
-      }
+    if (endPage - startPage + 1 < showPages) {
+      startPage = Math.max(1, endPage - showPages + 1);
+    }
 
-      for (let i = startPage; i <= endPage; i++) {
-        pages.push(i);
-      }
-
-      return pages;
-    };
-
-    const pageNumbers = generatePageNumbers();
+    const pageNumbers = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
 
     return (
       <div className="flex items-center justify-center gap-2 mt-6">
@@ -512,6 +506,15 @@ const Reclamacoes: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Lote do Produto */}
+                  {reclamacao.lote && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800">
+                        Lote: {reclamacao.lote}
+                      </Badge>
+                    </div>
+                  )}
 
                   {/* Descrição */}
                   {reclamacao.descricao_reclamacao && (
@@ -863,6 +866,16 @@ const Reclamacoes: React.FC = () => {
                 )}
               </div>
 
+              {/* Lote do Produto */}
+              {selectedReclamacao.lote && (
+                <div>
+                  <Label className="font-medium">Lote do Produto</Label>
+                  <Badge variant="secondary" className="mt-1 bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800">
+                    {selectedReclamacao.lote}
+                  </Badge>
+                </div>
+              )}
+
               {selectedReclamacao.descricao_reclamacao && (
                 <div>
                   <Label className="font-medium">Descrição da Reclamação</Label>
@@ -982,7 +995,7 @@ const Reclamacoes: React.FC = () => {
                   value={valorRessarcimento}
                   onChange={(e) => {
                     // Permitir apenas números, vírgula e ponto
-                    const value = e.target.value.replace(/[^0-9,\.]/g, '');
+                    const value = e.target.value.replace(/[^0-9,.]/g, '');
                     setValorRessarcimento(value);
                   }}
                 />
@@ -1070,6 +1083,18 @@ const Reclamacoes: React.FC = () => {
                   disabled
                 />
               </div>
+
+              {/* Lote do Produto */}
+              {editingReclamacao.lote && (
+                <div>
+                  <Label>Lote do Produto</Label>
+                  <Input
+                    value={editingReclamacao.lote || ''}
+                    placeholder="Lote do produto"
+                    disabled
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

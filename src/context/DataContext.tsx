@@ -252,7 +252,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Cache para capacidade produtiva
   const [capacityCache, setCapacityCache] = React.useState<{
-    data: any;
+    data: {
+      feculaInventory: {
+        totalUnits: number;
+        totalKg: number;
+        conversionFactor: number;
+        batches: MaterialBatch[];
+      };
+      productiveCapacity: {
+        totalUnits: number;
+        totalKg: number;
+        conversionFactor: number;
+        batches: MaterialBatch[];
+        productionFactor: number;
+        capacityKg: number;
+      };
+    };
     timestamp: number;
     materialBatchesCount: number;
   } | null>(null);
@@ -397,7 +412,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     
-    console.log('🔄 DataContext: Carregando dados...');
+    // console.log('🔄 DataContext: Carregando dados...');
     loadData();
   }, []);
 
@@ -419,10 +434,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(prev => ({ ...prev, losses: false }));
       }
     };
-
-    // Only reload losses if dateRange exists (avoid initial load duplication)
-    if (dateRange) {
-      console.log('📅 DataContext: Recarregando perdas para nova data range...');
+    
+    // Only reload losses if date range is set (avoid initial load conflicts)
+    if (dateRange && dateRange.from && dateRange.to) {
+      // console.log('♻️ DataContext: Recarregando perdas por mudança de data range...');
       reloadLossesForDateRange();
     }
   }, [dateRange, toast]);
@@ -733,14 +748,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Log the calculated values for debugging
-    console.log("Dashboard stats calculation with new profitability method:", {
-      dateRange,
-      totalProduction,
-      totalSales,
-      currentInventory,
-      productionEfficiencies,
-      averageProfitability: parseFloat(averageProfitability.toFixed(4))
-    });
+    // console.log("Dashboard stats calculation with new profitability method:", {
+    //   dateRange,
+    //   totalProduction,
+    //   totalSales,
+    //   currentInventory,
+    //   productionEfficiencies,
+    //   averageProfitability: parseFloat(averageProfitability.toFixed(4))
+    // });
 
   }, [productionBatches, sales, dateRange, products, materials, materialBatches]);
 
@@ -1242,7 +1257,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       capacityCache.materialBatchesCount === materialBatches.length;
     
     if (cacheValid) {
-      console.log('📊 Cache hit - usando dados em cache da fécula');
+      // console.log('📊 Cache hit - usando dados em cache da fécula');
       return capacityCache.data.feculaInventory;
     }
     
@@ -1264,12 +1279,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       batches: feculaBatches
     };
     
-    console.log('📊 Fécula Inventory calculado:', { 
-      batchesCount: feculaBatches.length, 
-      totalUnits, 
-      totalKg,
-      conversionFactor 
-    });
+    // console.log('📊 Fécula Inventory calculado:', { 
+    //   batchesCount: feculaBatches.length, 
+    //   totalUnits, 
+    //   totalKg,
+    //   conversionFactor 
+    // });
     
     return result;
   }, [materialBatches, globalSettings?.fecula_conversion_factor, capacityCache]);
@@ -1282,7 +1297,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       capacityCache.materialBatchesCount === materialBatches.length;
     
     if (cacheValid) {
-      console.log('🏭 Cache hit - usando dados em cache da capacidade produtiva');
+      // console.log('🏭 Cache hit - usando dados em cache da capacidade produtiva');
       return capacityCache.data.productiveCapacity;
     }
     
@@ -1295,11 +1310,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       capacityKg
     };
     
-    console.log('🏭 Capacidade Produtiva calculada:', { 
-      capacityKg, 
-      productionFactor,
-      feculaKg: feculaInventoryData.totalKg 
-    });
+    // console.log('🏭 Capacidade Produtiva calculada:', { 
+    //   capacityKg, 
+    //   productionFactor,
+    //   feculaKg: feculaInventoryData.totalKg 
+    // });
     
     // Atualizar cache
     setCapacityCache({

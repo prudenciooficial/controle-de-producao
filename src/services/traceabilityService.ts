@@ -89,9 +89,9 @@ export interface MaterialTraceability {
 }
 
 export const traceProductBatch = async (batchNumber: string): Promise<ProductTraceability | null> => {
-  console.log(`[traceProductBatch] Iniciando rastreabilidade para o lote de produção: ${batchNumber}`);
-
-  // 1. Buscar o lote de produção principal
+  // console.log(`[traceProductBatch] Iniciando rastreabilidade para o lote de produção: ${batchNumber}`);
+  
+  // 1. Buscar o lote de produção
   const { data: productionBatch, error: pbError } = await supabase
     .from("production_batches")
     .select("*")
@@ -102,9 +102,10 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
     console.error(`[traceProductBatch] Erro ao buscar lote de produção ${batchNumber}:`, pbError);
     return null;
   }
-  console.log(`[traceProductBatch] Lote de produção encontrado:`, productionBatch);
 
-  // 2. Buscar todos os itens produzidos neste lote de produção
+  // console.log(`[traceProductBatch] Lote de produção encontrado:`, productionBatch);
+
+  // 2. Buscar TODOS os itens produzidos neste lote de produção
   const { data: allProducedItemsInBatch, error: allPIError } = await supabase
     .from("produced_items")
     .select(`
@@ -115,13 +116,14 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
 
   if (allPIError) {
     console.error(`[traceProductBatch] Erro ao buscar itens produzidos para o lote ${productionBatch.id}:`, allPIError);
-    // Continuar mesmo se houver erro, pode não haver itens ou o erro é em um item específico
+    return null;
   }
+
   if (!allProducedItemsInBatch || allProducedItemsInBatch.length === 0) {
-    console.warn(`[traceProductBatch] Nenhum item produzido encontrado para o lote de produção ${productionBatch.id}. A rastreabilidade pode estar incompleta.`);
-    // Retornar null ou uma rastreabilidade parcial? Por enquanto, continua.
+    // console.warn(`[traceProductBatch] Nenhum item produzido encontrado para o lote de produção ${productionBatch.id}. A rastreabilidade pode estar incompleta.`);
   }
-  console.log(`[traceProductBatch] Itens produzidos no lote:`, allProducedItemsInBatch);
+  
+  // console.log(`[traceProductBatch] Itens produzidos no lote:`, allProducedItemsInBatch);
 
   // 3. Materiais Utilizados - buscar da produção direta
   const { data: usedMaterialsData } = await supabase
@@ -134,10 +136,10 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
       )
     `)
     .eq("production_batch_id", productionBatch.id);
-  console.log(`[traceProductBatch] Dados brutos de materiais utilizados na produção:`, usedMaterialsData);
+  // console.log(`[traceProductBatch] Dados brutos de materiais utilizados na produção:`, usedMaterialsData);
 
   // 4. Buscar materiais utilizados na mexida vinculada (se houver)
-  let usedMaterialsFromMix: any[] = [];
+  let usedMaterialsFromMix: typeof usedMaterialsData = [];
   if (productionBatch.mix_batch_id) {
     const { data: mixUsedMaterialsData } = await supabase
       .from("used_materials_mix")
@@ -150,8 +152,12 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
       `)
       .eq("mix_batch_id", productionBatch.mix_batch_id);
     
-    console.log(`[traceProductBatch] Dados brutos de materiais utilizados na mexida vinculada:`, mixUsedMaterialsData);
-    usedMaterialsFromMix = mixUsedMaterialsData || [];
+    // console.log(`[traceProductBatch] Dados brutos de materiais utilizados na mexida vinculada:`, mixUsedMaterialsData);
+    // Mapear dados de used_materials_mix para a mesma estrutura de used_materials
+    usedMaterialsFromMix = (mixUsedMaterialsData || []).map(item => ({
+      ...item,
+      production_batch_id: productionBatch.id, // Adicionar o production_batch_id atual
+    }));
   }
 
   // 5. Combinar todos os materiais utilizados (produção + mexida)
@@ -178,7 +184,7 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
       };
     })
   );
-  console.log(`[traceProductBatch] Materiais utilizados com fornecedor (produção + mexida):`, usedMaterialsWithSupplier);
+  // console.log(`[traceProductBatch] Materiais utilizados com fornecedor (produção + mexida):`, usedMaterialsWithSupplier);
 
   // 6. Vendas (precisa buscar para todos os produced_item_ids do lote)
   let sales: ProductTraceability['sales'] = [];
@@ -193,7 +199,7 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
       `)
       .in("produced_item_id", producedItemIds);
     
-    console.log(`[traceProductBatch] Itens de venda encontrados:`, saleItems);
+    // console.log(`[traceProductBatch] Itens de venda encontrados:`, saleItems);
     sales = (saleItems || []).map(item => ({
       id: item.id,
       date: new Date(item.sales.date),
@@ -205,7 +211,7 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
       unitOfMeasure: item.produced_items?.products?.unit_of_measure || item.unit_of_measure || 'Unidade Indisponível',
     }));
   }
-  console.log(`[traceProductBatch] Vendas processadas:`, sales);
+  // console.log(`[traceProductBatch] Vendas processadas:`, sales);
 
   // 7. "Related Products" agora são basicamente todos os itens no lote
   // A interface `ProductTraceability` pode precisar ser repensada se não houver um "produto principal" 
@@ -220,12 +226,12 @@ export const traceProductBatch = async (batchNumber: string): Promise<ProductTra
     quantity: item.quantity,
     unitOfMeasure: item.products?.unit_of_measure || item.unit_of_measure || 'Unidade Indisponível',
   }));
-  console.log(`[traceProductBatch] Produtos relacionados (todos no lote):`, relatedProducts);
+  // console.log(`[traceProductBatch] Produtos relacionados (todos no lote):`, relatedProducts);
 
   // 8. Rastreabilidade Reversa (agora usa todos os materiais: produção + mexida)
   const materialBatchIds = uniqueUsedMaterials.map(um => um.material_batch_id).filter(id => id != null) as string[];
   const reverseTraceability = await getReverseTraceability(materialBatchIds, productionBatch.id);
-  console.log(`[traceProductBatch] Rastreabilidade reversa:`, reverseTraceability);
+  // console.log(`[traceProductBatch] Rastreabilidade reversa:`, reverseTraceability);
 
   return {
     productionDetails: {
@@ -348,10 +354,10 @@ export const traceMaterialBatch = async (batchNumber: string): Promise<MaterialT
 };
 
 export const getSupplierFromMaterialBatch = async (materialBatchId: string): Promise<{ name: string; invoiceNumber: string; orderDate: Date } | undefined> => {
-  console.log(`[GSFMB] Iniciando busca de fornecedor para materialBatchId: ${materialBatchId}`);
+  // console.log(`[GSFMB] Iniciando busca de fornecedor para materialBatchId: ${materialBatchId}`);
 
   if (!materialBatchId) {
-    console.warn('[GSFMB] materialBatchId não fornecido.');
+    // console.warn('[GSFMB] materialBatchId não fornecido.');
     return undefined;
   }
 
@@ -363,13 +369,14 @@ export const getSupplierFromMaterialBatch = async (materialBatchId: string): Pro
     .single();
 
   if (matBatchErr || !matBatchDetails) {
-    console.error(`[GSFMB] Erro ao buscar detalhes do lote de material (ID: ${materialBatchId}):`, matBatchErr);
+    // console.error(`[GSFMB] Erro ao buscar detalhes do lote de material (ID: ${materialBatchId}):`, matBatchErr);
     return undefined;
   }
 
-  const textualBatchNumber = (matBatchDetails as any).batch_number; // Usando (as any) temporariamente
+  const textualBatchNumber = matBatchDetails.batch_number;
 
   if (!textualBatchNumber) {
+    // console.warn(`[GSFMB] Lote de material (ID: ${materialBatchId}) não possui um batch_number textual associado. matBatchDetails:`, matBatchDetails);
     console.warn(`[GSFMB] Lote de material (ID: ${materialBatchId}) não possui um batch_number textual associado. matBatchDetails:`, matBatchDetails);
     return undefined;
   }
@@ -392,7 +399,7 @@ export const getSupplierFromMaterialBatch = async (materialBatchId: string): Pro
     return undefined;
   }
   
-  const orderIdFromOrderItem = (orderItem as any).order_id; // Usando (as any) temporariamente
+  const orderIdFromOrderItem = orderItem.order_id;
 
   if (!orderIdFromOrderItem) {
     console.warn(`[GSFMB] order_item encontrado para batch_number ${textualBatchNumber}, mas não possui order_id. OrderItem:`, orderItem);
@@ -413,9 +420,9 @@ export const getSupplierFromMaterialBatch = async (materialBatchId: string): Pro
   }
 
   // Passo 4: Verificar e extrair dados do fornecedor
-  const supplierName = orderData.suppliers ? (orderData.suppliers as any).name : null; // (as any) para suppliers.name
-  const invoiceNumberFromOrder = (orderData as any).invoice_number;
-  const dateFromOrder = (orderData as any).date;
+  const supplierName = orderData.suppliers ? (orderData.suppliers as { name: string }).name : null;
+  const invoiceNumberFromOrder = orderData.invoice_number;
+  const dateFromOrder = orderData.date;
 
   if (!supplierName) {
     console.warn(`[GSFMB] Fornecedor não encontrado (ou nome do fornecedor ausente) para o pedido ${orderIdFromOrderItem}. Detalhes do pedido:`, orderData);
@@ -433,7 +440,7 @@ export const getSupplierFromMaterialBatch = async (materialBatchId: string): Pro
         }
         console.log(`[GSFMB] Fornecedor encontrado diretamente: ${directSupplier.name}`);
         return {
-            name: (directSupplier as any).name,
+            name: directSupplier.name,
             invoiceNumber: invoiceNumberFromOrder,
             orderDate: new Date(dateFromOrder),
         };
@@ -491,7 +498,7 @@ export const findRelatedBatches = async (batchNumber: string): Promise<{type: 'p
   console.log(`[findRelatedBatches] Buscando lote: ${batchNumber}`);
   // 1. Verificar em produced_items (mais específico para um item de produto já fabricado com esse lote)
   // Se encontrarmos aqui, ele já é um produto e tem um production_batch_id associado.
-  let { data: producedItem, error: piError } = await supabase
+  const { data: producedItem, error: piError } = await supabase
     .from("produced_items")
     .select("id, production_batch_id")
     .eq("batch_number", batchNumber)
@@ -505,7 +512,7 @@ export const findRelatedBatches = async (batchNumber: string): Promise<{type: 'p
   }
 
   // 2. Verificar em production_batches (se o batchNumber é de um lote de produção geral)
-  let { data: productionBatch, error: pbError } = await supabase
+  const { data: productionBatch, error: pbError } = await supabase
     .from("production_batches")
     .select("id")
     .eq("batch_number", batchNumber)
@@ -519,7 +526,7 @@ export const findRelatedBatches = async (batchNumber: string): Promise<{type: 'p
   }
 
   // 3. Verificar em material_batches
-  let { data: materialBatch, error: mbError } = await supabase
+  const { data: materialBatch, error: mbError } = await supabase
     .from("material_batches")
     .select("id")
     .eq("batch_number", batchNumber)

@@ -13,7 +13,23 @@ interface SidebarProps {
   onMobileMenuToggle?: () => void;
 }
 
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
+
+type SubMenuItem = {
+  name: string;
+  path: string;
+  icon: React.ElementType;
+  module?: string;
+};
+
+type MenuItem = {
+  name: string;
+  path?: string;
+  icon: React.ElementType;
+  module?: string;
+  permissionCheck?: () => boolean;
+  subItems?: SubMenuItem[];
+};
 
 export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) {
   const location = useLocation();
@@ -21,24 +37,8 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
   const { hasRole, canViewSystemLogs } = useAuth();
   const { getModuleAccess } = useModulePermissions();
   const [isDesktopSidebarExpanded, setIsDesktopSidebarExpanded] = useState(false);
-  const [availableMenuItems, setAvailableMenuItems] = useState<any[]>([]);
+  const [availableMenuItems, setAvailableMenuItems] = useState<MenuItem[]>([]);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
-
-  type SubMenuItem = {
-    name: string;
-    path: string;
-    icon: React.ElementType;
-    module?: string;
-  };
-
-  type MenuItem = {
-    name: string;
-    path?: string;
-    icon: React.ElementType;
-    module?: string;
-    permissionCheck?: () => boolean;
-    subItems?: SubMenuItem[];
-  };
 
   const [allMenuItems] = useState<MenuItem[]>([
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, module: "dashboard" },
@@ -93,31 +93,31 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
 
   useEffect(() => {
     const checkPermissions = () => {
-      console.log('Verificando permissões dos módulos...');
+      // console.log('Verificando permissões dos módulos...');
       const filteredItems = [];
       
       for (const item of allMenuItems) {
-        console.log(`Verificando item: ${item.name}`);
+        // console.log(`Verificando item: ${item.name}`);
         
         if (hasRole('admin')) {
-          console.log(`Admin tem acesso a ${item.name}`);
+          // console.log(`Admin tem acesso a ${item.name}`);
           filteredItems.push(item);
           continue;
         }
         
         if (item.permissionCheck) {
           if (item.permissionCheck()) {
-            console.log(`Permissão customizada aprovada para ${item.name}`);
+            // console.log(`Permissão customizada aprovada para ${item.name}`);
             filteredItems.push(item);
           } else {
-            console.log(`Permissão customizada negada para ${item.name}`);
+            // console.log(`Permissão customizada negada para ${item.name}`);
           }
           continue;
         }
 
         if (item.module) {
           const hasAccess = getModuleAccess(item.module);
-          console.log(`Módulo ${item.module} (${item.name}): ${hasAccess ? 'APROVADO' : 'NEGADO'}`);
+          // console.log(`Módulo ${item.module} (${item.name}): ${hasAccess ? 'APROVADO' : 'NEGADO'}`);
           
           if (hasAccess) {
             // Se o item tem subitens, filtrar com base nas permissões individuais
@@ -125,7 +125,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
               const filteredSubItems = item.subItems.filter(subItem => {
                 if (!subItem.module) return true; // Se não tem módulo, assume que tem acesso
                 const subItemAccess = getModuleAccess(subItem.module);
-                console.log(`Subitem ${subItem.name} (módulo: ${subItem.module}): ${subItemAccess ? 'APROVADO' : 'NEGADO'}`);
+                // console.log(`Subitem ${subItem.name} (módulo: ${subItem.module}): ${subItemAccess ? 'APROVADO' : 'NEGADO'}`);
                 return subItemAccess;
               });
               
@@ -143,7 +143,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         }
       }
       
-      console.log('Itens de menu disponíveis:', filteredItems.map(item => item.name));
+      // console.log('Itens de menu disponíveis:', filteredItems.map(item => item.name));
       setAvailableMenuItems(filteredItems);
     };
 

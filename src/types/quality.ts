@@ -14,6 +14,7 @@ export interface Reclamacao {
   tipo_resolucao?: string;          // Como foi resolvida: Ressarcimento via pix, Envio de produto, Outros
   valor_ressarcimento?: number;     // Valor do ressarcimento (se aplicável)
   data_resolucao?: string;          // Data quando foi resolvida
+  lote?: string;                    // Lote do produto da reclamação
 }
 
 export interface ReclamacaoCreate {
@@ -30,6 +31,7 @@ export interface ReclamacaoCreate {
   tipo_resolucao?: string;
   valor_ressarcimento?: number;
   data_resolucao?: string;
+  lote?: string;
 }
 
 export interface ReclamacaoUpdate {
@@ -37,6 +39,7 @@ export interface ReclamacaoUpdate {
   tipo_resolucao?: string;
   valor_ressarcimento?: number;
   data_resolucao?: string;
+  lote?: string;
   // Outros campos podem ser atualizados se necessário
 }
 

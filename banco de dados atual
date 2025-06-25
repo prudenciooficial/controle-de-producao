@@ -1,0 +1,304 @@
+esse arquivo é apenas para estudo da estrutura do banco de dados atual vinculado com esse sistema.
+
+
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.baixas_estoque (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  data date NOT NULL,
+  lote_material_id uuid NOT NULL,
+  quantidade numeric NOT NULL CHECK (quantidade > 0::numeric),
+  observacoes text,
+  criado_em timestamp with time zone DEFAULT now(),
+  atualizado_em timestamp with time zone DEFAULT now(),
+  CONSTRAINT baixas_estoque_pkey PRIMARY KEY (id),
+  CONSTRAINT baixas_estoque_lote_material_id_fkey FOREIGN KEY (lote_material_id) REFERENCES public.material_batches(id)
+);
+CREATE TABLE public.configuracoes_empresa (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nome_empresa character varying NOT NULL,
+  cnpj character varying NOT NULL,
+  endereco text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  telefone character varying,
+  email character varying,
+  logo_url text,
+  ativa boolean DEFAULT true,
+  CONSTRAINT configuracoes_empresa_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.feriados (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nome character varying NOT NULL,
+  data date NOT NULL,
+  tipo character varying NOT NULL CHECK (tipo::text = ANY (ARRAY['nacional'::character varying, 'estadual'::character varying, 'municipal'::character varying]::text[])),
+  ano integer NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  descricao text,
+  CONSTRAINT feriados_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.funcionarios (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nome_completo character varying NOT NULL,
+  cpf character varying NOT NULL UNIQUE,
+  cargo character varying NOT NULL,
+  data_admissao date NOT NULL,
+  jornada_id uuid,
+  status character varying NOT NULL DEFAULT 'ativo'::character varying CHECK (status::text = ANY (ARRAY['ativo'::character varying, 'inativo'::character varying]::text[])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  setor character varying NOT NULL DEFAULT 'Produção'::character varying CHECK (setor::text = ANY (ARRAY['Produção'::character varying, 'Administrativo'::character varying]::text[])),
+  empresa_id uuid,
+  CONSTRAINT funcionarios_pkey PRIMARY KEY (id),
+  CONSTRAINT funcionarios_jornada_id_fkey FOREIGN KEY (jornada_id) REFERENCES public.jornadas_trabalho(id),
+  CONSTRAINT funcionarios_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES public.configuracoes_empresa(id)
+);
+CREATE TABLE public.global_settings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  fecula_conversion_factor numeric DEFAULT 25,
+  production_prediction_factor numeric DEFAULT 1.5,
+  conservant_conversion_factor numeric DEFAULT 1,
+  conservant_usage_factor numeric DEFAULT 0.1,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT global_settings_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.jornadas_trabalho (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nome character varying NOT NULL,
+  descricao_impressao text NOT NULL,
+  horarios_estruturados jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT jornadas_trabalho_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.losses (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  date timestamp with time zone NOT NULL,
+  production_batch_id uuid NOT NULL,
+  machine text NOT NULL,
+  quantity numeric NOT NULL,
+  unit_of_measure text NOT NULL,
+  product_type text NOT NULL,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  batch_number text,
+  CONSTRAINT losses_pkey PRIMARY KEY (id),
+  CONSTRAINT losses_production_batch_id_fkey FOREIGN KEY (production_batch_id) REFERENCES public.production_batches(id)
+);
+CREATE TABLE public.material_batches (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  material_id uuid NOT NULL,
+  batch_number text NOT NULL,
+  quantity numeric NOT NULL,
+  supplied_quantity numeric NOT NULL,
+  remaining_quantity numeric NOT NULL,
+  unit_of_measure text NOT NULL,
+  expiry_date timestamp with time zone,
+  has_report boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  order_item_id uuid,
+  CONSTRAINT material_batches_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_material_batches_order_item FOREIGN KEY (order_item_id) REFERENCES public.order_items(id),
+  CONSTRAINT material_batches_material_id_fkey FOREIGN KEY (material_id) REFERENCES public.materials(id)
+);
+CREATE TABLE public.materials (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  code text UNIQUE,
+  type text NOT NULL,
+  unit_of_measure text NOT NULL,
+  description text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT materials_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.mix_batches (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  batch_number character varying NOT NULL UNIQUE,
+  mix_date date NOT NULL,
+  mix_day character varying NOT NULL,
+  mix_count integer NOT NULL DEFAULT 1 CHECK (mix_count > 0),
+  notes text,
+  status character varying NOT NULL DEFAULT 'available'::character varying CHECK (status::text = ANY (ARRAY['available'::character varying, 'used'::character varying, 'expired'::character varying]::text[])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT mix_batches_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.order_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL,
+  material_id uuid NOT NULL,
+  quantity numeric NOT NULL,
+  unit_of_measure text NOT NULL,
+  batch_number text NOT NULL,
+  expiry_date timestamp with time zone,
+  has_report boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT order_items_pkey PRIMARY KEY (id),
+  CONSTRAINT order_items_material_id_fkey FOREIGN KEY (material_id) REFERENCES public.materials(id),
+  CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
+);
+CREATE TABLE public.orders (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  date timestamp with time zone NOT NULL,
+  invoice_number text NOT NULL,
+  supplier_id uuid NOT NULL,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT orders_pkey PRIMARY KEY (id),
+  CONSTRAINT orders_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.suppliers(id)
+);
+CREATE TABLE public.produced_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  production_batch_id uuid NOT NULL,
+  product_id uuid NOT NULL,
+  quantity numeric NOT NULL,
+  unit_of_measure text NOT NULL,
+  batch_number text NOT NULL,
+  remaining_quantity numeric NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT produced_items_pkey PRIMARY KEY (id),
+  CONSTRAINT produced_items_production_batch_id_fkey FOREIGN KEY (production_batch_id) REFERENCES public.production_batches(id),
+  CONSTRAINT produced_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
+);
+CREATE TABLE public.production_batches (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  batch_number text NOT NULL UNIQUE,
+  production_date timestamp with time zone NOT NULL,
+  mix_day text NOT NULL,
+  mix_count integer NOT NULL,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  status text NOT NULL DEFAULT 'complete'::text CHECK (status = ANY (ARRAY['complete'::text, 'rework'::text])),
+  mix_batch_id uuid,
+  CONSTRAINT production_batches_pkey PRIMARY KEY (id),
+  CONSTRAINT production_batches_mix_batch_id_fkey FOREIGN KEY (mix_batch_id) REFERENCES public.mix_batches(id)
+);
+CREATE TABLE public.products (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  unit_of_measure text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  weight_factor numeric DEFAULT 1,
+  fecula_conversion_factor numeric DEFAULT 25,
+  production_prediction_factor numeric DEFAULT 1.5,
+  conservant_conversion_factor numeric DEFAULT 1,
+  conservant_usage_factor numeric DEFAULT 0.1,
+  type text,
+  notes text,
+  CONSTRAINT products_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.reclamacoes (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  protocolo text,
+  nome_cliente text,
+  supermercado text,
+  cidade_estado text,
+  url_foto_lote text,
+  url_foto_problema text,
+  descricao_reclamacao text,
+  contato_wa text,
+  link_contato_wa text,
+  status text NOT NULL DEFAULT 'Nova'::text,
+  tipo_resolucao text,
+  valor_ressarcimento numeric,
+  data_resolucao timestamp with time zone,
+  lote character varying,
+  CONSTRAINT reclamacoes_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.sale_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  sale_id uuid NOT NULL,
+  product_id uuid NOT NULL,
+  produced_item_id uuid NOT NULL,
+  quantity numeric NOT NULL,
+  unit_of_measure text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT sale_items_pkey PRIMARY KEY (id),
+  CONSTRAINT sale_items_produced_item_id_fkey FOREIGN KEY (produced_item_id) REFERENCES public.produced_items(id),
+  CONSTRAINT sale_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id),
+  CONSTRAINT sale_items_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES public.sales(id)
+);
+CREATE TABLE public.sales (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  date timestamp with time zone NOT NULL,
+  invoice_number text NOT NULL,
+  customer_name text NOT NULL,
+  type text NOT NULL,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT sales_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.sessoes_chat (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  chat_id text NOT NULL UNIQUE,
+  dados_coletados jsonb,
+  historico_conversa jsonb,
+  status character varying DEFAULT 'aberto'::character varying,
+  ultima_interacao timestamp with time zone DEFAULT now(),
+  CONSTRAINT sessoes_chat_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.suppliers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  code text UNIQUE,
+  contacts text,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT suppliers_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.system_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  user_id uuid,
+  action_type text NOT NULL,
+  entity_schema text NOT NULL DEFAULT 'public'::text,
+  entity_table text NOT NULL,
+  entity_id text,
+  old_data jsonb,
+  new_data jsonb,
+  user_display_name text,
+  CONSTRAINT system_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT system_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.used_materials (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  production_batch_id uuid NOT NULL,
+  material_batch_id uuid NOT NULL,
+  quantity numeric NOT NULL,
+  unit_of_measure text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  mix_count_used integer,
+  CONSTRAINT used_materials_pkey PRIMARY KEY (id),
+  CONSTRAINT used_materials_material_batch_id_fkey FOREIGN KEY (material_batch_id) REFERENCES public.material_batches(id),
+  CONSTRAINT used_materials_production_batch_id_fkey FOREIGN KEY (production_batch_id) REFERENCES public.production_batches(id)
+);
+CREATE TABLE public.used_materials_mix (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  mix_batch_id uuid NOT NULL,
+  material_batch_id uuid NOT NULL,
+  quantity numeric NOT NULL DEFAULT 0 CHECK (quantity >= 0::numeric),
+  unit_of_measure character varying NOT NULL DEFAULT 'kg'::character varying,
+  mix_count_used integer,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT used_materials_mix_pkey PRIMARY KEY (id),
+  CONSTRAINT used_materials_mix_material_batch_id_fkey FOREIGN KEY (material_batch_id) REFERENCES public.material_batches(id),
+  CONSTRAINT used_materials_mix_mix_batch_id_fkey FOREIGN KEY (mix_batch_id) REFERENCES public.mix_batches(id)
+);

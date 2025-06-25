@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { useData } from "@/context/DataContext";
 import { LayoutDashboard, ShoppingCart, Package, DollarSign, Factory, Loader2, TrendingDown, TrendingUp, Info, AlertTriangle, ClipboardList } from "lucide-react";
 import { SimpleDateFilter } from "@/components/ui/simple-date-filter";
@@ -13,6 +13,32 @@ import { InventoryDetailsDialog } from "@/components/inventory/InventoryDetailsD
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { StatsSection } from "@/components/ui/StatsSection";
 import { motion } from "framer-motion";
+
+// Types for Dashboard components
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    color: string;
+    payload: {
+      date: Date;
+      production?: number;
+      sales?: number;
+      losses?: number;
+      productionChange?: number;
+      salesChange?: number;
+      percentageChange?: number;
+    };
+  }>;
+  label?: string;
+}
+
+interface ChartEntry {
+  name: string;
+  value: number;
+  color: string;
+}
 
 // Função melhorada para calcular mudança percentual
 const getPercentChange = (current: number, previous: number) => {
@@ -44,10 +70,10 @@ const Dashboard = () => {
   } = useData();
   
   // State for inventory details dialog
-  const [selectedItem, setSelectedItem] = React.useState<any>(null);
+  const [selectedItem, setSelectedItem] = React.useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [dialogType, setDialogType] = React.useState<"product" | "material">("product");
-  const [selectedBatches, setSelectedBatches] = React.useState<any[]>([]);
+  const [selectedBatches, setSelectedBatches] = React.useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   
   // Define previous month stats for comparison
   const [previousMonthStats, setPreviousMonthStats] = React.useState({
@@ -145,7 +171,6 @@ const Dashboard = () => {
     // Set default date range to current month if not set
     // BUT only if we're not already loading data to avoid double refresh
     if (!dateRange && !isLoading.productionBatches) {
-      console.log('📅 Dashboard: Definindo data range inicial...');
       const today = new Date();
       setDateRange({
         from: startOfMonth(today),
@@ -510,7 +535,7 @@ const Dashboard = () => {
   });
   
   // Handle view details
-  const handleViewDetails = (item: any, type: "product" | "material") => {
+  const handleViewDetails = (item: any, type: "product" | "material") => { // eslint-disable-line @typescript-eslint/no-explicit-any
     setSelectedItem(item);
     setDialogType(type);
     
@@ -542,7 +567,7 @@ const Dashboard = () => {
   };
   
   // Tooltip melhorado para Perdas 
-  const LossesTooltip = ({ active, payload, label }: any) => {
+  const LossesTooltip = ({ active, payload, label }: TooltipProps) => {
     if (active && payload && payload.length && payload[0].payload) {
       const data = payload[0].payload;
       const dateLabel = showDailyChart 
@@ -555,7 +580,7 @@ const Dashboard = () => {
         <div className="bg-background border border-border p-2 rounded-md shadow-md">
           <p className="font-medium">{dateLabel}</p>
           <p className="text-sm text-red-500">
-            Perdas: {formatNumberBR(data.losses, { roundBeforeFormat: true })} kg
+            Perdas: {formatNumberBR(data.losses || 0, { roundBeforeFormat: true })} kg
           </p>
           {/* Mostrar variação se existir e não for NaN */}
           {percentageChangeValue !== undefined && 
@@ -584,7 +609,7 @@ const Dashboard = () => {
   };
   
   // Tooltip customizado melhorado para Produção vs Vendas
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const dateLabel = showDailyChart 
@@ -594,7 +619,7 @@ const Dashboard = () => {
       return (
         <div className="bg-background border border-border p-2 rounded-md shadow-md">
           <p className="font-medium">{dateLabel}</p>
-          {payload.map((entry: any, index: number) => {
+          {payload.map((entry: ChartEntry, index: number) => {
             const isProduction = entry.name === "Produção (kg)";
             const percentChange = isProduction ? data.productionChange : data.salesChange;
             
@@ -681,41 +706,39 @@ const Dashboard = () => {
             <CardContent className="relative">
               {/* Fundo gradiente REMOVIDO */}
               <ChartContainer config={{}} className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={getChartData()}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis 
-                      dataKey={showDailyChart ? "day" : "month"}
-                      className="text-xs"
-                      tick={{ fontSize: 11 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={70}
-                      interval={0}
-                    />
-                    <YAxis className="text-xs" tick={{ fontSize: 11 }} />
-                    <ChartTooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="production" 
-                      stroke="#3b82f6"
-                      strokeWidth={3}
-                      dot={{ r: 4, strokeWidth: 2, fill: '#3b82f6' }}
-                      activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#3b82f6' }}
-                      name="Produção (kg)" 
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="sales" 
-                      stroke="#10b981"
-                      strokeWidth={3}
-                      dot={{ r: 4, strokeWidth: 2, fill: '#10b981' }}
-                      activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: '#10b981' }}
-                      name="Vendas (kg)" 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <LineChart data={getChartData()}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis 
+                    dataKey={showDailyChart ? "day" : "month"}
+                    className="text-xs"
+                    tick={{ fontSize: 11 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={70}
+                    interval={0}
+                  />
+                  <YAxis className="text-xs" tick={{ fontSize: 11 }} />
+                  <ChartTooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="production" 
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    dot={{ r: 4, strokeWidth: 2, fill: '#3b82f6' }}
+                    activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#3b82f6' }}
+                    name="Produção (kg)" 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="sales" 
+                    stroke="#10b981"
+                    strokeWidth={3}
+                    dot={{ r: 4, strokeWidth: 2, fill: '#10b981' }}
+                    activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: '#10b981' }}
+                    name="Vendas (kg)" 
+                  />
+                </LineChart>
               </ChartContainer>
             </CardContent>
           </Card>
@@ -735,32 +758,30 @@ const Dashboard = () => {
             <CardContent className="relative">
               {/* Fundo gradiente REMOVIDO */}
               <ChartContainer config={{}} className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={getLossesChartData()}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis 
-                      dataKey={showDailyChart ? "day" : "month"}
-                      className="text-xs"
-                      tick={{ fontSize: 11 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={70}
-                      interval={0}
-                    />
-                    <YAxis className="text-xs" tick={{ fontSize: 11 }} />
-                    <ChartTooltip content={<LossesTooltip />} />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="losses" 
-                      stroke="#ef4444"
-                      strokeWidth={3}
-                      dot={{ r: 4, strokeWidth: 2, fill: '#ef4444' }}
-                      activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: '#ef4444' }}
-                      name="Perdas (kg)" 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <LineChart data={getLossesChartData()}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis 
+                    dataKey={showDailyChart ? "day" : "month"}
+                    className="text-xs"
+                    tick={{ fontSize: 11 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={70}
+                    interval={0}
+                  />
+                  <YAxis className="text-xs" tick={{ fontSize: 11 }} />
+                  <ChartTooltip content={<LossesTooltip />} />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="losses" 
+                    stroke="#ef4444"
+                    strokeWidth={3}
+                    dot={{ r: 4, strokeWidth: 2, fill: '#ef4444' }}
+                    activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: '#ef4444' }}
+                    name="Perdas (kg)" 
+                  />
+                </LineChart>
               </ChartContainer>
             </CardContent>
           </Card>

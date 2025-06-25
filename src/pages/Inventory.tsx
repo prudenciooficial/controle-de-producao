@@ -64,10 +64,10 @@ const Inventory = () => {
   const { toast } = useToast();
   const [productSearch, setProductSearch] = useState("");
   const [materialSearch, setMaterialSearch] = useState("");
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"product" | "material">("product");
-  const [selectedBatches, setSelectedBatches] = useState<any[]>([]);
+  const [selectedBatches, setSelectedBatches] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [activeTab, setActiveTab] = useState("produtos");
   
   const availableProducts = getAvailableProducts();
@@ -194,38 +194,38 @@ const Inventory = () => {
         case "Fécula":
           return { 
             icon: <Beaker className="h-5 w-5" />, 
-            color: "text-blue-600 bg-blue-50 border-blue-200",
-            gradientClass: "from-blue-50 to-blue-100"
+            color: "text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950 dark:border-blue-800",
+            gradientClass: "from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900"
           };
         case "Conservante":
           return { 
             icon: <Package2 className="h-5 w-5" />, 
-            color: "text-green-600 bg-green-50 border-green-200",
-            gradientClass: "from-green-50 to-green-100"
+            color: "text-green-600 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-950 dark:border-green-800",
+            gradientClass: "from-green-50 to-green-100 dark:from-green-950 dark:to-green-900"
           };
         case "Embalagem":
           return { 
             icon: <Archive className="h-5 w-5" />, 
-            color: "text-yellow-600 bg-yellow-50 border-yellow-200",
-            gradientClass: "from-yellow-50 to-yellow-100"
+            color: "text-yellow-600 bg-yellow-50 border-yellow-200 dark:text-yellow-400 dark:bg-yellow-950 dark:border-yellow-800",
+            gradientClass: "from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900"
           };
         case "Saco":
           return { 
             icon: <Package className="h-5 w-5" />, 
-            color: "text-purple-600 bg-purple-50 border-purple-200",
-            gradientClass: "from-purple-50 to-purple-100"
+            color: "text-purple-600 bg-purple-50 border-purple-200 dark:text-purple-400 dark:bg-purple-950 dark:border-purple-800",
+            gradientClass: "from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900"
           };
         case "Caixa":
           return { 
             icon: <Factory className="h-5 w-5" />, 
-            color: "text-orange-600 bg-orange-50 border-orange-200",
-            gradientClass: "from-orange-50 to-orange-100"
+            color: "text-orange-600 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-950 dark:border-orange-800",
+            gradientClass: "from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900"
           };
         default:
           return { 
             icon: <Package className="h-5 w-5" />, 
-            color: "text-gray-600 bg-gray-50 border-gray-200",
-            gradientClass: "from-gray-50 to-gray-100"
+            color: "text-gray-600 bg-gray-50 border-gray-200 dark:text-gray-400 dark:bg-gray-950 dark:border-gray-800",
+            gradientClass: "from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900"
           };
       }
     };
@@ -359,7 +359,7 @@ const Inventory = () => {
   
   // Handle view details (optimized to prevent recalculation)
   const handleViewDetails = useMemo(() => {
-    return (item: any, type: "product" | "material") => {
+    return (item: any, type: "product" | "material") => { // eslint-disable-line @typescript-eslint/no-explicit-any
       setSelectedItem(item);
       setDialogType(type);
       
@@ -403,7 +403,7 @@ const Inventory = () => {
 
   // Stats cards component (memoized)
   const StatsCards = useMemo(() => {
-    return React.memo(({ stats, type }: { stats: any, type: 'products' | 'materials' }) => (
+    return React.memo(({ stats, type }: { stats: { totalTypes: number; totalBatches: number; totalQuantity: number; expiredItems?: number; expiringSoon?: number }, type: 'products' | 'materials' }) => (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -493,7 +493,7 @@ const Inventory = () => {
 
   // Product Card Component (memoized)
   const ProductCard = useMemo(() => {
-    return React.memo(({ product, index }: { product: any, index: number }) => (
+    return React.memo(({ product, index }: { product: { name: string; total: number; unitOfMeasure: string; batches: number; products: unknown[] }, index: number }) => (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -536,7 +536,7 @@ const Inventory = () => {
 
   // Material Card Component (memoized)
   const MaterialCard = useMemo(() => {
-    return React.memo(({ material, typeConfig, index }: { material: any, typeConfig: any, index: number }) => (
+    return React.memo(({ material, typeConfig, index }: { material: any, typeConfig: any, index: number }) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -588,8 +588,8 @@ const Inventory = () => {
               {/* Progress bar para mostrar quantidade disponível vs original */}
               {(() => {
                 // Calcular a quantidade original total e disponível total
-                const totalOriginal = material.materials.reduce((sum: number, batch: any) => sum + batch.quantity, 0);
-                const totalRemaining = material.materials.reduce((sum: number, batch: any) => sum + batch.remainingQuantity, 0);
+                const totalOriginal = material.materials.reduce((sum: number, batch: any) => sum + batch.quantity, 0); // eslint-disable-line @typescript-eslint/no-explicit-any
+                const totalRemaining = material.materials.reduce((sum: number, batch: any) => sum + batch.remainingQuantity, 0); // eslint-disable-line @typescript-eslint/no-explicit-any
                 const percentage = totalOriginal > 0 ? (totalRemaining / totalOriginal) * 100 : 0;
                 
                 return (

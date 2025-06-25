@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
@@ -97,37 +97,29 @@ const Production = () => {
   const [availableMixes, setAvailableMixes] = useState<MixBatch[]>([]);
   const [isLoadingMixes, setIsLoadingMixes] = useState<boolean>(true);
 
-  // useEffect para buscar mexidas disponíveis
-  React.useEffect(() => {
-    const fetchMixes = async () => {
-      setIsLoadingMixes(true);
-      try {
-        console.log("🔄 Buscando mexidas disponíveis...");
-        const mixes = await fetchAvailableMixBatches();
-        console.log("✅ Mexidas carregadas:", mixes.length, "mexidas encontradas");
-        setAvailableMixes(mixes);
-        
-        if (mixes.length === 0) {
-          console.warn("⚠️ Nenhuma mexida disponível encontrada");
-          toast({ 
-            variant: "default", 
-            title: "Aviso", 
-            description: "Nenhuma mexida disponível encontrada. Você precisa criar uma mexida primeiro." 
-          });
-        }
-      } catch (error) {
-        console.error("❌ Erro ao buscar mexidas:", error);
-        toast({ 
-          variant: "destructive", 
-          title: "Erro ao carregar mexidas", 
-          description: "Não foi possível carregar as mexidas disponíveis. Verifique a conexão com o banco de dados." 
+  const loadAvailableMixes = useCallback(async () => {
+    try {
+      // console.log("🔄 Buscando mexidas disponíveis...");
+      const mixes = await fetchAvailableMixBatches();
+      // console.log("✅ Mexidas carregadas:", mixes.length, "mexidas encontradas");
+      setAvailableMixes(mixes);
+      
+      if (mixes.length === 0) {
+        // console.warn("⚠️ Nenhuma mexida disponível encontrada");
+        toast({
+          title: "Aviso",
+          description: "Nenhuma mexida disponível para produção. Registre uma mexida primeiro.",
+          variant: "default",
         });
-      } finally {
-        setIsLoadingMixes(false);
       }
-    };
-    
-    fetchMixes();
+    } catch (error) {
+      console.error("❌ Erro ao buscar mexidas:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao carregar mexidas disponíveis.",
+        variant: "destructive",
+      });
+    }
   }, [toast]);
   
   const form = useForm<ProductionFormValues>({
@@ -228,7 +220,15 @@ const Production = () => {
       });
 
       // Processar apenas insumos adicionais (se houver)
-      let usedMaterialsPayload: any[] = [];
+      let usedMaterialsPayload: Array<{
+        materialBatchId: string;
+        materialName: string;
+        materialType: string;
+        batchNumber: string;
+        quantity: number;
+        unitOfMeasure: string;
+        mixCountUsed: null;
+      }> = [];
       
       if (data.usedMaterials && data.usedMaterials.length > 0) {
         const additionalMaterials = data.usedMaterials.map((item) => {
@@ -257,7 +257,7 @@ const Production = () => {
         usedMaterials: usedMaterialsPayload,
         isMixOnly: false,
         mixProductionBatchId: selectedMixDetails.id,
-        status: undefined as any,
+        status: undefined,
       } as Omit<ProductionBatch, "id" | "createdAt" | "updatedAt">;
       
       await addProductionBatch(productionBatchPayload);
@@ -497,7 +497,7 @@ const Production = () => {
                 type="button" 
                 variant="outline" 
                 size="sm" 
-                onClick={() => appendProducedItem({ productId: "", quantity: null as any })} 
+                onClick={() => appendProducedItem({ productId: "", quantity: 0 })} 
                 className="mt-4 w-full"
               >
                 <Plus className="mr-2 h-4 w-4" /> Adicionar Produto
