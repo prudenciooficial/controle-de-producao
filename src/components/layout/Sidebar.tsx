@@ -35,7 +35,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
   const location = useLocation();
   const isMobile = useIsMobile();
   const { hasRole, canViewSystemLogs } = useAuth();
-  const { getModuleAccess } = useModulePermissions();
+  const { getModuleAccess, getPageAccess } = useModulePermissions();
   const [isDesktopSidebarExpanded, setIsDesktopSidebarExpanded] = useState(false);
   const [availableMenuItems, setAvailableMenuItems] = useState<MenuItem[]>([]);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
@@ -70,6 +70,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       module: "quality",
       subItems: [
         { name: "Reclamações", path: "/qualidade/reclamacoes", icon: MessageSquare },
+        { name: "Contra-provas", path: "/qualidade/contra-provas", icon: FlaskConical },
         { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search }
       ]
     },
@@ -93,43 +94,58 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
 
   useEffect(() => {
     const checkPermissions = () => {
-      // console.log('Verificando permissões dos módulos...');
+      // Verificando permissões dos módulos
       const filteredItems = [];
       
+      // Mapeamento de paths para chaves de página
+      const pathToPageKey: { [path: string]: string } = {
+        '/dashboard': 'dashboard',
+        '/mexida': 'mexida',
+        '/producao': 'producao',
+        '/vendas': 'vendas',
+        '/pedidos': 'pedidos',
+        '/estoque': 'estoque',
+        '/perdas': 'perdas',
+        '/cadastro': 'cadastro',
+        '/recursos-humanos': 'recursos_humanos',
+        '/qualidade/reclamacoes': 'reclamacoes',
+        '/qualidade/contra-provas': 'contra_provas',
+        '/rastreabilidade': 'rastreabilidade',
+        '/usuarios': 'usuarios',
+        '/logs': 'logs',
+        '/debug-permissions': 'debug_permissions'
+      };
+
       for (const item of allMenuItems) {
-        // console.log(`Verificando item: ${item.name}`);
-        
-        if (hasRole('admin')) {
-          // console.log(`Admin tem acesso a ${item.name}`);
-          filteredItems.push(item);
-          continue;
-        }
+        // Verificando item
         
         if (item.permissionCheck) {
           if (item.permissionCheck()) {
-            // console.log(`Permissão customizada aprovada para ${item.name}`);
             filteredItems.push(item);
-          } else {
-            // console.log(`Permissão customizada negada para ${item.name}`);
           }
           continue;
         }
 
         if (item.module) {
-          const hasAccess = getModuleAccess(item.module);
-          // console.log(`Módulo ${item.module} (${item.name}): ${hasAccess ? 'APROVADO' : 'NEGADO'}`);
+          const hasModuleAccess = getModuleAccess(item.module);
           
-          if (hasAccess) {
-            // Se o item tem subitens, filtrar com base nas permissões individuais
+          if (hasModuleAccess) {
             if (item.subItems && item.subItems.length > 0) {
               const filteredSubItems = item.subItems.filter(subItem => {
-                if (!subItem.module) return true; // Se não tem módulo, assume que tem acesso
-                const subItemAccess = getModuleAccess(subItem.module);
-                // console.log(`Subitem ${subItem.name} (módulo: ${subItem.module}): ${subItemAccess ? 'APROVADO' : 'NEGADO'}`);
-                return subItemAccess;
+                const pageKey = pathToPageKey[subItem.path];
+                if (pageKey) {
+                  const hasPageAccess = getPageAccess(pageKey);
+                  return hasPageAccess;
+                }
+                
+                if (subItem.module) {
+                  const subItemAccess = getModuleAccess(subItem.module);
+                  return subItemAccess;
+                }
+                
+                return false;
               });
               
-              // Só adiciona o item principal se ele mesmo tem acesso OU se pelo menos um subitem tem acesso
               if (filteredSubItems.length > 0) {
                 filteredItems.push({
                   ...item,
@@ -137,18 +153,29 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
                 });
               }
             } else {
-              filteredItems.push(item);
+              if (item.path) {
+                const pageKey = pathToPageKey[item.path];
+                if (pageKey) {
+                  const hasPageAccess = getPageAccess(pageKey);
+                  if (hasPageAccess) {
+                    filteredItems.push(item);
+                  }
+                } else {
+                  filteredItems.push(item);
+                }
+              } else {
+                filteredItems.push(item);
+              }
             }
           }
         }
       }
       
-      // console.log('Itens de menu disponíveis:', filteredItems.map(item => item.name));
       setAvailableMenuItems(filteredItems);
     };
 
     checkPermissions();
-  }, [hasRole, getModuleAccess, canViewSystemLogs, allMenuItems]);
+  }, [hasRole, getModuleAccess, getPageAccess, canViewSystemLogs, allMenuItems]);
 
   // Função para verificar se um item ou seus subitens estão ativos
   const isItemActive = (item: MenuItem) => {
@@ -164,9 +191,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
     setExpandedMenus(prev => {
       const newSet = new Set<string>();
       
-      // Se o item já está expandido, feche-o (não adicione ao Set)
       if (!prev.has(itemName)) {
-        // Se não está expandido, abra apenas este item (fechando todos os outros)
         newSet.add(itemName);
       }
       

@@ -458,3 +458,18 @@ h4, .h4 {
 .animate-shine {
   animation: shine 2s infinite;
 }
+
+/* Correção para bug de scroll com dropdowns */
+[data-radix-scroll-area-viewport] {
+  scrollbar-gutter: stable;
+}
+
+/* Prevent layout shift when dropdown opens */
+body {
+  scrollbar-gutter: stable;
+}
+
+/* Ensure dropdown doesn't cause scroll issues */
+.dropdown-no-scroll-lock {
+  overflow: visible !important;
+}

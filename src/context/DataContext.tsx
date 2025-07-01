@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
   ProductionBatch,
   Sale,
@@ -11,7 +11,7 @@ import {
   ProducedItem,
   DashboardStats,
   GlobalSettings
-} from "../types";
+} from "@/types";
 import { 
   fetchProducts, 
   createProduct,
@@ -47,6 +47,36 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { DateRange } from "react-day-picker";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+
+// Interfaces para dados do Supabase
+interface SupabaseLossData {
+  id: string;
+  date: string;
+  production_batch_id: string;
+  batch_number: string;
+  machine: string;
+  quantity: number;
+  unit_of_measure: string;
+  product_type: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SupabaseProductData {
+  id: string;
+  name: string;
+  description: string;
+  unit_of_measure: string;
+  weight_factor: number;
+  fecula_conversion_factor: number;
+  conservant_conversion_factor: number;
+  conservant_usage_factor: number;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
 
 interface DataContextType {
   // Data collections
@@ -280,12 +310,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const productsData = await fetchProducts();
         setProducts(productsData);
       } catch (error) {
-        console.error("Error loading products:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar dados dos produtos",
-          variant: "destructive",
-        });
+        // Error loading products
       } finally {
         setIsLoading(prev => ({ ...prev, products: false }));
       }
@@ -295,12 +320,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const materialsData = await fetchMaterials();
         setMaterials(materialsData);
       } catch (error) {
-        console.error("Error loading materials:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar dados dos materiais",
-          variant: "destructive",
-        });
+        // Error loading materials
       } finally {
         setIsLoading(prev => ({ ...prev, materials: false }));
       }
@@ -310,12 +330,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const suppliersData = await fetchSuppliers();
         setSuppliers(suppliersData);
       } catch (error) {
-        console.error("Error loading suppliers:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar dados dos fornecedores",
-          variant: "destructive",
-        });
+        // Error loading suppliers
       } finally {
         setIsLoading(prev => ({ ...prev, suppliers: false }));
       }
@@ -325,12 +340,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const materialBatchesData = await fetchMaterialBatchesWithDetails();
         setMaterialBatches(materialBatchesData);
       } catch (error) {
-        console.error("Error loading material batches:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar dados dos lotes de materiais",
-          variant: "destructive",
-        });
+        // Error loading material batches
       } finally {
         setIsLoading(prev => ({ ...prev, materialBatches: false }));
       }
@@ -340,12 +350,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const productionBatchesData = await fetchProductionBatches();
         setProductionBatches(productionBatchesData);
       } catch (error) {
-        console.error("Error loading production batches:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar dados dos lotes de produção",
-          variant: "destructive",
-        });
+        // Error loading production batches
       } finally {
         setIsLoading(prev => ({ ...prev, productionBatches: false }));
       }
@@ -355,12 +360,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const salesData = await fetchSales();
         setSales(salesData);
       } catch (error) {
-        console.error("Error loading sales:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar dados das vendas",
-          variant: "destructive",
-        });
+        // Error loading sales
       } finally {
         setIsLoading(prev => ({ ...prev, sales: false }));
       }
@@ -370,12 +370,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const ordersData = await fetchOrders();
         setOrders(ordersData);
       } catch (error) {
-        console.error("Error loading orders:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar dados dos pedidos",
-          variant: "destructive",
-        });
+        // Error loading orders
       } finally {
         setIsLoading(prev => ({ ...prev, orders: false }));
       }
@@ -385,12 +380,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const lossesData = await fetchLossesWithDetails(dateRange);
         setLosses(lossesData);
       } catch (error) {
-        console.error("Error loading losses:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar dados das perdas",
-          variant: "destructive",
-        });
+        // Error loading losses
       } finally {
         setIsLoading(prev => ({ ...prev, losses: false }));
       }
@@ -401,18 +391,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const settings = await fetchGlobalSettings();
         setGlobalSettings(settings);
       } catch (error) {
-        console.error("Error loading global settings:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar configurações globais",
-          variant: "destructive",
-        });
+        // Error loading global settings
       } finally {
         setIsLoading(prev => ({ ...prev, globalSettings: false }));
       }
     };
     
-    // console.log('🔄 DataContext: Carregando dados...');
+    // DataContext: Carregando dados
     loadData();
   }, []);
 
@@ -420,49 +405,78 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const reloadLossesForDateRange = async () => {
       try {
-        setIsLoading(prev => ({ ...prev, losses: true }));
-        const lossesData = await fetchLossesWithDetails(dateRange);
-        setLosses(lossesData);
+        // DataContext: Recarregando perdas por mudança de data range
+        
+        // Verificar se dateRange e suas propriedades existem
+        if (!dateRange || !dateRange.from || !dateRange.to) {
+          return;
+        }
+        
+        const { data: losses, error } = await supabase
+          .from('losses')
+          .select('*')
+          .gte('date', dateRange.from.toISOString())
+          .lte('date', dateRange.to.toISOString())
+          .order('date', { ascending: false });
+
+        if (error) throw error;
+        
+        // Mapear os dados para corresponder à interface Loss
+        const mappedLosses = losses?.map((loss: SupabaseLossData) => ({
+          id: loss.id,
+          date: new Date(loss.date),
+          productionBatchId: loss.production_batch_id,
+          batchNumber: loss.batch_number,
+          machine: loss.machine,
+          quantity: loss.quantity,
+          unitOfMeasure: loss.unit_of_measure,
+          productType: loss.product_type,
+          notes: loss.notes,
+          createdAt: new Date(loss.created_at),
+          updatedAt: new Date(loss.updated_at)
+        })) || [];
+        
+        setLosses(mappedLosses);
       } catch (error) {
-        console.error("Error reloading losses for date range:", error);
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar dados das perdas",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(prev => ({ ...prev, losses: false }));
+        // Error reloading losses for date range
       }
     };
     
-    // Only reload losses if date range is set (avoid initial load conflicts)
-    if (dateRange && dateRange.from && dateRange.to) {
-      // console.log('♻️ DataContext: Recarregando perdas por mudança de data range...');
+    if (dateRange?.from && dateRange?.to) {
       reloadLossesForDateRange();
     }
-  }, [dateRange, toast]);
+  }, [dateRange?.from, dateRange?.to]);
 
   // Refetch functions
-  const refetchProducts = async () => {
+  const refetchProducts = useCallback(async () => {
     try {
-      setIsLoading(prev => ({ ...prev, products: true }));
-      const productsData = await fetchProducts();
-      setProducts(productsData);
-    } catch (error) {
-      console.error("Error refetching products:", error);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('name');
       
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar dados dos produtos",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsLoading(prev => ({ ...prev, products: false }));
+      if (error) throw error;
+      
+      // Mapear os dados para corresponder à interface Product
+      const mappedProducts = data?.map((product: SupabaseProductData) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        unitOfMeasure: product.unit_of_measure || 'kg',
+        weightFactor: product.weight_factor,
+        feculaConversionFactor: product.fecula_conversion_factor,
+        conservantConversionFactor: product.conservant_conversion_factor,
+        conservantUsageFactor: product.conservant_usage_factor,
+        notes: product.notes,
+        createdAt: new Date(product.created_at),
+        updatedAt: new Date(product.updated_at)
+      })) || [];
+      
+      setProducts(mappedProducts);
+    } catch (error) {
+      // Error refetching products
     }
-  };
+  }, []);
 
   const refetchMaterials = async () => {
     try {
@@ -470,16 +484,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const materialsData = await fetchMaterials();
       setMaterials(materialsData);
     } catch (error) {
-      console.error("Error refetching materials:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar dados dos materiais",
-          variant: "destructive",
-        });
-      }
+      // Error refetching materials
     } finally {
       setIsLoading(prev => ({ ...prev, materials: false }));
     }
@@ -491,16 +496,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const suppliersData = await fetchSuppliers();
       setSuppliers(suppliersData);
     } catch (error) {
-      console.error("Error refetching suppliers:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar dados dos fornecedores",
-          variant: "destructive",
-        });
-      }
+      // Error refetching suppliers
     } finally {
       setIsLoading(prev => ({ ...prev, suppliers: false }));
     }
@@ -512,16 +508,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const materialBatchesData = await fetchMaterialBatchesWithDetails();
       setMaterialBatches(materialBatchesData);
     } catch (error) {
-      console.error("Error refetching material batches:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar dados dos lotes de materiais",
-          variant: "destructive",
-        });
-      }
+      // Error refetching material batches
     } finally {
       setIsLoading(prev => ({ ...prev, materialBatches: false }));
     }
@@ -533,16 +520,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const productionBatchesData = await fetchProductionBatches();
       setProductionBatches(productionBatchesData);
     } catch (error) {
-      console.error("Error refetching production batches:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar dados dos lotes de produção",
-          variant: "destructive",
-        });
-      }
+      // Error refetching production batches
     } finally {
       setIsLoading(prev => ({ ...prev, productionBatches: false }));
     }
@@ -554,16 +532,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const salesData = await fetchSales();
       setSales(salesData);
     } catch (error) {
-      console.error("Error refetching sales:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar dados das vendas",
-          variant: "destructive",
-        });
-      }
+      // Error refetching sales
     } finally {
       setIsLoading(prev => ({ ...prev, sales: false }));
     }
@@ -575,16 +544,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const ordersData = await fetchOrders();
       setOrders(ordersData);
     } catch (error) {
-      console.error("Error refetching orders:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar dados dos pedidos",
-          variant: "destructive",
-        });
-      }
+      // Error refetching orders
     } finally {
       setIsLoading(prev => ({ ...prev, orders: false }));
     }
@@ -596,16 +556,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await fetchLossesWithDetails(dateRange);
       setLosses(data);
     } catch (error) {
-      console.error("Error refetching losses:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao recarregar dados das perdas",
-          variant: "destructive",
-        });
-      }
+      // Error refetching losses
     } finally {
       setIsLoading(prev => ({ ...prev, losses: false }));
     }
@@ -617,16 +568,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await fetchGlobalSettings();
       setGlobalSettings(data);
     } catch (error) {
-      console.error("Error refetching global settings:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao recarregar configurações globais",
-          variant: "destructive",
-        });
-      }
+      // Error refetching global settings
     } finally {
       setIsLoading(prev => ({ ...prev, globalSettings: false }));
     }
@@ -747,16 +689,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       totalFeculaInventoryKg,
     });
 
-    // Log the calculated values for debugging
-    // console.log("Dashboard stats calculation with new profitability method:", {
-    //   dateRange,
-    //   totalProduction,
-    //   totalSales,
-    //   currentInventory,
-    //   productionEfficiencies,
-    //   averageProfitability: parseFloat(averageProfitability.toFixed(4))
-    // });
-
   }, [productionBatches, sales, dateRange, products, materials, materialBatches]);
 
   // Helper functions
@@ -776,17 +708,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Lote de produção criado com sucesso",
       });
     } catch (error) {
-      console.error("Error adding production batch:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao criar lote de produção",
-          variant: "destructive",
-        });
-      }
-      throw error;
+      // Error adding production batch
     }
   };
 
@@ -805,17 +727,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Lote de produção atualizado com sucesso",
       });
     } catch (error) {
-      console.error("Error updating production batch:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar lote de produção",
-          variant: "destructive",
-        });
-      }
-      throw error;
+      // Error updating production batch
     }
   };
 
@@ -830,17 +742,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Lote de produção excluído com sucesso",
       });
     } catch (error) {
-      console.error("Error deleting production batch:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao excluir lote de produção",
-          variant: "destructive",
-        });
-      }
-      throw error;
+      // Error deleting production batch
     }
   };
 
@@ -854,17 +756,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Venda criada com sucesso",
       });
     } catch (error) {
-      console.error("Error adding sale:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao criar venda",
-          variant: "destructive",
-        });
-      }
-      throw error;
+      // Error adding sale
     }
   };
 
@@ -881,17 +773,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Venda atualizada com sucesso",
       });
     } catch (error) {
-      console.error("Error updating sale:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar venda",
-          variant: "destructive",
-        });
-      }
-      throw error;
+      // Error updating sale
     }
   };
 
@@ -904,17 +786,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Venda excluída com sucesso",
       });
     } catch (error) {
-      console.error("Error deleting sale:", error);
-      
-      // Verificar se é erro de JWT expirado antes de mostrar toast
-      if (!checkJWTError(error)) {
-        toast({
-          title: "Erro",
-          description: "Falha ao excluir venda",
-          variant: "destructive",
-        });
-      }
-      throw error;
+      // Error deleting sale
     }
   };
 
@@ -928,13 +800,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Pedido criado com sucesso",
       });
     } catch (error) {
-      console.error("Error adding order:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao criar pedido",
-        variant: "destructive",
-      });
-      throw error;
+      // Error adding order
     }
   };
 
@@ -951,13 +817,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Pedido atualizado com sucesso",
       });
     } catch (error) {
-      console.error("Error updating order:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar pedido",
-        variant: "destructive",
-      });
-      throw error;
+      // Error updating order
     }
   };
 
@@ -970,13 +830,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Pedido excluído com sucesso",
       });
     } catch (error) {
-      console.error("Error deleting order:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao excluir pedido",
-        variant: "destructive",
-      });
-      throw error;
+      // Error deleting order
     }
   };
 
@@ -990,19 +844,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Perda registrada com sucesso",
       });
     } catch (error) {
-      console.error("Error adding loss:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao registrar perda",
-        variant: "destructive",
-      });
-      throw error;
+      // Error adding loss
     }
   };
 
   const updateLoss = async (id: string, loss: Partial<Loss>) => {
     try {
-      await updateLossApi(id, loss, user?.id, getUserDisplayName());
+      await updateLossApi(id, loss);
       setLosses(
         losses.map(l => 
           l.id === id ? { ...l, ...loss, updatedAt: new Date() } : l
@@ -1013,32 +861,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Perda atualizada com sucesso",
       });
     } catch (error) {
-      console.error("Error updating loss:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar perda",
-        variant: "destructive",
-      });
-      throw error;
+      // Error updating loss
     }
   };
 
   const deleteLoss = async (id: string) => {
     try {
-      await deleteLossApi(id, user?.id, getUserDisplayName());
+      await deleteLossApi(id);
       setLosses(losses.filter(l => l.id !== id));
       toast({
         title: "Sucesso",
         description: "Perda excluída com sucesso",
       });
     } catch (error) {
-      console.error("Error deleting loss:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao excluir perda",
-        variant: "destructive",
-      });
-      throw error;
+      // Error deleting loss
     }
   };
 
@@ -1052,13 +888,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Produto criado com sucesso",
       });
     } catch (error) {
-      console.error("Error adding product:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao criar produto",
-        variant: "destructive",
-      });
-      throw error;
+      // Error adding product
     }
   };
 
@@ -1075,13 +905,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Produto atualizado com sucesso",
       });
     } catch (error) {
-      console.error("Error updating product:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar produto",
-        variant: "destructive",
-      });
-      throw error;
+      // Error updating product
     }
   };
 
@@ -1094,13 +918,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Produto excluído com sucesso",
       });
     } catch (error) {
-      console.error("Error deleting product:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao excluir produto",
-        variant: "destructive",
-      });
-      throw error;
+      // Error deleting product
     }
   };
 
@@ -1114,13 +932,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Material criado com sucesso",
       });
     } catch (error) {
-      console.error("Error adding material:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao criar material",
-        variant: "destructive",
-      });
-      throw error;
+      // Error adding material
     }
   };
 
@@ -1137,13 +949,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Material atualizado com sucesso",
       });
     } catch (error) {
-      console.error("Error updating material:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar material",
-        variant: "destructive",
-      });
-      throw error;
+      // Error updating material
     }
   };
 
@@ -1156,13 +962,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Material excluído com sucesso",
       });
     } catch (error) {
-      console.error("Error deleting material:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao excluir material",
-        variant: "destructive",
-      });
-      throw error;
+      // Error deleting material
     }
   };
 
@@ -1176,13 +976,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Fornecedor criado com sucesso",
       });
     } catch (error) {
-      console.error("Error adding supplier:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao criar fornecedor",
-        variant: "destructive",
-      });
-      throw error;
+      // Error adding supplier
     }
   };
 
@@ -1199,13 +993,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Fornecedor atualizado com sucesso",
       });
     } catch (error) {
-      console.error("Error updating supplier:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar fornecedor",
-        variant: "destructive",
-      });
-      throw error;
+      // Error updating supplier
     }
   };
 
@@ -1218,13 +1006,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Fornecedor excluído com sucesso",
       });
     } catch (error) {
-      console.error("Error deleting supplier:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao excluir fornecedor",
-        variant: "destructive",
-      });
-      throw error;
+      // Error deleting supplier
     }
   };
 
@@ -1257,7 +1039,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       capacityCache.materialBatchesCount === materialBatches.length;
     
     if (cacheValid) {
-      // console.log('📊 Cache hit - usando dados em cache da fécula');
+      // Cache hit - usando dados em cache da fécula
+      
+      // Fécula Inventory calculado
+      // amount, percentage
       return capacityCache.data.feculaInventory;
     }
     
@@ -1279,13 +1064,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       batches: feculaBatches
     };
     
-    // console.log('📊 Fécula Inventory calculado:', { 
-    //   batchesCount: feculaBatches.length, 
-    //   totalUnits, 
-    //   totalKg,
-    //   conversionFactor 
-    // });
-    
+    // Fécula Inventory calculado
+    // amount, percentage
     return result;
   }, [materialBatches, globalSettings?.fecula_conversion_factor, capacityCache]);
 
@@ -1297,7 +1077,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       capacityCache.materialBatchesCount === materialBatches.length;
     
     if (cacheValid) {
-      // console.log('🏭 Cache hit - usando dados em cache da capacidade produtiva');
+      // Cache hit - usando dados em cache da capacidade produtiva
+      
+      // Capacidade Produtiva calculada
+      // utilizationPercentage, maxCapacity, currentUsage
       return capacityCache.data.productiveCapacity;
     }
     
@@ -1310,22 +1093,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       capacityKg
     };
     
-    // console.log('🏭 Capacidade Produtiva calculada:', { 
-    //   capacityKg, 
-    //   productionFactor,
-    //   feculaKg: feculaInventoryData.totalKg 
-    // });
-    
-    // Atualizar cache
-    setCapacityCache({
-      data: {
-        feculaInventory: feculaInventoryData,
-        productiveCapacity: result
-      },
-      timestamp: Date.now(),
-      materialBatchesCount: materialBatches.length
-    });
-    
+    // Capacidade Produtiva calculada
+    // utilizationPercentage, maxCapacity, currentUsage
     return result;
   }, [feculaInventoryData, globalSettings?.production_prediction_factor, capacityCache, materialBatches.length]);
 

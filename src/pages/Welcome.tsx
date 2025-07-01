@@ -23,7 +23,6 @@ export default function Welcome() {
       inventory: 'Estoque',
       losses: 'Perdas',
       quality: 'Qualidade',
-      traceability: 'Rastreabilidade',
       general_settings: 'Cadastro',
       human_resources: 'Recursos Humanos',
       user_management: 'Gerenciamento de Usuários'

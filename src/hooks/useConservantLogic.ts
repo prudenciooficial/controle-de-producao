@@ -22,36 +22,31 @@ export const useConservantLogic = (
 
   // Initialize conservant usages when materials change
   useEffect(() => {
-    console.log('[useConservantLogic] Effect to calculate usages triggered.');
-    console.log('[useConservantLogic] Received conservantMaterials:', JSON.stringify(conservantMaterials, null, 2));
-    console.log('[useConservantLogic] Received totalMixes:', totalMixes);
-    console.log('[useConservantLogic] Received conservantUsageFactor:', conservantUsageFactor);
-
-    if (conservantMaterials.length === 0) {
-      console.log('[useConservantLogic] No conservant materials, setting usages to [].');
+    // Effect para calcular usages
+    
+    if (!conservantMaterials || conservantMaterials.length === 0) {
+      // Sem materiais conservantes, definindo usages como vazio
       setConservantUsages([]);
       return;
     }
 
+    // Calcular a quantidade baseada no total de mexidas e fator
     const usages = conservantMaterials.map((material, index) => {
-      // For the first (or only) conservant, assign all remaining mixes
-      const assignedMixes = index === 0 ? totalMixes : 0;
-      const calculatedQuantity = assignedMixes * conservantUsageFactor;
+      const assignedMixes = material.mixAssignments || [1]; // Default: primeiro mix
+      const calculatedQuantity = (totalMixes * conservantUsageFactor) / assignedMixes.length;
       
-      console.log(`[useConservantLogic] Mapping material ${material.materialName} (index ${index}): assignedMixes=${assignedMixes}, calculatedQuantity=${calculatedQuantity}`);
-
+      // Mapeando material com quantidade calculada
+      
       return {
-        materialBatchId: material.materialBatchId,
         materialName: material.materialName,
-        batchNumber: material.batchNumber,
-        maxMixes: Math.floor((material.quantity || 0) / conservantUsageFactor),
-        assignedMixes,
-        quantity: calculatedQuantity,
-        unitOfMeasure: "kg"
+        calculatedQuantity: calculatedQuantity,
+        mixAssignments: assignedMixes,
+        materialId: material.materialId,
+        notes: material.notes || ''
       };
     });
 
-    console.log('[useConservantLogic] Calculated usages to set:', JSON.stringify(usages, null, 2));
+    // Usages calculados para definir
     setConservantUsages(usages);
   }, [conservantMaterials, totalMixes, conservantUsageFactor]);
 
@@ -127,14 +122,14 @@ export const useConservantLogic = (
     }));
   };
 
-  console.log('[useConservantLogic] Returning from function. conservantUsages.length:', conservantUsages.length);
-  console.log('[useConservantLogic] showMixFields:', conservantUsages.length > 1);
-
+  // Retornando da função
   return {
     conservantUsages,
     isValid,
     validationError,
     updateMixCount,
     getConservantMaterials,
+    showMixFields: conservantUsages.length > 1,
+    resetConservantUsages: () => setConservantUsages([])
   };
 };

@@ -1,21 +1,45 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logSystemEvent } from '@/services/logService';
 import { SessionExpiredModal } from '@/components/ui/SessionExpiredModal';
 
+// Definir permissões padrão
+const defaultPermissions = {
+  system_status: 'active' as const,
+  modules_access: {
+    dashboard: false,
+    production: false,
+    human_resources: false,
+    quality: false,
+    administrator: false
+  },
+  pages_access: {
+    dashboard: false,
+    mexida: false,
+    producao: false,
+    vendas: false,
+    pedidos: false,
+    estoque: false,
+    perdas: false,
+    cadastro: false,
+    recursos_humanos: false,
+    reclamacoes: false,
+    contra_provas: false,
+    rastreabilidade: false,
+    usuarios: false,
+    logs: false,
+    debug_permissions: false
+  },
+  can_view_system_logs: false
+};
+
 // Estruturas de permissões para referência (devem ser consistentes com UserPermissionsDialog)
-interface ModuleActions {
-  create: boolean;
-  read: boolean;
-  update: boolean;
-  delete: boolean;
-}
-interface DetailedPermissions {
+interface NewDetailedPermissions {
   system_status: 'active' | 'inactive';
   modules_access: { [moduleKey: string]: boolean };
-  module_actions: { [moduleKey: string]: ModuleActions };
+  pages_access: { [pageKey: string]: boolean };
   can_view_system_logs?: boolean;
 }
 
@@ -23,15 +47,15 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string, username: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, fullName: string, username: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
-  hasPermission: (moduleKey: string, actionKey: string) => boolean;
+  hasPermission: (permissionKey: string, permissionType?: 'module' | 'page') => boolean;
   hasRole: (role: string) => boolean;
   canViewSystemLogs: () => boolean;
   getSession: () => Promise<Session | null>;
   getUserDisplayName: () => string;
-  checkJWTError: (error: any) => boolean;
+  checkJWTError: (error: AuthError | Error | unknown) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,15 +68,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
 
   // Função para verificar se é erro de JWT expirado
-  const checkJWTError = (error: any): boolean => {
-    if (error && 
-        (error.code === 'PGRST301' || 
-         error.message?.includes('JWT expired') ||
-         error.message?.includes('jwt expired') ||
-         (error.details === null && error.hint === null && error.message === 'JWT expired'))) {
-      
-      console.log('🔒 JWT expirado detectado:', error);
-      setShowSessionExpiredModal(true);
+  const checkJWTError = (error: AuthError | Error | unknown): boolean => {
+    const errorObj = error as { message?: string };
+    if (errorObj && errorObj.message?.includes('JWT expired')) {
+      // JWT expirado detectado, forçar logout silencioso
+      localStorage.removeItem('supabase.auth.token');
+      window.location.reload();
       return true;
     }
     return false;
@@ -80,76 +101,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Listen for auth state changes
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-          console.log('🔄 Auth state changed:', event);
-        }
-        
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Auth state changed
+      
+      if (event === 'SIGNED_OUT' || !session) {
+        setUser(null);
+        setSession(null);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setUser(session.user);
         setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        // Se o token foi removido/expirado, esconder o modal
-        if (!session) {
-          setShowSessionExpiredModal(false);
-        }
       }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      
       setLoading(false);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { error, data } = await supabase.auth.signInWithPassword({
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Erro no login",
-          description: "Email ou senha incorretos.",
-        });
-      } else {
-        toast({
-          title: "Login realizado",
-          description: "Bem-vindo ao sistema!",
-        });
-        
-        // Log do login
-        if (data.user) {
-          await logSystemEvent({
-            userId: data.user.id,
-            userDisplayName: data.user.user_metadata?.full_name || data.user.email || 'Usuário',
-            actionType: 'LOGIN',
-            entityTable: 'auth_sessions',
-            entityId: data.session?.access_token?.substring(0, 10) || 'unknown',
-            newData: {
-              email: data.user.email,
-              login_time: new Date().toISOString()
-            }
-          });
-        }
+        return { error };
       }
 
-      return { error };
+      return { error: null };
     } catch (error) {
-      console.error('Error signing in:', error);
       return { error };
     } finally {
       setLoading(false);
@@ -159,34 +144,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string, username: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signUp({
+
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
             username: username,
-            role: 'viewer', // Default role
+            role: 'user',
+            permissions: defaultPermissions,
           },
         },
       });
 
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Erro no cadastro",
-          description: error.message,
-        });
-      } else {
-        toast({
-          title: "Cadastro realizado",
-          description: "Conta criada com sucesso!",
-        });
+        return { error };
       }
 
-      return { error };
+      return { error: null };
     } catch (error) {
-      console.error('Error signing up:', error);
       return { error };
     } finally {
       setLoading(false);
@@ -196,62 +173,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       
-      // Log do logout antes de fazer o signOut
-      if (user) {
-        await logSystemEvent({
-          userId: user.id,
-          userDisplayName: user.user_metadata?.full_name || user.email || 'Usuário',
-          actionType: 'LOGOUT',
-          entityTable: 'auth_sessions',
-          entityId: 'logout-' + Date.now(),
-          oldData: {
-            email: user.email,
-            logout_time: new Date().toISOString()
-          }
-        });
-      }
-      
-      await supabase.auth.signOut();
       setUser(null);
       setSession(null);
-      toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado do sistema.",
-      });
     } catch (error) {
-      console.error('Error signing out:', error);
+      // Erro ao fazer logout
     } finally {
       setLoading(false);
     }
   };
 
-  const hasPermission = (moduleKey: string, actionKey: string): boolean => {
+  const hasPermission = (permissionKey: string, permissionType?: 'module' | 'page'): boolean => {
     if (!user) return false;
 
     if (user.user_metadata?.role === 'admin') return true;
 
-    const detailedPermissions = user.user_metadata?.permissions as DetailedPermissions | undefined;
+    const detailedPermissions = user.user_metadata?.permissions as NewDetailedPermissions | undefined;
     if (!detailedPermissions || detailedPermissions.system_status !== 'active') {
       return false;
     }
 
-    if (detailedPermissions.modules_access?.[moduleKey] !== true) {
-      return false;
-    }
-
-    const moduleSpecificActions = detailedPermissions.module_actions?.[moduleKey];
-
-    // Tratar 'view' como sinônimo de 'read'
-    const normalizedActionKey = actionKey === 'view' ? 'read' : actionKey;
-
-    if (normalizedActionKey === 'read') { 
-      if (!moduleSpecificActions) return true; 
-      return moduleSpecificActions.read === true;
-    }
-    
-    if (!moduleSpecificActions || moduleSpecificActions[normalizedActionKey as keyof ModuleActions] !== true) {
-      return false;
+    if (permissionType === 'module') {
+      if (detailedPermissions.modules_access?.[permissionKey] !== true) {
+        return false;
+      }
+    } else if (permissionType === 'page') {
+      if (detailedPermissions.pages_access?.[permissionKey] !== true) {
+        return false;
+      }
     }
 
     return true;
@@ -264,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const canViewSystemLogs = (): boolean => {
     if (!user) return false;
     if (user.user_metadata?.role === 'admin') return true;
-    const detailedPermissions = user.user_metadata?.permissions as DetailedPermissions | undefined;
+    const detailedPermissions = user.user_metadata?.permissions as NewDetailedPermissions | undefined;
     return detailedPermissions?.can_view_system_logs === true;
   };
 
@@ -272,12 +223,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        console.error('Error getting session:', error);
         return null;
       }
       return session;
     } catch (error) {
-      console.error('Error getting session:', error);
       return null;
     }
   };

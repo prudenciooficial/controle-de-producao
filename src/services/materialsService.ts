@@ -1,27 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
+import { materialsAdapter } from "./database/MaterialsAdapter";
 import { Material, MaterialBatch } from "../types";
 import { logSystemEvent } from "./logService";
 
-// Materials
+// Materials - NOVA IMPLEMENTAÇÃO OFFLINE-FIRST
 export const fetchMaterials = async (): Promise<Material[]> => {
-  const { data, error } = await supabase
-    .from("materials")
-    .select("*")
-    .order("name");
-  
-  if (error) throw error;
-  
-  return data.map(material => ({
-    ...material,
-    id: material.id,
-    name: material.name,
-    code: material.code,
-    type: material.type as "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro",
-    unitOfMeasure: material.unit_of_measure,
-    description: material.description,
-    createdAt: new Date(material.created_at),
-    updatedAt: new Date(material.updated_at)
-  }));
+  return await materialsAdapter.getMaterials();
 };
 
 export const createMaterial = async (
@@ -29,40 +13,25 @@ export const createMaterial = async (
   userId?: string,
   userDisplayName?: string
 ): Promise<Material> => {
-  const { data, error } = await supabase
-    .from("materials")
-    .insert({
-      name: material.name,
-      code: material.code,
-      type: material.type,
-      unit_of_measure: material.unitOfMeasure,
-      description: material.description
-    })
-    .select()
-    .single();
+  const result = await materialsAdapter.createMaterial(material);
   
-  if (error) throw error;
+  // Log apenas se online (para evitar conflitos)
+  if (await materialsAdapter.isOnline() && userId && userDisplayName) {
+    try {
+      await logSystemEvent({
+        userId: userId,
+        userDisplayName: userDisplayName,
+        actionType: 'CREATE',
+        entityTable: 'materials',
+        entityId: result.id,
+        newData: result as unknown as Record<string, unknown>
+      });
+    } catch (error) {
+      console.warn('Erro ao fazer log (sistema continuará funcionando):', error);
+    }
+  }
   
-  await logSystemEvent({
-    userId: userId!,
-    userDisplayName: userDisplayName!,
-    actionType: 'CREATE',
-    entityTable: 'materials',
-    entityId: data.id,
-    newData: data
-  });
-  
-  return {
-    ...data,
-    id: data.id,
-    name: data.name,
-    code: data.code,
-    type: data.type as "Fécula" | "Conservante" | "Embalagem" | "Saco" | "Caixa" | "Outro",
-    unitOfMeasure: data.unit_of_measure,
-    description: data.description,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at)
-  };
+  return result;
 };
 
 export const updateMaterial = async (
@@ -71,47 +40,57 @@ export const updateMaterial = async (
   userId?: string,
   userDisplayName?: string
 ): Promise<void> => {
-  const updates: Record<string, string | undefined> = {};
+  await materialsAdapter.updateMaterial(id, material);
   
-  if (material.name) updates.name = material.name;
-  if (material.code !== undefined) updates.code = material.code;
-  if (material.type) updates.type = material.type;
-  if (material.unitOfMeasure) updates.unit_of_measure = material.unitOfMeasure;
-  if (material.description !== undefined) updates.description = material.description;
-  
-  const { error } = await supabase
-    .from("materials")
-    .update(updates)
-    .eq("id", id);
-  
-  if (error) throw error;
-  
-  await logSystemEvent({
-    userId: userId!,
-    userDisplayName: userDisplayName!,
-    actionType: 'UPDATE',
-    entityTable: 'materials',
-    entityId: id,
-    oldData: { id, updates }
-  });
+  // Log apenas se online
+  if (await materialsAdapter.isOnline() && userId && userDisplayName) {
+    try {
+      await logSystemEvent({
+        userId: userId,
+        userDisplayName: userDisplayName,
+        actionType: 'UPDATE',
+        entityTable: 'materials',
+        entityId: id,
+        oldData: { id, updates: material }
+      });
+    } catch (error) {
+      console.warn('Erro ao fazer log (sistema continuará funcionando):', error);
+    }
+  }
 };
 
-export const deleteMaterial = async (id: string, userId?: string, userDisplayName?: string): Promise<void> => {
-  const { error } = await supabase
-    .from("materials")
-    .delete()
-    .eq("id", id);
+export const deleteMaterial = async (
+  id: string, 
+  userId?: string, 
+  userDisplayName?: string
+): Promise<void> => {
+  await materialsAdapter.deleteMaterial(id);
   
-  if (error) throw error;
-  
-  await logSystemEvent({
-    userId: userId!,
-    userDisplayName: userDisplayName!,
-    actionType: 'DELETE',
-    entityTable: 'materials',
-    entityId: id,
-    oldData: { id }
-  });
+  // Log apenas se online
+  if (await materialsAdapter.isOnline() && userId && userDisplayName) {
+    try {
+      await logSystemEvent({
+        userId: userId,
+        userDisplayName: userDisplayName,
+        actionType: 'DELETE',
+        entityTable: 'materials',
+        entityId: id,
+        oldData: { id }
+      });
+    } catch (error) {
+      console.warn('Erro ao fazer log (sistema continuará funcionando):', error);
+    }
+  }
+};
+
+// NOVA FUNÇÃO: Sincronizar operações pendentes
+export const syncPendingMaterials = async (): Promise<void> => {
+  await materialsAdapter.syncPendingOperations();
+};
+
+// NOVA FUNÇÃO: Verificar status de conectividade
+export const isOnline = async (): Promise<boolean> => {
+  return await materialsAdapter.isOnline();
 };
 
 // Material Batches

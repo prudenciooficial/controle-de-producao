@@ -2,75 +2,98 @@ import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const useModulePermissions = () => {
-  const { hasRole, hasPermission, canViewSystemLogs, user } = useAuth();
+  const { hasRole, user } = useAuth();
 
   const getModuleAccess = useMemo(() => {
     const checkModuleAccess = (moduleKey: string, customCheck?: () => boolean) => {
-      // console.log(`🔍 Verificando acesso ao módulo: ${moduleKey}`);
+      // Verificando acesso ao módulo
       
       // Admin sempre tem acesso
       if (hasRole('admin')) {
-        // console.log(`✅ ${moduleKey}: Admin tem acesso total`);
+        // Admin tem acesso total
         return true;
       }
 
       // Verificação customizada (para casos especiais como logs)
       if (customCheck) {
         const result = customCheck();
-        // console.log(`🔧 ${moduleKey}: Verificação customizada = ${result}`);
+        // Verificação customizada
         return result;
       }
 
       // Verificar se o usuário tem permissões definidas
       const userPermissions = user?.user_metadata?.permissions;
-      // console.log(`👤 Usuário: ${user?.email}`);
-      // console.log(`📋 Permissões do usuário:`, userPermissions);
-
+      // Usuário e permissões
+      
       if (!userPermissions) {
-        // console.log(`❌ ${moduleKey}: Usuário não tem permissões definidas`);
+        // Usuário não tem permissões definidas
         return false;
       }
 
-      // Verificar status do sistema
+      // Verificar se o usuário está ativo
       if (userPermissions.system_status !== 'active') {
-        // console.log(`❌ ${moduleKey}: Usuário inativo (${userPermissions.system_status})`);
+        // Usuário inativo
         return false;
       }
 
-      // Verificar acesso ao módulo
+      // Verificar acesso ao módulo específico
       const hasModuleAccess = userPermissions.modules_access?.[moduleKey] === true;
-      // console.log(`🎯 ${moduleKey}: modules_access[${moduleKey}] = ${hasModuleAccess}`);
+      // Acesso ao módulo verificado
       
       if (!hasModuleAccess) {
-        // console.log(`❌ ${moduleKey}: Sem acesso ao módulo`);
+        // Sem acesso ao módulo
         return false;
       }
 
-      // Verificar se o módulo tem ações específicas e se tem permissão de leitura
-      const moduleActions = userPermissions.module_actions?.[moduleKey];
-      // console.log(`⚙️ ${moduleKey}: module_actions =`, moduleActions);
-
-      // Se não tem ações específicas definidas, permitir acesso
-      if (!moduleActions) {
-        // console.log(`✅ ${moduleKey}: Sem ações específicas, acesso permitido`);
-        return true;
-      }
-
-      // Se tem ações específicas, verificar se tem permissão de leitura
-      const canRead = moduleActions.read === true;
-      // console.log(`📖 ${moduleKey}: Permissão de leitura = ${canRead}`);
-
-      if (!canRead) {
-        // console.log(`❌ ${moduleKey}: Sem permissão de leitura`);
-        return false;
-      }
-
-      // console.log(`✅ ${moduleKey}: Acesso permitido!`);
+      // Acesso permitido
       return true;
     };
 
     return checkModuleAccess;
-  }, [hasRole, hasPermission, canViewSystemLogs, user]);
+  }, [hasRole, user]);
 
-  return { getModuleAccess };
+  const getPageAccess = useMemo(() => {
+    const checkPageAccess = (pageKey: string) => {
+      // Verificando acesso à página
+      
+      // Admin sempre tem acesso
+      if (hasRole('admin')) {
+        // Admin tem acesso total
+        return true;
+      }
+
+      // Verificar se o usuário tem permissões definidas
+      const userPermissions = user?.user_metadata?.permissions;
+      
+      if (!userPermissions) {
+        // Usuário não tem permissões definidas
+        return false;
+      }
+
+      // Verificar se o usuário está ativo
+      if (userPermissions.system_status !== 'active') {
+        // Usuário inativo
+        return false;
+      }
+
+      // Verificar acesso à página específica
+      const hasPageAccess = userPermissions.pages_access?.[pageKey] === true;
+      // Acesso à página verificado
+      
+      if (!hasPageAccess) {
+        // Sem acesso à página
+        return false;
+      }
+
+      // Acesso permitido
+      return true;
+    };
+
+    return checkPageAccess;
+  }, [hasRole, user]);
+
+  return {
+    getModuleAccess,
+    getPageAccess
+  };
 }; 

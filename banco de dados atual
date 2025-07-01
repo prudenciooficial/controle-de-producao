@@ -1,9 +1,19 @@
-esse arquivo é apenas para estudo da estrutura do banco de dados atual vinculado com esse sistema.
-
-
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.analises_contra_provas (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  contra_prova_id uuid NOT NULL,
+  dia_analise integer NOT NULL CHECK (dia_analise = ANY (ARRAY[1, 30, 60, 90, 120, 150, 180])),
+  data_analise date NOT NULL,
+  status_analise character varying NOT NULL DEFAULT 'pendente'::character varying CHECK (status_analise::text = ANY (ARRAY['pendente'::character varying, 'realizada'::character varying]::text[])),
+  observacoes_analise text,
+  problemas_encontrados text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT analises_contra_provas_pkey PRIMARY KEY (id),
+  CONSTRAINT analises_contra_provas_contra_prova_id_fkey FOREIGN KEY (contra_prova_id) REFERENCES public.contra_provas(id)
+);
 CREATE TABLE public.baixas_estoque (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   data date NOT NULL,
@@ -27,6 +37,20 @@ CREATE TABLE public.configuracoes_empresa (
   logo_url text,
   ativa boolean DEFAULT true,
   CONSTRAINT configuracoes_empresa_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.contra_provas (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  lote_produto character varying NOT NULL,
+  product_id uuid NOT NULL,
+  data_fabricacao date NOT NULL,
+  data_validade date NOT NULL,
+  data_descarte date,
+  observacoes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  quantidade_amostras integer NOT NULL DEFAULT 1,
+  CONSTRAINT contra_provas_pkey PRIMARY KEY (id),
+  CONSTRAINT contra_provas_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
 CREATE TABLE public.feriados (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -228,9 +252,9 @@ CREATE TABLE public.sale_items (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT sale_items_pkey PRIMARY KEY (id),
-  CONSTRAINT sale_items_produced_item_id_fkey FOREIGN KEY (produced_item_id) REFERENCES public.produced_items(id),
+  CONSTRAINT sale_items_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES public.sales(id),
   CONSTRAINT sale_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id),
-  CONSTRAINT sale_items_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES public.sales(id)
+  CONSTRAINT sale_items_produced_item_id_fkey FOREIGN KEY (produced_item_id) REFERENCES public.produced_items(id)
 );
 CREATE TABLE public.sales (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

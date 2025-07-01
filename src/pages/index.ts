@@ -11,3 +11,4 @@ export { default as LossesHistory } from "./LossesHistory";
 export { default as Traceability } from "./Traceability";
 export { default as Inventory } from "./Inventory";
 export { default as Welcome } from "./Welcome";
+export { default as ContraProvas } from "./ContraProvas";

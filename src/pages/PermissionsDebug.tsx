@@ -17,7 +17,12 @@ interface UserData {
     full_name?: string;
     username?: string;
     role?: string;
-    permissions?: any;
+    permissions?: {
+      system_status: 'active' | 'inactive';
+      modules_access: { [moduleKey: string]: boolean };
+      pages_access: { [pageKey: string]: boolean };
+      can_view_system_logs?: boolean;
+    };
   };
 }
 
@@ -36,7 +41,7 @@ export default function PermissionsDebug() {
     'orders',          // CRUD completo
     'inventory',       // CRUD completo
     'losses',          // CRUD completo
-    'traceability',    // Apenas visualização
+    'quality',         // CRUD completo
     'general_settings', // CRUD completo
     'human_resources', // CRUD completo
     'user_management'  // CRUD completo
@@ -83,7 +88,7 @@ export default function PermissionsDebug() {
         throw error;
       }
       
-      const formattedUsers = (data || []).map((authUser: any) => ({
+      const formattedUsers = (data || []).map((authUser: UserData) => ({
         id: authUser.id,
         email: authUser.email || '',
         user_metadata: authUser.user_metadata || {}
@@ -124,17 +129,12 @@ export default function PermissionsDebug() {
 
     const permissions = userData.user_metadata.permissions;
     if (!permissions || permissions.system_status !== 'active') return false;
+    
+    // Para a nova estrutura, verificar acesso ao módulo
     if (permissions.modules_access?.[module] !== true) return false;
 
-    const moduleActions = permissions.module_actions?.[module];
-    const normalizedAction = action === 'view' ? 'read' : action;
-
-    if (normalizedAction === 'read') {
-      if (!moduleActions) return true;
-      return moduleActions.read === true;
-    }
-
-    if (!moduleActions || moduleActions[normalizedAction] !== true) return false;
+    // Para ações específicas, sempre retornar true se tem acesso ao módulo
+    // Na nova estrutura, as permissões são por página, não por ação CRUD
     return true;
   };
 

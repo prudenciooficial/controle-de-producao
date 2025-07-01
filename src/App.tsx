@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { DefaultRoute } from "./components/auth/DefaultRoute";
 import { ThemeProvider } from "./components/theme/ThemeProvider";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
+import { initializeOfflineSystem } from "./services/initialization/OfflineInitializer";
 import Dashboard from "./pages/Dashboard";
 import Welcome from "./pages/Welcome";
 import PermissionsDebug from "./pages/PermissionsDebug";
@@ -38,12 +39,34 @@ import { useIsMobile } from "./hooks/use-mobile";
 import { cn } from "./lib/utils";
 import SystemLogsPage from "./pages/SystemLogsPage/SystemLogsPage";
 import Reclamacoes from "./pages/Reclamacoes";
+import ContraProvas from "./pages/ContraProvas";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [offlineSystemReady, setOfflineSystemReady] = useState(false);
+  
+  // Inicializar sistema offline-first
+  useEffect(() => {
+    const initOfflineSystem = async () => {
+      try {
+        // Inicializando sistema offline-first
+        const success = await initializeOfflineSystem();
+        
+        if (success) {
+          // Sistema offline-first inicializado com sucesso
+        } else {
+          // Sistema rodando apenas online
+        }
+      } catch (error) {
+        // Erro na inicialização - sistema em modo online apenas
+      }
+    };
+
+    initOfflineSystem();
+  }, []);
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -60,7 +83,7 @@ const AppContent = () => {
           <ProtectedRoute>
             <Sidebar isMobileMenuOpen={sidebarOpen} onMobileMenuToggle={toggleSidebar} />
             <div className={cn("flex flex-col flex-1 transition-all duration-300 ease-in-out", isMobile ? "w-full" : "md:ml-20")}>
-              <Header toggleSidebar={toggleSidebar} />
+              <Header toggleSidebar={toggleSidebar} offlineSystemReady={offlineSystemReady} />
               <main className="flex-1 p-4 sm:p-6 bg-muted">
                 <Routes>
                   <Route path="/" element={<DefaultRoute />} />
@@ -87,6 +110,7 @@ const AppContent = () => {
                   <Route path="/cadastro" element={<Registration />} />
                   <Route path="/recursos-humanos" element={<RecursosHumanos />} />
                   <Route path="/qualidade/reclamacoes" element={<Reclamacoes />} />
+                  <Route path="/qualidade/contra-provas" element={<ContraProvas />} />
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
                   <Route path="*" element={<NotFound />} />
