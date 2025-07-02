@@ -40,6 +40,8 @@ import { cn } from "./lib/utils";
 import SystemLogsPage from "./pages/SystemLogsPage/SystemLogsPage";
 import Reclamacoes from "./pages/Reclamacoes";
 import ContraProvas from "./pages/ContraProvas";
+import AnaliseQualidade from "./pages/AnaliseQualidade";
+import PrintableLaudoPage from "./pages/print/PrintableLaudoPage";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +80,7 @@ const AppContent = () => {
         <Route path="/auth" element={<Auth />} />
         <Route path="/print/traceability/:batchId" element={<PrintableTraceabilityPage />} />
         <Route path="/print/folha-ponto" element={<FolhaPontoPage />} />
+        <Route path="/print/laudo/:laudoId" element={<PrintableLaudoPage />} />
         
         <Route path="/*" element={
           <ProtectedRoute>
@@ -113,6 +116,7 @@ const AppContent = () => {
                   <Route path="/qualidade/contra-provas" element={<ContraProvas />} />
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
+                  <Route path="/analise-qualidade" element={<AnaliseQualidade />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

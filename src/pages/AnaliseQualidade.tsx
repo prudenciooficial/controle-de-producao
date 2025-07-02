@@ -1,0 +1,860 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, FileText, CheckCircle, XCircle, Eye, AlertTriangle, TrendingUp, Clock, Users, Printer, Edit, Trash } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import AnaliseIndividual from '../components/AnaliseIndividual';
+import { useToast } from '@/components/ui/use-toast';
+
+interface ColetaAmostra {
+  id: string;
+  lote_producao: string;
+  data_coleta: string;
+  quantidade_total_produzida: number;
+  quantidade_amostras: number;
+  responsavel_coleta: string;
+  observacoes?: string;
+  status: 'em_andamento' | 'finalizada' | 'aprovada' | 'reprovada';
+  created_at: string;
+}
+
+interface AnaliseAmostra {
+  id: string;
+  coleta_id: string;
+  numero_amostra: number;
+  umidade?: number;
+  ph?: number;
+  aspecto?: string;
+  cor?: string;
+  odor?: string;
+  sabor?: string;
+  embalagem?: string;
+  umidade_conforme?: boolean;
+  ph_conforme?: boolean;
+  observacoes?: string;
+  data_analise: string;
+}
+
+interface LaudoLiberacao {
+  id: string;
+  coleta_id: string;
+  numero_laudo: number;
+  marca_produto: string;
+  gramatura: string;
+  data_fabricacao: string;
+  data_validade: string;
+  resultado_geral: 'aprovado' | 'reprovado';
+  responsavel_liberacao: string;
+  observacoes?: string;
+  data_emissao: string;
+}
+
+interface DadosLaudo {
+  marca_produto: string;
+  gramatura: string;
+  data_fabricacao: string;
+  data_validade: string;
+  responsavel_liberacao: string;
+  observacoes: string;
+  numero_laudo?: number;
+  resultado_geral: 'aprovado' | 'reprovado';
+}
+
+// Componente de Card de Estatística Moderno
+const StatCard = ({ title, value, subtitle, icon: Icon, trend, trendColor }: {
+  title: string;
+  value: string | number;
+  subtitle: string;
+  icon: React.ComponentType<{ className?: string }>;
+  trend?: string;
+  trendColor?: string;
+}) => (
+  <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <div className="flex items-center gap-2 mt-2">
+          <p className="text-3xl font-bold text-gray-900">{value}</p>
+          {trend && (
+            <span className={`text-sm px-2 py-1 rounded-full ${trendColor}`}>
+              {trend}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+      </div>
+      <div className="p-3 bg-blue-50 rounded-lg">
+        <Icon className="w-6 h-6 text-blue-600" />
+      </div>
+    </div>
+  </div>
+);
+
+// Componente de Badge de Status Moderno
+const StatusBadge = ({ status }: { status: string }) => {
+  const statusConfig = {
+    em_andamento: { 
+      label: 'Em Andamento', 
+      className: 'bg-yellow-50 text-yellow-700 border-yellow-200' 
+    },
+    finalizada: { 
+      label: 'Finalizada', 
+      className: 'bg-blue-50 text-blue-700 border-blue-200' 
+    },
+    aprovada: { 
+      label: 'Aprovada', 
+      className: 'bg-green-50 text-green-700 border-green-200' 
+    },
+    reprovada: { 
+      label: 'Reprovada', 
+      className: 'bg-red-50 text-red-700 border-red-200' 
+    }
+  };
+
+  const config = statusConfig[status as keyof typeof statusConfig];
+  return (
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${config.className}`}>
+      {config.label}
+    </span>
+  );
+};
+
+export default function AnaliseQualidade() {
+  const [coletas, setColetas] = useState<ColetaAmostra[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showNovaColeta, setShowNovaColeta] = useState(false);
+  const [showAnalises, setShowAnalises] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Estados para nova coleta
+  const [novaColeta, setNovaColeta] = useState({
+    lote_producao: '',
+    data_coleta: new Date().toISOString().split('T')[0],
+    quantidade_total_produzida: '',
+    quantidade_amostras: 13,
+    responsavel_coleta: '',
+    observacoes: ''
+  });
+
+  // Estados para análises
+  const [analises, setAnalises] = useState<AnaliseAmostra[]>([]);
+  const [coletaSelecionada, setColetaSelecionada] = useState<ColetaAmostra | null>(null);
+  const [editandoColeta, setEditandoColeta] = useState<ColetaAmostra | null>(null);
+
+  const [coletasComLaudo, setColetasComLaudo] = useState<{ [key: string]: boolean }>({});
+
+  useEffect(() => {
+    carregarColetas();
+  }, []);
+
+  useEffect(() => {
+    // Após carregar coletas, verificar quais têm laudo
+    const verificarLaudos = async () => {
+      if (coletas.length === 0) {
+        setColetasComLaudo({});
+        return;
+      }
+      const ids = coletas.map(c => c.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('laudos_liberacao')
+        .select('id,coleta_id')
+        .in('coleta_id', ids);
+      if (error) {
+        toast({
+          title: 'Erro ao buscar laudos',
+          description: 'Não foi possível verificar os laudos das coletas.',
+          variant: 'destructive',
+        });
+        setColetasComLaudo({});
+        return;
+      }
+      const laudos: { [key: string]: boolean } = {};
+      (data || []).forEach((laudo: { id: string; coleta_id: string }) => {
+        laudos[laudo.coleta_id] = true;
+      });
+      setColetasComLaudo(laudos);
+    };
+    verificarLaudos();
+  }, [coletas]);
+
+  const carregarColetas = async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('coletas_amostras')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao carregar coletas:', error);
+        if (error.code === '42P01') {
+          toast({
+            title: 'Erro ao carregar coletas',
+            description: '⚠️ As tabelas de análise de qualidade ainda não foram criadas no banco de dados. Execute o SQL da migração primeiro.',
+            variant: 'destructive',
+          });
+        }
+        return;
+      }
+      setColetas(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar coletas:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const criarNovaColeta = async () => {
+    if (!novaColeta.lote_producao || !novaColeta.quantidade_total_produzida || !novaColeta.responsavel_coleta) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Por favor, preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('coletas_amostras')
+        .insert([{
+          ...novaColeta,
+          quantidade_total_produzida: parseFloat(novaColeta.quantidade_total_produzida)
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Criar registros vazios para as análises
+      const analisesPadrao = Array.from({ length: novaColeta.quantidade_amostras }, (_, index) => ({
+        coleta_id: data.id,
+        numero_amostra: index + 1,
+        data_analise: new Date().toISOString()
+      }));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from('analises_amostras')
+        .insert(analisesPadrao);
+
+      toast({
+        title: 'Coleta criada',
+        description: '✅ Coleta criada com sucesso!',
+        variant: 'default',
+      });
+      setShowNovaColeta(false);
+      setNovaColeta({
+        lote_producao: '',
+        data_coleta: new Date().toISOString().split('T')[0],
+        quantidade_total_produzida: '',
+        quantidade_amostras: 13,
+        responsavel_coleta: '',
+        observacoes: ''
+      });
+      carregarColetas();
+    } catch (error) {
+      console.error('Erro ao criar coleta:', error);
+      toast({
+        title: 'Erro ao criar coleta',
+        description: '❌ Erro ao criar coleta',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const carregarAnalises = async (coletaId: string) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('analises_amostras')
+        .select('*')
+        .eq('coleta_id', coletaId)
+        .order('numero_amostra');
+
+      if (error) throw error;
+      setAnalises(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar análises:', error);
+    }
+  };
+
+  const areAllAnalysesComplete = (analyses: AnaliseAmostra[]): boolean => {
+    if (!analyses || analyses.length === 0) return false;
+    return analyses.every(a => 
+        a.umidade !== null && a.umidade !== undefined &&
+        a.ph !== null && a.ph !== undefined &&
+        a.aspecto &&
+        a.cor &&
+        a.odor &&
+        a.sabor &&
+        a.embalagem
+    );
+  };
+
+  const salvarAnalise = async (analise: Partial<AnaliseAmostra>) => {
+    try {
+      // Remover campos calculados automaticamente pelo banco
+      const { umidade_conforme, ph_conforme, ...dadosParaInserir } = analise;
+      
+      const dadosCompletos = {
+        ...dadosParaInserir,
+        data_analise: new Date().toISOString()
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('analises_amostras')
+        .upsert([dadosCompletos], { onConflict: 'coleta_id,numero_amostra' });
+
+      if (error) throw error;
+      
+      toast({
+        title: 'Análise salva',
+        description: '✅ Análise salva com sucesso!',
+        variant: 'default',
+      });
+
+      if (analise.coleta_id) {
+          // Fetch updated analyses to check for completion
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: updatedAnalyses, error: fetchError } = await (supabase as any)
+              .from('analises_amostras')
+              .select('*')
+              .eq('coleta_id', analise.coleta_id)
+              .order('numero_amostra');
+
+          if (fetchError) throw fetchError;
+          setAnalises(updatedAnalyses || []); // Update local state for the modal
+          
+          const allComplete = areAllAnalysesComplete(updatedAnalyses || []);
+          const laudoAlreadyExists = coletasComLaudo[analise.coleta_id];
+
+          if (allComplete && !laudoAlreadyExists) {
+              if (!coletaSelecionada) return;
+
+              // Laudo generation logic
+              const dataFabricacao = new Date(coletaSelecionada.data_coleta);
+              const dataValidade = new Date(dataFabricacao);
+              dataValidade.setMonth(dataValidade.getMonth() + 6);
+
+              const todasConformes = (updatedAnalyses || []).every(a => a.umidade_conforme && a.ph_conforme);
+              const resultado: 'aprovado' | 'reprovado' = todasConformes ? 'aprovado' : 'reprovado';
+
+              const dadosLaudo: DadosLaudo = {
+                  marca_produto: 'MASSA PRONTA PARA TAPIOCA NOSSA GOMA',
+                  gramatura: '1Kg',
+                  data_fabricacao: coletaSelecionada.data_coleta,
+                  data_validade: dataValidade.toISOString().split('T')[0],
+                  responsavel_liberacao: coletaSelecionada.responsavel_coleta,
+                  observacoes: coletaSelecionada.observacoes || 'São realizadas análises do produto acabado em laboratórios terceirizados de acordo com o plano de amostragem interno da Indústria de Alimentos Ser Bem Ltda., atendendo os respectivos dispositivos legais:',
+                  resultado_geral: resultado,
+              };
+              
+              await gerarLaudo(coletaSelecionada.id, dadosLaudo, true);
+              setShowAnalises(null); // Close modal after auto-generation
+          }
+      }
+    } catch (error) {
+      console.error('Erro ao salvar análise:', error);
+      toast({
+        title: 'Erro ao salvar análise',
+        description: '❌ Erro ao salvar análise',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const gerarLaudo = async (coletaId: string, dadosLaudo: DadosLaudo, automatico = false) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('laudos_liberacao')
+        .insert([{
+          coleta_id: coletaId,
+          data_emissao: new Date().toISOString(),
+          ...dadosLaudo
+        }])
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      const laudoId = data.id;
+
+      // Atualizar status da coleta
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from('coletas_amostras')
+        .update({ status: dadosLaudo.resultado_geral === 'aprovado' ? 'aprovada' : 'reprovada' })
+        .eq('id', coletaId);
+
+      if (automatico) {
+        toast({
+          title: 'Laudo gerado automaticamente!',
+          description: 'Coleta finalizada e laudo disponível para impressão.',
+        });
+      } else {
+        toast({
+          title: 'Laudo gerado com sucesso!',
+          description: 'O laudo foi gerado manualmente e está disponível para impressão.',
+        });
+      }
+      
+      setColetas(prevColetas =>
+        prevColetas.map(c =>
+          c.id === coletaId
+            ? { ...c, status: dadosLaudo.resultado_geral === 'aprovado' ? 'aprovada' : 'reprovada' }
+            : c
+        )
+      );
+
+      setColetasComLaudo(prev => ({
+        ...prev,
+        [coletaId]: true
+      }));
+      window.open(`/print/laudo/${laudoId}`, '_blank');
+    } catch (error) {
+      console.error('Erro ao gerar laudo:', error);
+      toast({
+        title: 'Erro ao gerar laudo',
+        description: 'Ocorreu um erro ao tentar gerar o laudo.',
+      });
+    }
+  };
+
+  const visualizarLaudo = async (coletaId: string) => {
+    try {
+      // Buscar o laudo da coleta
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: laudo, error } = await (supabase as any)
+        .from('laudos_liberacao')
+        .select('id')
+        .eq('coleta_id', coletaId)
+        .limit(1);
+
+      if (error) {
+        console.error('Erro ao buscar laudo:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: 'Erro ao buscar laudo para impressão.'
+        });
+        return;
+      }
+
+      if (!laudo || laudo.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Laudo não encontrado',
+          description: 'Não foi encontrado um laudo para esta coleta.'
+        });
+        return;
+      }
+
+      // Abrir página de impressão em nova janela
+      const laudoId = laudo[0].id;
+      window.open(`/print/laudo/${laudoId}`, '_blank', 'width=800,height=600');
+      
+    } catch (error) {
+      console.error('Erro:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Erro inesperado ao tentar visualizar o laudo.'
+      });
+    }
+  };
+
+  const abrirEdicaoColeta = (coleta: ColetaAmostra) => {
+    setEditandoColeta(coleta);
+    setNovaColeta({
+      lote_producao: coleta.lote_producao,
+      data_coleta: coleta.data_coleta,
+      quantidade_total_produzida: coleta.quantidade_total_produzida.toString(),
+      quantidade_amostras: coleta.quantidade_amostras,
+      responsavel_coleta: coleta.responsavel_coleta,
+      observacoes: coleta.observacoes || ''
+    });
+    setShowNovaColeta(true);
+  };
+
+  const salvarEdicaoColeta = async () => {
+    if (!editandoColeta) return;
+    if (!novaColeta.lote_producao || !novaColeta.quantidade_total_produzida || !novaColeta.responsavel_coleta) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Por favor, preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('coletas_amostras')
+        .update({
+          lote_producao: novaColeta.lote_producao,
+          data_coleta: novaColeta.data_coleta,
+          quantidade_total_produzida: parseFloat(novaColeta.quantidade_total_produzida),
+          quantidade_amostras: novaColeta.quantidade_amostras,
+          responsavel_coleta: novaColeta.responsavel_coleta,
+          observacoes: novaColeta.observacoes
+        })
+        .eq('id', editandoColeta.id);
+      if (error) throw error;
+      toast({
+        title: 'Coleta editada',
+        description: '✅ Coleta editada com sucesso!',
+        variant: 'default',
+      });
+      setShowNovaColeta(false);
+      setEditandoColeta(null);
+      setNovaColeta({
+        lote_producao: '',
+        data_coleta: new Date().toISOString().split('T')[0],
+        quantidade_total_produzida: '',
+        quantidade_amostras: 13,
+        responsavel_coleta: '',
+        observacoes: ''
+      });
+      carregarColetas();
+    } catch (error) {
+      console.error('Erro ao editar coleta:', error);
+      toast({
+        title: 'Erro ao editar coleta',
+        description: '❌ Erro ao editar coleta',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const apagarColeta = async (coleta: ColetaAmostra) => {
+    if (!window.confirm('Tem certeza que deseja apagar esta coleta? Esta ação não poderá ser desfeita.')) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('coletas_amostras')
+        .delete()
+        .eq('id', coleta.id);
+      if (error) throw error;
+      toast({
+        title: 'Coleta apagada',
+        description: '✅ Coleta apagada com sucesso!',
+        variant: 'default',
+      });
+      carregarColetas();
+    } catch (error) {
+      console.error('Erro ao apagar coleta:', error);
+      toast({
+        title: 'Erro ao apagar coleta',
+        description: '❌ Erro ao apagar coleta',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Calcular estatísticas
+  const stats = {
+    totalColetas: coletas.length,
+    coletasAndamento: coletas.filter(c => c.status === 'em_andamento').length,
+    coletasAprovadas: coletas.filter(c => c.status === 'aprovada').length,
+    coletasReprovadas: coletas.filter(c => c.status === 'reprovada').length
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Análises de Qualidade</h1>
+          <p className="text-gray-600">Controle de qualidade de amostras de produção</p>
+        </div>
+        <Button
+          onClick={() => setShowNovaColeta(true)}
+          className="inline-flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Nova Coleta
+        </Button>
+      </div>
+
+      {/* Cards de Estatísticas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total de Coletas"
+          value={stats.totalColetas}
+          subtitle="Coletas registradas"
+          icon={FileText}
+        />
+        <StatCard
+          title="Em Andamento"
+          value={stats.coletasAndamento}
+          subtitle="Aguardando análises"
+          icon={Clock}
+          trend={stats.coletasAndamento > 0 ? `${stats.coletasAndamento} ativo${stats.coletasAndamento > 1 ? 's' : ''}` : 'Nenhuma'}
+          trendColor="bg-yellow-100 text-yellow-800"
+        />
+        <StatCard
+          title="Aprovadas"
+          value={stats.coletasAprovadas}
+          subtitle="Conformes"
+          icon={CheckCircle}
+          trend={`${((stats.coletasAprovadas / (stats.totalColetas || 1)) * 100).toFixed(1)}%`}
+          trendColor="bg-green-100 text-green-800"
+        />
+        <StatCard
+          title="Reprovadas"
+          value={stats.coletasReprovadas}
+          subtitle="Não conformes"
+          icon={AlertTriangle}
+          trend={`${((stats.coletasReprovadas / (stats.totalColetas || 1)) * 100).toFixed(1)}%`}
+          trendColor="bg-red-100 text-red-800"
+        />
+      </div>
+
+      {/* Tabela de Coletas - Design Moderno */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Histórico de Coletas</h3>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Lote
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Data Coleta
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Produção (kg)
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Amostras
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Responsável
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {coletas.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                    <FileText className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+                    <p>Nenhuma coleta registrada</p>
+                    <p className="text-sm">Clique em "Nova Coleta" para começar</p>
+                  </td>
+                </tr>
+              ) : (
+                coletas.map((coleta) => (
+                  <tr key={coleta.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {coleta.lote_producao}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(coleta.data_coleta).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {coleta.quantidade_total_produzida.toLocaleString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {coleta.quantidade_amostras}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {coleta.responsavel_coleta}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <StatusBadge status={coleta.status} />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setShowAnalises(coleta.id);
+                            setColetaSelecionada(coleta);
+                            carregarAnalises(coleta.id);
+                          }}
+                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                          title="Ver Análises"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => abrirEdicaoColeta(coleta)}
+                          className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
+                          title="Editar Coleta"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => apagarColeta(coleta)}
+                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                          title="Apagar Coleta"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                        {coletasComLaudo[coleta.id] && (
+                          <button
+                            onClick={() => visualizarLaudo(coleta.id)}
+                            className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors"
+                            title="Visualizar Laudo"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal de Análises */}
+      {showAnalises && coletaSelecionada && (
+        <AnaliseIndividual
+          analises={analises}
+          coletaId={showAnalises}
+          onSalvarAnalise={salvarAnalise}
+          onVoltar={() => setShowAnalises(null)}
+        />
+      )}
+
+      {/* Modal Nova Coleta usando Dialog do sistema */}
+      <Dialog open={showNovaColeta} onOpenChange={(open) => {
+        setShowNovaColeta(open);
+        if (!open) setEditandoColeta(null);
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editandoColeta ? 'Editar Coleta de Amostras' : 'Nova Coleta de Amostras'}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="lote_producao" className="text-sm font-medium text-gray-700">
+                Lote de Produção *
+              </Label>
+              <Input
+                id="lote_producao"
+                type="text"
+                value={novaColeta.lote_producao}
+                onChange={(e) => setNovaColeta({ ...novaColeta, lote_producao: e.target.value })}
+                placeholder="Ex: 2025001"
+                className="mt-1"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="data_coleta" className="text-sm font-medium text-gray-700">
+                  Data da Coleta *
+                </Label>
+                <Input
+                  id="data_coleta"
+                  type="date"
+                  value={novaColeta.data_coleta}
+                  onChange={(e) => setNovaColeta({ ...novaColeta, data_coleta: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="quantidade_amostras" className="text-sm font-medium text-gray-700">
+                  Quantidade de Amostras
+                </Label>
+                <Input
+                  id="quantidade_amostras"
+                  type="number"
+                  value={novaColeta.quantidade_amostras}
+                  onChange={(e) => setNovaColeta({ ...novaColeta, quantidade_amostras: parseInt(e.target.value) })}
+                  min="1"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="quantidade_total_produzida" className="text-sm font-medium text-gray-700">
+                Quantidade Produzida (kg) *
+              </Label>
+              <Input
+                id="quantidade_total_produzida"
+                type="number"
+                value={novaColeta.quantidade_total_produzida}
+                onChange={(e) => setNovaColeta({ ...novaColeta, quantidade_total_produzida: e.target.value })}
+                placeholder="Ex: 20000"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="responsavel_coleta" className="text-sm font-medium text-gray-700">
+                Responsável pela Coleta *
+              </Label>
+              <Input
+                id="responsavel_coleta"
+                type="text"
+                value={novaColeta.responsavel_coleta}
+                onChange={(e) => setNovaColeta({ ...novaColeta, responsavel_coleta: e.target.value })}
+                placeholder="Nome do responsável"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="observacoes" className="text-sm font-medium text-gray-700">
+                Observações
+              </Label>
+              <Textarea
+                id="observacoes"
+                value={novaColeta.observacoes}
+                onChange={(e) => setNovaColeta({ ...novaColeta, observacoes: e.target.value })}
+                placeholder="Observações adicionais..."
+                rows={3}
+                className="mt-1"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => {
+                setShowNovaColeta(false);
+                setEditandoColeta(null);
+              }}>
+                Cancelar
+              </Button>
+              <Button onClick={editandoColeta ? salvarEdicaoColeta : criarNovaColeta}>
+                {editandoColeta ? 'Salvar Alterações' : 'Criar Coleta'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+} 

@@ -18,11 +18,11 @@ export const createMaterial = async (
   // Log apenas se online (para evitar conflitos)
   if (await materialsAdapter.isOnline() && userId && userDisplayName) {
     try {
-      await logSystemEvent({
+  await logSystemEvent({
         userId: userId,
         userDisplayName: userDisplayName,
-        actionType: 'CREATE',
-        entityTable: 'materials',
+    actionType: 'CREATE',
+    entityTable: 'materials',
         entityId: result.id,
         newData: result as unknown as Record<string, unknown>
       });
@@ -45,14 +45,14 @@ export const updateMaterial = async (
   // Log apenas se online
   if (await materialsAdapter.isOnline() && userId && userDisplayName) {
     try {
-      await logSystemEvent({
+  await logSystemEvent({
         userId: userId,
         userDisplayName: userDisplayName,
-        actionType: 'UPDATE',
-        entityTable: 'materials',
-        entityId: id,
+    actionType: 'UPDATE',
+    entityTable: 'materials',
+    entityId: id,
         oldData: { id, updates: material }
-      });
+  });
     } catch (error) {
       console.warn('Erro ao fazer log (sistema continuará funcionando):', error);
     }
@@ -69,14 +69,14 @@ export const deleteMaterial = async (
   // Log apenas se online
   if (await materialsAdapter.isOnline() && userId && userDisplayName) {
     try {
-      await logSystemEvent({
+  await logSystemEvent({
         userId: userId,
         userDisplayName: userDisplayName,
-        actionType: 'DELETE',
-        entityTable: 'materials',
-        entityId: id,
-        oldData: { id }
-      });
+    actionType: 'DELETE',
+    entityTable: 'materials',
+    entityId: id,
+    oldData: { id }
+  });
     } catch (error) {
       console.warn('Erro ao fazer log (sistema continuará funcionando):', error);
     }

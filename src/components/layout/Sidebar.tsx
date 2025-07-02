@@ -71,6 +71,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       subItems: [
         { name: "Reclamações", path: "/qualidade/reclamacoes", icon: MessageSquare },
         { name: "Contra-provas", path: "/qualidade/contra-provas", icon: FlaskConical },
+        { name: "Análises de Qualidade", path: "/analise-qualidade", icon: Search },
         { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search }
       ]
     },
@@ -110,12 +111,13 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         '/recursos-humanos': 'recursos_humanos',
         '/qualidade/reclamacoes': 'reclamacoes',
         '/qualidade/contra-provas': 'contra_provas',
+        '/analise-qualidade': 'analise_qualidade',
         '/rastreabilidade': 'rastreabilidade',
         '/usuarios': 'usuarios',
         '/logs': 'logs',
         '/debug-permissions': 'debug_permissions'
       };
-
+      
       for (const item of allMenuItems) {
         // Verificando item
         
@@ -139,8 +141,8 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
                 }
                 
                 if (subItem.module) {
-                  const subItemAccess = getModuleAccess(subItem.module);
-                  return subItemAccess;
+                const subItemAccess = getModuleAccess(subItem.module);
+                return subItemAccess;
                 }
                 
                 return false;
@@ -162,9 +164,9 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
                   }
                 } else {
                   filteredItems.push(item);
-                }
-              } else {
-                filteredItems.push(item);
+              }
+            } else {
+              filteredItems.push(item);
               }
             }
           }
