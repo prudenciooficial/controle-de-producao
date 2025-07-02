@@ -285,80 +285,75 @@ export default function AnaliseQualidade() {
   };
 
   const areAllAnalysesComplete = (analyses: AnaliseAmostra[]): boolean => {
-    if (!analyses || analyses.length === 0) return false;
-    return analyses.every(a => 
-        a.umidade !== null && a.umidade !== undefined &&
-        a.ph !== null && a.ph !== undefined &&
-        a.aspecto &&
-        a.cor &&
-        a.odor &&
-        a.sabor &&
-        a.embalagem
+    return analyses.length > 0 && analyses.every(analise => 
+      analise.umidade !== null && analise.umidade !== undefined &&
+      analise.ph !== null && analise.ph !== undefined &&
+      analise.aspecto && analise.cor && analise.odor && analise.sabor &&
+      analise.umidade_conforme !== null && analise.umidade_conforme !== undefined &&
+      analise.ph_conforme !== null && analise.ph_conforme !== undefined
     );
   };
 
   const salvarAnalise = async (analise: Partial<AnaliseAmostra>) => {
     try {
-      // Remover campos calculados automaticamente pelo banco
-      const { umidade_conforme, ph_conforme, ...dadosParaInserir } = analise;
-      
-      const dadosCompletos = {
-        ...dadosParaInserir,
-        data_analise: new Date().toISOString()
-      };
-
+      // Remover campos gerados do objeto antes de enviar ao Supabase
+      const { umidade_conforme, ph_conforme, ...analiseSemGerados } = analise;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('analises_amostras')
-        .upsert([dadosCompletos], { onConflict: 'coleta_id,numero_amostra' });
+        .upsert(analiseSemGerados, { onConflict: 'id' })
+        .select()
+        .single();
 
       if (error) throw error;
-      
+
+      // Atualizar lista de análises local
+      setAnalises(prev => {
+        const updated = prev.map(a => a.id === data.id ? data : a);
+        return updated.some(a => a.id === data.id) ? updated : [...prev, data];
+      });
+
       toast({
         title: 'Análise salva',
         description: '✅ Análise salva com sucesso!',
         variant: 'default',
       });
 
-      if (analise.coleta_id) {
-          // Fetch updated analyses to check for completion
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: updatedAnalyses, error: fetchError } = await (supabase as any)
-              .from('analises_amostras')
-              .select('*')
-              .eq('coleta_id', analise.coleta_id)
-              .order('numero_amostra');
+      // Buscar todas as análises atualizadas para verificar se estão completas
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: updatedAnalyses, error: fetchError } = await (supabase as any)
+        .from('analises_amostras')
+        .select('*')
+        .eq('coleta_id', analise.coleta_id)
+        .order('numero_amostra');
 
-          if (fetchError) throw fetchError;
-          setAnalises(updatedAnalyses || []); // Update local state for the modal
-          
-          const allComplete = areAllAnalysesComplete(updatedAnalyses || []);
-          const laudoAlreadyExists = coletasComLaudo[analise.coleta_id];
+      if (fetchError) throw fetchError;
 
-          if (allComplete && !laudoAlreadyExists) {
-              if (!coletaSelecionada) return;
+      // Verificar se todas as análises estão completas
+      if (coletaSelecionada && areAllAnalysesComplete(updatedAnalyses || [])) {
+        // Atualizar o status da coleta para 'finalizada'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from('coletas_amostras')
+          .update({ status: 'finalizada' })
+          .eq('id', coletaSelecionada.id);
 
-              // Laudo generation logic
-              const dataFabricacao = new Date(coletaSelecionada.data_coleta);
-              const dataValidade = new Date(dataFabricacao);
-              dataValidade.setMonth(dataValidade.getMonth() + 6);
+        toast({
+          title: 'Coleta finalizada!',
+          description: '✅ Todas as análises foram completadas. A coleta agora pode ser aprovada e um laudo pode ser gerado na página de Laudos.',
+          variant: 'default',
+        });
 
-              const todasConformes = (updatedAnalyses || []).every(a => a.umidade_conforme && a.ph_conforme);
-              const resultado: 'aprovado' | 'reprovado' = todasConformes ? 'aprovado' : 'reprovado';
+        // Atualizar a lista de coletas local
+        setColetas(prevColetas =>
+          prevColetas.map(c =>
+            c.id === coletaSelecionada.id
+              ? { ...c, status: 'finalizada' }
+              : c
+          )
+        );
 
-              const dadosLaudo: DadosLaudo = {
-                  marca_produto: 'MASSA PRONTA PARA TAPIOCA NOSSA GOMA',
-                  gramatura: '1Kg',
-                  data_fabricacao: coletaSelecionada.data_coleta,
-                  data_validade: dataValidade.toISOString().split('T')[0],
-                  responsavel_liberacao: coletaSelecionada.responsavel_coleta,
-                  observacoes: coletaSelecionada.observacoes || 'São realizadas análises do produto acabado em laboratórios terceirizados de acordo com o plano de amostragem interno da Indústria de Alimentos Ser Bem Ltda., atendendo os respectivos dispositivos legais:',
-                  resultado_geral: resultado,
-              };
-              
-              await gerarLaudo(coletaSelecionada.id, dadosLaudo, true);
-              setShowAnalises(null); // Close modal after auto-generation
-          }
+        setShowAnalises(null); // Fechar modal após finalização
       }
     } catch (error) {
       console.error('Erro ao salvar análise:', error);
@@ -366,64 +361,6 @@ export default function AnaliseQualidade() {
         title: 'Erro ao salvar análise',
         description: '❌ Erro ao salvar análise',
         variant: 'destructive',
-      });
-    }
-  };
-
-  const gerarLaudo = async (coletaId: string, dadosLaudo: DadosLaudo, automatico = false) => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
-        .from('laudos_liberacao')
-        .insert([{
-          coleta_id: coletaId,
-          data_emissao: new Date().toISOString(),
-          ...dadosLaudo
-        }])
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-      const laudoId = data.id;
-
-      // Atualizar status da coleta
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
-        .from('coletas_amostras')
-        .update({ status: dadosLaudo.resultado_geral === 'aprovado' ? 'aprovada' : 'reprovada' })
-        .eq('id', coletaId);
-
-      if (automatico) {
-        toast({
-          title: 'Laudo gerado automaticamente!',
-          description: 'Coleta finalizada e laudo disponível para impressão.',
-        });
-      } else {
-        toast({
-          title: 'Laudo gerado com sucesso!',
-          description: 'O laudo foi gerado manualmente e está disponível para impressão.',
-        });
-      }
-      
-      setColetas(prevColetas =>
-        prevColetas.map(c =>
-          c.id === coletaId
-            ? { ...c, status: dadosLaudo.resultado_geral === 'aprovado' ? 'aprovada' : 'reprovada' }
-            : c
-        )
-      );
-
-      setColetasComLaudo(prev => ({
-        ...prev,
-        [coletaId]: true
-      }));
-      window.open(`/print/laudo/${laudoId}`, '_blank');
-    } catch (error) {
-      console.error('Erro ao gerar laudo:', error);
-      toast({
-        title: 'Erro ao gerar laudo',
-        description: 'Ocorreu um erro ao tentar gerar o laudo.',
       });
     }
   };
@@ -452,7 +389,7 @@ export default function AnaliseQualidade() {
         toast({
           variant: 'destructive',
           title: 'Laudo não encontrado',
-          description: 'Não foi encontrado um laudo para esta coleta.'
+          description: 'Não foi encontrado um laudo para esta coleta. Crie um laudo na página de Laudos primeiro.'
         });
         return;
       }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -71,7 +71,8 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       subItems: [
         { name: "Reclamações", path: "/qualidade/reclamacoes", icon: MessageSquare },
         { name: "Contra-provas", path: "/qualidade/contra-provas", icon: FlaskConical },
-        { name: "Análises de Qualidade", path: "/analise-qualidade", icon: Search },
+        { name: "Análises de Qualidade", path: "/qualidade/analise", icon: Search },
+        { name: "Laudos", path: "/qualidade/laudos", icon: FileText },
         { name: "Rastreabilidade", path: "/rastreabilidade", icon: Search }
       ]
     },
@@ -111,7 +112,8 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         '/recursos-humanos': 'recursos_humanos',
         '/qualidade/reclamacoes': 'reclamacoes',
         '/qualidade/contra-provas': 'contra_provas',
-        '/analise-qualidade': 'analise_qualidade',
+        '/qualidade/analise': 'analise_qualidade',
+        '/qualidade/laudos': 'laudos',
         '/rastreabilidade': 'rastreabilidade',
         '/usuarios': 'usuarios',
         '/logs': 'logs',

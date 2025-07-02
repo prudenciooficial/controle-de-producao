@@ -6,29 +6,41 @@
  * ✅ Botões de imprimir (window.print()) e fechar
  * ✅ Assinatura da Vivian incluída
  * ✅ Layout compatível com A4
- * ✅ Dados mockados para demonstração
+ * ✅ Dados reais do banco de dados
  * 
- * TODO: Conectar com dados reais do banco quando tabelas estiverem configuradas
+ * ATUALIZADO: Conecta com dados reais do Supabase
  */
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader, Printer, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import './print-laudo.css';
 
 // Tipos para o laudo
 interface Laudo {
   id: string;
+  coleta_id: string;
   numero_laudo: number;
   marca_produto: string;
   gramatura: string;
   data_fabricacao: string;
   data_validade: string;
-  lote_producao: string;
-  responsavel_liberacao: string;
   resultado_geral: 'aprovado' | 'reprovado';
-  observacoes: string;
-  coleta_id: string;
+  responsavel_liberacao: string;
+  observacoes?: string;
+  data_emissao: string;
+}
+
+interface Coleta {
+  id: string;
+  lote_producao: string;
+  data_coleta: string;
+  quantidade_total_produzida: number;
+  quantidade_amostras: number;
+  responsavel_coleta: string;
+  observacoes?: string;
+  status: string;
 }
 
 interface Analise {
@@ -44,69 +56,98 @@ interface Analise {
   coleta_id: string;
 }
 
+interface ResponsavelTecnico {
+  id: string;
+  nome: string;
+  funcao: string;
+  carteira_tecnica: string;
+  assinatura_url?: string;
+}
+
 const PrintableLaudoPage = () => {
   const { laudoId } = useParams();
   const [laudo, setLaudo] = useState<Laudo | null>(null);
+  const [coleta, setColeta] = useState<Coleta | null>(null);
   const [analises, setAnalises] = useState<Analise[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Campos editáveis
-  const [observacoes, setObservacoes] = useState('São realizadas análises do produto acabado em laboratórios terceirizados de acordo com o plano de amostragem interno da Indústria de Alimentos Ser Bem Ltda., atendendo os respectivos dispositivos legais:');
-  const [parecer, setParecer] = useState<'aprovado' | 'reprovado'>('aprovado');
+  const [error, setError] = useState<string | null>(null);
+  const [responsavel, setResponsavel] = useState<ResponsavelTecnico | null>(null);
 
   useEffect(() => {
     const fetchLaudoData = async () => {
-      if (!laudoId) return;
+      if (!laudoId) {
+        setError('ID do laudo não fornecido');
+        setLoading(false);
+        return;
+      }
       
       try {
-        // Por enquanto, usar dados mockados para demonstrar a funcionalidade
-        // TODO: Implementar busca real no banco quando as tabelas estiverem corretas
-        const mockLaudo: Laudo = {
-          id: laudoId,
-          numero_laudo: 175,
-          marca_produto: 'MASSA PRONTA PARA TAPIOCA NOSSA GOMA',
-          gramatura: '1Kg',
-          data_fabricacao: '2025-06-26',
-          data_validade: '2025-12-26',
-          lote_producao: '175',
-          responsavel_liberacao: 'Vivian da Costa Patrício da Silva',
-          resultado_geral: 'aprovado',
-          observacoes: '',
-          coleta_id: 'mock-coleta-id'
-        };
+        // Buscar o laudo
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: laudoData, error: laudoError } = await (supabase as any)
+          .from('laudos_liberacao')
+          .select('*')
+          .eq('id', laudoId)
+          .single();
 
-        const mockAnalises: Analise[] = [
-          {
-            id: '1',
-            numero_amostra: 1,
-            umidade: 42.5,
-            ph: 4.06,
-            aspecto: 'Conforme',
-            cor: 'Conforme',
-            odor: 'Conforme',
-            sabor: 'Conforme',
-            embalagem: 'Conforme',
-            coleta_id: 'mock-coleta-id'
-          },
-          {
-            id: '2',
-            numero_amostra: 2,
-            umidade: 43.2,
-            ph: 4.15,
-            aspecto: 'Conforme',
-            cor: 'Conforme',
-            odor: 'Conforme',
-            sabor: 'Conforme',
-            embalagem: 'Conforme',
-            coleta_id: 'mock-coleta-id'
+        if (laudoError) {
+          console.error('Erro ao buscar laudo:', laudoError);
+          setError('Laudo não encontrado');
+          setLoading(false);
+          return;
+        }
+
+        setLaudo(laudoData);
+
+        // Buscar a coleta relacionada
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: coletaData, error: coletaError } = await (supabase as any)
+          .from('coletas_amostras')
+          .select('*')
+          .eq('id', laudoData.coleta_id)
+          .single();
+
+        if (coletaError) {
+          console.error('Erro ao buscar coleta:', coletaError);
+          setError('Coleta não encontrada');
+          setLoading(false);
+          return;
+        }
+
+        setColeta(coletaData);
+
+        // Buscar análises da coleta
+        const { data: analisesData, error: analisesError } = await supabase
+          .from('analises_amostras')
+          .select('*')
+          .eq('coleta_id', laudoData.coleta_id)
+          .order('numero_amostra');
+
+        if (analisesError) {
+          console.error('Erro ao buscar análises:', analisesError);
+          setError('Análises não encontradas');
+          setLoading(false);
+          return;
+        }
+
+        setAnalises((analisesData as Analise[]) || []);
+        
+        // Buscar responsável técnico pelo nome salvo no laudo
+        if (laudoData.responsavel_liberacao) {
+          const { data: respData, error: respError } = await supabase
+            .from('responsaveis_tecnicos')
+            .select('*')
+            .ilike('nome', laudoData.responsavel_liberacao)
+            .single();
+          if (!respError && respData) {
+            setResponsavel(respData as ResponsavelTecnico);
+          } else {
+            setResponsavel(null);
           }
-        ];
-        
-        setLaudo(mockLaudo);
-        setAnalises(mockAnalises);
-        
+        }
       } catch (error) {
         console.error("Erro geral:", error);
+        setError('Erro ao carregar dados do laudo');
       } finally {
         setLoading(false);
       }
@@ -132,10 +173,17 @@ const PrintableLaudoPage = () => {
     );
   }
   
-  if (!laudo) {
+  if (error || !laudo || !coleta) {
     return (
       <div className="p-8 text-center text-red-500">
-        Laudo não encontrado.
+        <h2 className="text-xl font-bold mb-2">Erro ao carregar laudo</h2>
+        <p>{error || 'Laudo não encontrado.'}</p>
+        <button 
+          onClick={handleClose}
+          className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        >
+          Fechar
+        </button>
       </div>
     );
   }
@@ -182,32 +230,28 @@ const PrintableLaudoPage = () => {
       </div>
 
       {/* Conteúdo do laudo */}
-      <div className="laudo-a4">
+      <div className="laudo-a4" style={{ fontSize: '10pt', padding: 0, width: '210mm', minHeight: '297mm', margin: '0 auto', boxShadow: '0 0 8px #e5e7eb' }}>
         {/* Marca d'água */}
         <div className="laudo-watermark">INDÚSTRIA DE ALIMENTOS SER BEM LTDA.</div>
-        
         {/* Wrapper do conteúdo para não sobrepor o cabeçalho do papel timbrado */}
-        <div className="laudo-content-wrapper">
+        <div className="laudo-content-wrapper" style={{ position: 'absolute', top: '20mm', left: 0, right: 0, width: '100%', fontSize: '10pt', padding: '0 12mm', minHeight: '220mm' }}>
           {/* Título do laudo */}
-          <div className="laudo-title">
+          <div className="laudo-title" style={{ fontSize: '1.1em', marginBottom: 8 }}>
             LAUDO DE ANÁLISE DE PRODUTO ACABADO Nº {laudo.numero_laudo}
           </div>
-          
           {/* Seção de Identificação */}
-          <div className="laudo-section-title">
+          <div className="laudo-section-title" style={{ fontSize: '1em', marginBottom: 4 }}>
             IDENTIFICAÇÃO
           </div>
-          
           {/* Tabela de identificação */}
-          <table className="laudo-table-id">
+          <table className="laudo-table-id" style={{ fontSize: '9pt', marginBottom: 8 }}>
             <tbody>
               <tr>
-                <td><strong>DATA DA ANÁLISE:</strong> {new Date().toLocaleDateString('pt-BR')}</td>
-                <td><strong>LOTE:</strong> {laudo.lote_producao}</td>
+                <td><strong>DATA DA ANÁLISE:</strong> {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}</td>
+                <td><strong>LOTE:</strong> {coleta.lote_producao}</td>
               </tr>
               <tr>
                 <td><strong>PRODUTO ACABADO:</strong> {laudo.marca_produto}</td>
-                <td><strong>APRESENTAÇÃO:</strong> {laudo.gramatura}</td>
               </tr>
               <tr>
                 <td><strong>FABRICAÇÃO:</strong> {new Date(laudo.data_fabricacao).toLocaleDateString('pt-BR')}</td>
@@ -215,130 +259,98 @@ const PrintableLaudoPage = () => {
               </tr>
             </tbody>
           </table>
-          
           {/* Tabela de parâmetros */}
-          <table className="laudo-table-param">
+          <table className="laudo-table-param" style={{ fontSize: '9pt', marginBottom: 8 }}>
             <thead>
               <tr>
-                <th>PARÂMETROS</th>
+                <th>PARÂMETRO</th>
                 <th>ESPECIFICAÇÃO</th>
-                <th>RESULTADOS</th>
+                <th>RESULTADO</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>
-                  <strong>Ensaios Organolépticos</strong><br />
-                  Aspecto<br />
-                  Cor<br />
-                  Odor<br />
-                  Sabor
-                </td>
-                <td>
-                  Fino<br />
-                  Branco<br />
-                  Característico<br />
-                  Peculiar
-                </td>
-                <td>
-                  {aspectoMaisComum('aspecto')}<br />
-                  {aspectoMaisComum('cor')}<br />
-                  {aspectoMaisComum('odor')}<br />
-                  {aspectoMaisComum('sabor')}
-                </td>
+                <td colSpan={3} style={{ fontWeight: 'bold', textAlign: 'left', background: '#f1f5f9' }}>Ensaios Organolépticos</td>
               </tr>
               <tr>
-                <td>
-                  <strong>Ensaios Físico-Químicos</strong><br />
-                  Umidade<br />
-                  pH
-                </td>
-                <td>
-                  40-45%<br />
-                  3,5 — 5,5
-                </td>
-                <td>
-                  {mediaUmidade}%<br />
-                  {mediaPh}
-                </td>
+                <td>Aspecto</td>
+                <td>Fino</td>
+                <td>{aspectoMaisComum('aspecto')}</td>
+              </tr>
+              <tr>
+                <td>Cor</td>
+                <td>Branco</td>
+                <td>{aspectoMaisComum('cor')}</td>
+              </tr>
+              <tr>
+                <td>Odor</td>
+                <td>Característico</td>
+                <td>{aspectoMaisComum('odor')}</td>
+              </tr>
+              <tr>
+                <td>Sabor</td>
+                <td>Peculiar</td>
+                <td>{aspectoMaisComum('sabor')}</td>
+              </tr>
+              <tr>
+                <td colSpan={3} style={{ fontWeight: 'bold', textAlign: 'left', background: '#f1f5f9' }}>Ensaios Físico-Químicos</td>
+              </tr>
+              <tr>
+                <td>Umidade</td>
+                <td>40-45%</td>
+                <td>{mediaUmidade}%</td>
+              </tr>
+              <tr>
+                <td>pH</td>
+                <td>3,5 — 5,5</td>
+                <td>{mediaPh}</td>
               </tr>
             </tbody>
           </table>
-          
           {/* Parecer */}
-          <div className="laudo-parecer-area">
-            <div className="laudo-parecer-label">Parecer</div>
-            <label className={`laudo-checkbox-label ${parecer === 'aprovado' ? 'checked' : ''}`}>
-              <input 
-                type="radio" 
-                name="parecer" 
-                value="aprovado" 
-                checked={parecer === 'aprovado'} 
-                onChange={() => setParecer('aprovado')}
-                style={{ marginRight: '8px' }}
-              /> 
-              Aprovado
-            </label>
-            <label className={`laudo-checkbox-label ${parecer === 'reprovado' ? 'checked' : ''}`}>
-              <input 
-                type="radio" 
-                name="parecer" 
-                value="reprovado" 
-                checked={parecer === 'reprovado'} 
-                onChange={() => setParecer('reprovado')}
-                style={{ marginRight: '8px' }}
-              /> 
-              Reprovado
-            </label>
-            <div className="laudo-parecer-data">
-              Data: {new Date().toLocaleDateString('pt-BR')}
+          <div className="laudo-parecer-area" style={{ gap: 0, fontSize: '9pt', marginBottom: 4 }}>
+            <div className="laudo-parecer-label">Parecer:</div>
+            <span style={{ fontWeight: 600, color: laudo.resultado_geral === 'aprovado' ? '#16a34a' : '#dc2626', marginLeft: 8 }}>
+              {laudo.resultado_geral === 'aprovado' ? 'Aprovado' : 'Reprovado'}
+            </span>
+            <div className="laudo-parecer-data" style={{ marginLeft: 'auto' }}>
+              Data: {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}
             </div>
           </div>
-          
           {/* Observações */}
-          <div className="laudo-observacoes-area">
+          <div className="laudo-observacoes-area" style={{ fontSize: '9pt', marginBottom: 8 }}>
             <div className="laudo-observacoes-label">Observações:</div>
-            <textarea 
-              value={observacoes} 
-              onChange={e => setObservacoes(e.target.value)} 
-              className="laudo-textarea-observacoes" 
-              rows={4} 
-              placeholder="Observações sobre o laudo..."
-            />
-            <div className="laudo-observacoes-legislacao">
+            <div className="laudo-observacoes-text" style={{ fontSize: '9pt', color: '#1e293b', marginBottom: 4 }}>
+              {laudo.observacoes}
+            </div>
+            <div className="laudo-observacoes-legislacao" style={{ fontSize: '8pt', marginBottom: 8 }}>
               <p>RDC nº 724 de 01/07/2022.</p>
               <p>Instrução Normativa nº 161 de 01/07/2022.</p>
               <p>RDC nº 623 de 09/03/2022.</p>
               <p>RDC Nº 722, de 01/07/2022.</p>
               <p>Instrução Normativa Nº 23 DE 14/12/2005 — MAPA.</p>
             </div>
-          </div>
-          
-          {/* Assinatura */}
-          <div className="laudo-assinatura-area">
-            <img 
-              src="/images/ass_vivian.png" 
-              alt="Assinatura Vivian" 
-              style={{ 
-                width: '260px', 
-                height: 'auto', 
-                marginBottom: '4px',
-                maxHeight: '80px',
-                objectFit: 'contain'
-              }}
-            />
-            <div className="laudo-assinatura-label">
-              Vivian da Costa Patrício da Silva<br />
-              Engenheira de Alimentos - CRQ/CE 10300432
+            {/* Informações de código, revisão e data de emissão */}
+            <div className="laudo-infos-final" style={{ fontSize: '8pt', color: '#64748b', marginTop: 8, textAlign: 'left' }}>
+              <div>Código: CQNG-LCQ</div>
+              <div>Revisão:06</div>
+              <div>Data de emissão: {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}</div>
             </div>
           </div>
-        </div>
-        
-        {/* Rodapé - fora do wrapper para ficar no final da página */}
-        <div className="laudo-footer">
-          <div>Código: CQNG-LCQ</div>
-          <div>Revisão:06</div>
-          <div>Data de emissão: {new Date().toLocaleDateString('pt-BR')}</div>
+          {/* Assinatura */}
+          <div className="laudo-assinatura-area" style={{ marginTop: 16 }}>
+            {responsavel?.assinatura_url && (
+              <img
+                src={responsavel.assinatura_url}
+                alt={`Assinatura de ${responsavel.nome}`}
+                style={{ width: '180px', height: 'auto', marginBottom: '2px', maxHeight: '50px', objectFit: 'contain' }}
+              />
+            )}
+            <div className="laudo-assinatura-label" style={{ fontSize: '9pt', color: '#334155', textAlign: 'right', lineHeight: 1.2 }}>
+              {responsavel?.nome}<br />
+              {responsavel?.funcao}{responsavel?.carteira_tecnica ? ` - ${responsavel.carteira_tecnica}` : ''}
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -236,6 +236,10 @@
     font-size: 8px !important;
     font-weight: bold !important;
   }
+  
+  #print-area, #print-area * {
+    visibility: visible !important;
+  }
 }
 
 /* Estilos gerais */

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getFuncionarios, getFeriados, getConfiguracaoEmpresa, getConfiguracoesEmpresas } from '@/services/hrService';
@@ -23,12 +23,15 @@ const mesesNomes = [
 
 const diasSemana = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
+// Definir tipo auxiliar para jornada
+interface JornadaParcial { horarios_estruturados?: Record<string, any> }
+
 export function FolhaPontoPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [folhasData, setFolhasData] = useState<FolhaPontoData[]>([]);
   
-  const funcionarioIds = searchParams.get('funcionarios')?.split(',') || [];
+  const funcionarioIds = useMemo(() => searchParams.get('funcionarios')?.split(',') || [], [searchParams]);
   const mes = parseInt(searchParams.get('mes') || '0');
   const ano = parseInt(searchParams.get('ano') || '0');
   const empresaId = searchParams.get('empresa') || '';
@@ -61,29 +64,21 @@ export function FolhaPontoPage() {
         let empresaParaUsar: ConfiguracaoEmpresa | undefined;
         
         if (modo === 'auto') {
-          // Modo automático: usar empresa vinculada ao funcionário
           empresaParaUsar = empresas.find(e => e.id === funcionario.empresa_id);
-          
-          // Se funcionário não tem empresa ou empresa não encontrada, pular
           if (!empresaParaUsar) {
             console.warn(`Funcionário ${funcionario.nome_completo} não tem empresa vinculada ou empresa não encontrada`);
             return;
           }
         } else {
-          // Modo manual: usar empresa específica passada como parâmetro
           empresaParaUsar = empresas.find(e => e.id === empresaId);
-          
-          // Fallback para primeira empresa ativa se não encontrar
           if (!empresaParaUsar) {
             empresaParaUsar = empresas.find(e => e.ativa);
           }
-          
           if (!empresaParaUsar) {
             console.warn('Nenhuma empresa disponível para o funcionário');
             return;
           }
         }
-        
         dadosFolhas.push({
           funcionario,
           mes,
@@ -92,7 +87,6 @@ export function FolhaPontoPage() {
           configuracao_empresa: empresaParaUsar,
         });
       });
-      
       setFolhasData(dadosFolhas);
     }
   }, [funcionarios, empresas, feriados, funcionarioIds, mes, ano, empresaId, modo]);
@@ -152,18 +146,13 @@ export function FolhaPontoPage() {
     return `${primeiroDia.toLocaleDateString('pt-BR')} a ${ultimoDia.toLocaleDateString('pt-BR')}`;
   };
 
-  const getHorarioJornada = (jornada: any) => {
-    if (!jornada?.horarios_estruturados) return 'Não definido';
-    
-    const horarios = jornada.horarios_estruturados;
+  const getHorarioJornada = (jornada: unknown) => {
+    if (!jornada || typeof jornada !== 'object' || !(jornada as JornadaParcial).horarios_estruturados) return 'Não definido';
+    const horarios = (jornada as JornadaParcial).horarios_estruturados!;
     const diasUteis = ['segunda', 'terca', 'quarta', 'quinta', 'sexta'];
-    
-    // Pega o horário da segunda-feira como padrão
     const horarioSegunda = horarios.segunda;
     if (horarioSegunda?.entrada1 && horarioSegunda?.saida1) {
       let horarioTexto = `SEGUNDA A `;
-      
-      // Verifica se trabalha sábado
       const sabado = horarios.sabado;
       if (sabado?.entrada1) {
         horarioTexto += `SÁBADO ${horarioSegunda.entrada1} ÀS ${horarioSegunda.saida1}`;
@@ -176,42 +165,35 @@ export function FolhaPontoPage() {
           horarioTexto += ` / ${horarioSegunda.entrada2} ÀS ${horarioSegunda.saida2}`;
         }
       }
-      
       return horarioTexto;
     }
-    
     return 'Não definido';
   };
 
-  const getHorarioAlmoco = (jornada: any, diaSemana: number) => {
-    if (!jornada?.horarios_estruturados) {
+  const getHorarioAlmoco = (jornada: unknown, diaSemana: number) => {
+    if (!jornada || typeof jornada !== 'object' || !(jornada as JornadaParcial).horarios_estruturados) {
       return { saida: '', retorno: '' };
     }
-    
     const diasNomes = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
     const nomesDia = diasNomes[diaSemana];
-    const horarioDia = jornada.horarios_estruturados[nomesDia];
-    
-    // Verificar se o dia tem trabalho definido
+    const horarios = (jornada as JornadaParcial).horarios_estruturados!;
+    const horarioDia = horarios[nomesDia];
     if (!horarioDia?.entrada1 || !horarioDia?.saida1) {
       return { saida: '', retorno: '' };
     }
-    
-    // Verificar se há horário de almoço (entrada2 e saida2 preenchidos)
     if (horarioDia.entrada2 && horarioDia.saida2) {
       return {
         saida: horarioDia.saida1,
         retorno: horarioDia.entrada2
       };
     }
-    
-    // Se não há entrada2/saida2, não há horário de almoço
     return { saida: '', retorno: '' };
   };
 
-  const trabalhaNoSabado = (jornada: any) => {
-    if (!jornada?.horarios_estruturados) return false;
-    const sabado = jornada.horarios_estruturados.sabado;
+  const trabalhaNoSabado = (jornada: unknown) => {
+    if (!jornada || typeof jornada !== 'object' || !(jornada as JornadaParcial).horarios_estruturados) return false;
+    const horarios = (jornada as JornadaParcial).horarios_estruturados!;
+    const sabado = horarios.sabado;
     return !!(sabado?.entrada1 && sabado?.saida1);
   };
 
@@ -246,7 +228,7 @@ export function FolhaPontoPage() {
       </div>
 
       {/* Container das folhas */}
-      <div className="print-container">
+      <div id="print-area" className="print-container">
         {folhasData.map((data, index) => {
           const dias = getDiasDoMes(data.mes, data.ano);
           
@@ -274,10 +256,6 @@ export function FolhaPontoPage() {
                 <div className="linha-periodo">
                   <span className="label">PERÍODO:</span>
                   <span className="valor">{formatarPeriodo(data.mes, data.ano)}</span>
-                </div>
-                <div className="linha-horario">
-                  <span className="label">HORÁRIO:</span>
-                  <span className="valor">{getHorarioJornada(data.funcionario.jornada)}</span>
                 </div>
               </div>
 
@@ -318,8 +296,10 @@ export function FolhaPontoPage() {
                 </thead>
                 <tbody>
                   {dias.map((diaInfo) => {
-                    const trabalhaNoSab = trabalhaNoSabado(data.funcionario.jornada);
-                    const isNaoUtil = diaInfo.isDomingo || diaInfo.isFeriado || (diaInfo.isSabado && !trabalhaNoSab);
+                    // Se for administrativo, sábado é sempre não-util (escuro)
+                    const isAdministrativo = data.funcionario.setor === 'Administrativo';
+                    const trabalhaNoSab = !isAdministrativo && trabalhaNoSabado(data.funcionario.jornada);
+                    const isNaoUtil = diaInfo.isDomingo || diaInfo.isFeriado || (diaInfo.isSabado && (!trabalhaNoSab || isAdministrativo));
                     const horarioAlmoco = getHorarioAlmoco(data.funcionario.jornada, diaInfo.diaSemana);
                     
                     return (

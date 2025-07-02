@@ -288,9 +288,7 @@ export default function AnaliseIndividual({
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
-                    <option value="Fino">Fino</option>
-                    <option value="Grosso">Grosso</option>
-                    <option value="Irregular">Irregular</option>
+                    <option value="Não conforme">Não conforme</option>
                   </select>
                 </div>
 
@@ -308,9 +306,7 @@ export default function AnaliseIndividual({
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
-                    <option value="Branco">Branco</option>
-                    <option value="Amarelado">Amarelado</option>
-                    <option value="Acinzentado">Acinzentado</option>
+                    <option value="Não conforme">Não conforme</option>
                   </select>
                 </div>
 
@@ -328,10 +324,7 @@ export default function AnaliseIndividual({
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
-                    <option value="Característico">Característico</option>
-                    <option value="Azedo">Azedo</option>
-                    <option value="Rançoso">Rançoso</option>
-                    <option value="Estranho">Estranho</option>
+                    <option value="Não conforme">Não conforme</option>
                   </select>
                 </div>
 
@@ -349,10 +342,7 @@ export default function AnaliseIndividual({
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
-                    <option value="Característico">Característico</option>
-                    <option value="Amargo">Amargo</option>
-                    <option value="Azedo">Azedo</option>
-                    <option value="Estranho">Estranho</option>
+                    <option value="Não conforme">Não conforme</option>
                   </select>
                 </div>
 
@@ -370,9 +360,7 @@ export default function AnaliseIndividual({
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
-                    <option value="Íntegra">Íntegra</option>
-                    <option value="Danificada">Danificada</option>
-                    <option value="Furada">Furada</option>
+                    <option value="Não conforme">Não conforme</option>
                   </select>
                 </div>
               </div>

@@ -41,6 +41,7 @@ import SystemLogsPage from "./pages/SystemLogsPage/SystemLogsPage";
 import Reclamacoes from "./pages/Reclamacoes";
 import ContraProvas from "./pages/ContraProvas";
 import AnaliseQualidade from "./pages/AnaliseQualidade";
+import Laudos from "./pages/Laudos";
 import PrintableLaudoPage from "./pages/print/PrintableLaudoPage";
 
 const queryClient = new QueryClient();
@@ -114,9 +115,10 @@ const AppContent = () => {
                   <Route path="/recursos-humanos" element={<RecursosHumanos />} />
                   <Route path="/qualidade/reclamacoes" element={<Reclamacoes />} />
                   <Route path="/qualidade/contra-provas" element={<ContraProvas />} />
+                  <Route path="/qualidade/analise" element={<AnaliseQualidade />} />
+                  <Route path="/qualidade/laudos" element={<Laudos />} />
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
-                  <Route path="/analise-qualidade" element={<AnaliseQualidade />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

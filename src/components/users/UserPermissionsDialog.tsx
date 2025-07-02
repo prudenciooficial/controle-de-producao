@@ -79,7 +79,8 @@ const MAIN_MODULES: MainModule[] = [
     subPages: [
       { key: 'reclamacoes', label: 'Reclamações', path: '/qualidade/reclamacoes' },
       { key: 'contra_provas', label: 'Contra-provas', path: '/qualidade/contra-provas' },
-      { key: 'analise_qualidade', label: 'Análises de Qualidade', path: '/analise-qualidade' },
+      { key: 'analise_qualidade', label: 'Análises de Qualidade', path: '/qualidade/analise' },
+      { key: 'laudos', label: 'Laudos', path: '/qualidade/laudos' },
       { key: 'rastreabilidade', label: 'Rastreabilidade', path: '/rastreabilidade' }
     ]
   },
