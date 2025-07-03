@@ -991,6 +991,35 @@ CREATE TABLE contra_provas (
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={async () => {
+                                    if (!confirm('Tem certeza que deseja descartar esta contra-prova?')) return;
+                                    try {
+                                      const { error } = await supabase
+                                        .from('contra_provas')
+                                        .update({ data_descarte: new Date().toISOString() })
+                                        .eq('id', item.id);
+                                      if (error) throw error;
+                                      toast({
+                                        title: 'Sucesso',
+                                        description: 'Contra-prova descartada com sucesso!',
+                                      });
+                                      loadContraProvas();
+                                    } catch (error) {
+                                      toast({
+                                        variant: 'destructive',
+                                        title: 'Erro',
+                                        description: 'Erro ao descartar contra-prova. Tente novamente.',
+                                      });
+                                    }
+                                  }}
+                                  title="Descartar"
+                                  className="h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-600 transition-colors duration-150"
+                                >
+                                  <Trash2 className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => handleDelete(item.id)}
                                   title="Excluir"
                                   className="h-8 w-8 p-0 hover:bg-red-50 dark:hover:bg-red-900/50 hover:border-red-300 dark:hover:border-red-700 transition-colors duration-150"

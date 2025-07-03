@@ -445,6 +445,41 @@ export default function AnaliseQualidade() {
         })
         .eq('id', editandoColeta.id);
       if (error) throw error;
+
+      // Sincronizar quantidade de análises com a nova quantidade de amostras
+      const { data: analisesExistentes, error: errorAnalises } = await (supabase as any)
+        .from('analises_amostras')
+        .select('*')
+        .eq('coleta_id', editandoColeta.id)
+        .order('numero_amostra');
+      if (errorAnalises) throw errorAnalises;
+      const quantidadeAtual = analisesExistentes.length;
+      const novaQuantidade = novaColeta.quantidade_amostras;
+      if (novaQuantidade > quantidadeAtual) {
+        // Adicionar novas análises
+        const novasAnalises = Array.from({ length: novaQuantidade - quantidadeAtual }, (_, i) => ({
+          coleta_id: editandoColeta.id,
+          numero_amostra: quantidadeAtual + i + 1,
+          data_analise: new Date().toISOString()
+        }));
+        if (novasAnalises.length > 0) {
+          await (supabase as any)
+            .from('analises_amostras')
+            .insert(novasAnalises);
+        }
+      } else if (novaQuantidade < quantidadeAtual) {
+        // Remover análises excedentes
+        const idsParaRemover = analisesExistentes
+          .filter((a: any) => a.numero_amostra > novaQuantidade)
+          .map((a: any) => a.id);
+        if (idsParaRemover.length > 0) {
+          await (supabase as any)
+            .from('analises_amostras')
+            .delete()
+            .in('id', idsParaRemover);
+        }
+      }
+
       toast({
         title: 'Coleta editada',
         description: '✅ Coleta editada com sucesso!',

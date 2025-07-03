@@ -69,6 +69,7 @@ const Reclamacoes: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage] = useState(10);
   const { toast } = useToast();
+  const [tipoReclamacaoFiltro, setTipoReclamacaoFiltro] = useState('all');
 
   // Carregar dados
   useEffect(() => {
@@ -109,15 +110,14 @@ const Reclamacoes: React.FC = () => {
         (reclamacao.descricao_reclamacao && reclamacao.descricao_reclamacao.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (reclamacao.supermercado && reclamacao.supermercado.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (reclamacao.protocolo && reclamacao.protocolo.toLowerCase().includes(searchTerm.toLowerCase()));
-      
       const matchesStatus = statusFilter === 'all' || reclamacao.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
+      const matchesTipo = tipoReclamacaoFiltro === 'all' || (reclamacao.tipos_reclamacao && reclamacao.tipos_reclamacao.includes(tipoReclamacaoFiltro));
+      return matchesSearch && matchesStatus && matchesTipo;
     });
   };
 
-  const filteredReclamacoesPendentes = useMemo(() => getFilteredReclamacoes(reclamacoesPendentes), [reclamacoesPendentes, searchTerm, statusFilter]);
-  const filteredReclamacoesResolvidas = useMemo(() => getFilteredReclamacoes(reclamacoesResolvidas), [reclamacoesResolvidas, searchTerm, statusFilter]);
+  const filteredReclamacoesPendentes = useMemo(() => getFilteredReclamacoes(reclamacoesPendentes), [reclamacoesPendentes, searchTerm, statusFilter, tipoReclamacaoFiltro]);
+  const filteredReclamacoesResolvidas = useMemo(() => getFilteredReclamacoes(reclamacoesResolvidas), [reclamacoesResolvidas, searchTerm, statusFilter, tipoReclamacaoFiltro]);
 
   // Função para paginar reclamações
   const getPaginatedReclamacoes = (reclamacoesList: Reclamacao[]) => {
@@ -145,7 +145,7 @@ const Reclamacoes: React.FC = () => {
   // Reset página quando mudar tab ou filtros
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchTerm, statusFilter]);
+  }, [activeTab, searchTerm, statusFilter, tipoReclamacaoFiltro]);
 
   // Estatísticas
   const stats = useMemo(() => {
@@ -658,7 +658,7 @@ const Reclamacoes: React.FC = () => {
             Reclamações
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Gerencie reclamações recebidas via WhatsApp (ManyChat)
+            Gerencie reclamações recebidas via WhatsApp.
           </p>
         </div>
         <div className="flex gap-2">
@@ -729,7 +729,7 @@ const Reclamacoes: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="search">Buscar</Label>
               <div className="relative">
@@ -761,12 +761,31 @@ const Reclamacoes: React.FC = () => {
               </Select>
             </div>
 
+            <div>
+              <Label>Tipo de Reclamação</Label>
+              <Select value={tipoReclamacaoFiltro} onValueChange={setTipoReclamacaoFiltro}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Todos os tipos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="Cor">Cor</SelectItem>
+                  <SelectItem value="Odor">Odor</SelectItem>
+                  <SelectItem value="Sabor">Sabor</SelectItem>
+                  <SelectItem value="Aspecto">Aspecto</SelectItem>
+                  <SelectItem value="Matéria-estranha">Matéria-estranha</SelectItem>
+                  <SelectItem value="Outros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex items-end">
               <Button 
                 variant="outline" 
                 onClick={() => {
                   setSearchTerm('');
                   setStatusFilter('all');
+                  setTipoReclamacaoFiltro('all');
                 }}
                 className="w-full"
               >

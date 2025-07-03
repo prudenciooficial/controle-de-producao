@@ -805,6 +805,7 @@ export type Database = {
           status: string
           supermercado: string | null
           tipo_resolucao: string | null
+          tipos_reclamacao: string[] | null
           url_foto_lote: string | null
           url_foto_problema: string | null
           valor_ressarcimento: number | null
@@ -823,6 +824,7 @@ export type Database = {
           status?: string
           supermercado?: string | null
           tipo_resolucao?: string | null
+          tipos_reclamacao?: string[] | null
           url_foto_lote?: string | null
           url_foto_problema?: string | null
           valor_ressarcimento?: number | null
@@ -841,6 +843,7 @@ export type Database = {
           status?: string
           supermercado?: string | null
           tipo_resolucao?: string | null
+          tipos_reclamacao?: string[] | null
           url_foto_lote?: string | null
           url_foto_problema?: string | null
           valor_ressarcimento?: number | null

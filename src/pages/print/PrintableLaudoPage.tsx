@@ -30,6 +30,8 @@ interface Laudo {
   responsavel_liberacao: string;
   observacoes?: string;
   data_emissao: string;
+  created_at: string;
+  revisao?: string;
 }
 
 interface Coleta {
@@ -268,7 +270,7 @@ const PrintableLaudoPage = () => {
           <table className="laudo-table-id" style={{ fontSize: '9pt', marginBottom: 8 }}>
             <tbody>
               <tr>
-                <td><strong>DATA DA ANÁLISE:</strong> {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}</td>
+                <td><strong>DATA DA ANÁLISE:</strong> {laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}</td>
                 <td><strong>LOTE:</strong> {coleta.lote_producao}</td>
               </tr>
               <tr>
@@ -335,7 +337,7 @@ const PrintableLaudoPage = () => {
               {laudo.resultado_geral === 'aprovado' ? 'Aprovado' : 'Reprovado'}
             </span>
             <div className="laudo-parecer-data" style={{ marginLeft: 'auto' }}>
-              Data: {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}
+              Data do Parecer: {laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}
             </div>
           </div>
           {/* Observações */}
@@ -354,8 +356,9 @@ const PrintableLaudoPage = () => {
             {/* Informações de código, revisão e data de emissão */}
             <div className="laudo-infos-final" style={{ fontSize: '8pt', color: '#64748b', marginTop: 8, textAlign: 'left' }}>
               <div>Código: CQNG-LCQ</div>
-              <div>Revisão:06</div>
-              <div>Data de emissão: {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}</div>
+              <div>Revisão: {laudo.revisao || '7'}</div>
+              <div>Data de emissão da revisão: {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}</div>
+              <div>Data de emissão do laudo: {laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}</div>
             </div>
           </div>
           {/* Assinatura */}

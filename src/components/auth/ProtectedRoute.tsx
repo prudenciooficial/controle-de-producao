@@ -25,14 +25,14 @@ export function ProtectedRoute({
     }
 
     if (!loading && user && requiredRole && !hasRole(requiredRole)) {
-      navigate('/');
+      navigate('/welcome');
       return;
     }
 
     if (!loading && user && requiredModule && requiredPermission) {
       const hasAccess = hasPermission(requiredModule, requiredPermission);
       if (!hasAccess) {
-        navigate('/');
+        navigate('/welcome');
       }
     }
   }, [user, loading, requiredRole, requiredModule, requiredPermission, navigate, hasPermission, hasRole]);

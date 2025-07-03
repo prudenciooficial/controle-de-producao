@@ -54,6 +54,8 @@ interface LaudoLiberacao {
   data_emissao: string;
   created_at: string;
   updated_at: string;
+  revisao: string;
+  lote_producao?: string;
 }
 
 interface NovoLaudo {
@@ -65,6 +67,8 @@ interface NovoLaudo {
   resultado_geral: 'aprovado' | 'reprovado';
   responsavel_liberacao: string;
   observacoes: string;
+  data_emissao: string;
+  revisao: string;
 }
 
 interface ResponsavelTecnico {
@@ -111,7 +115,9 @@ export default function Laudos() {
     data_validade: '',
     resultado_geral: 'aprovado',
     responsavel_liberacao: '',
-    observacoes: 'São realizadas análises do produto acabado em laboratórios terceirizados de acordo com o plano de amostragem interno da Indústria de Alimentos Ser Bem Ltda., atendendo os respectivos dispositivos legais.'
+    observacoes: 'São realizadas análises do produto acabado em laboratórios terceirizados de acordo com o plano de amostragem interno da Indústria de Alimentos Ser Bem Ltda., atendendo os respectivos dispositivos legais.',
+    data_emissao: '2025-07-03',
+    revisao: '7',
   });
 
   const [responsaveis, setResponsaveis] = useState<ResponsavelTecnico[]>([]);
@@ -138,14 +144,16 @@ export default function Laudos() {
 
   const carregarLaudos = async () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('laudos_liberacao')
-        .select('*')
+        .select('*, coleta:coletas_amostras(id, lote_producao)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setLaudos(data || []);
+      setLaudos((data || []).map((laudo: LaudoLiberacao & { coleta?: { lote_producao?: string } }) => ({
+        ...laudo,
+        lote_producao: laudo.coleta?.lote_producao || '',
+      })));
     } catch (error) {
       console.error('Erro ao carregar laudos:', error);
       toast({
@@ -158,11 +166,10 @@ export default function Laudos() {
 
   const carregarColetasAprovadas = async () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('coletas_amostras')
         .select('*')
-        .eq('status', 'finalizada')
+        .in('status', ['finalizada', 'aprovada'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -181,8 +188,7 @@ export default function Laudos() {
 
   const carregarAnalisesDaColeta = async (coletaId: string) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('analises_amostras')
         .select('*')
         .eq('coleta_id', coletaId)
@@ -231,35 +237,14 @@ export default function Laudos() {
     }
 
     try {
-      // Verificar se já existe laudo para esta coleta
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: laudoExistente, error: erroVerificacao } = await (supabase as any)
+      const { error } = await supabase
         .from('laudos_liberacao')
-        .select('id')
-        .eq('coleta_id', novoLaudo.coleta_id)
-        .limit(1);
-
-      if (erroVerificacao) throw erroVerificacao;
-
-      if (laudoExistente && laudoExistente.length > 0) {
-        toast({
-          title: 'Laudo já existe',
-          description: 'Já existe um laudo para esta coleta. Use a opção de editar se necessário.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from('laudos_liberacao')
-        .insert([novoLaudo]);
+        .insert([{ ...novoLaudo }]);
 
       if (error) throw error;
 
       // Atualizar status da coleta para 'aprovada'
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      await supabase
         .from('coletas_amostras')
         .update({ status: 'aprovada' })
         .eq('id', novoLaudo.coleta_id);
@@ -295,8 +280,7 @@ export default function Laudos() {
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('laudos_liberacao')
         .update({
           marca_produto: novoLaudo.marca_produto,
@@ -305,7 +289,9 @@ export default function Laudos() {
           data_validade: novoLaudo.data_validade,
           resultado_geral: novoLaudo.resultado_geral,
           responsavel_liberacao: novoLaudo.responsavel_liberacao,
-          observacoes: novoLaudo.observacoes
+          observacoes: novoLaudo.observacoes,
+          data_emissao: novoLaudo.data_emissao,
+          revisao: novoLaudo.revisao,
         })
         .eq('id', editandoLaudo.id);
 
@@ -341,7 +327,9 @@ export default function Laudos() {
       data_validade: laudo.data_validade,
       resultado_geral: laudo.resultado_geral,
       responsavel_liberacao: laudo.responsavel_liberacao,
-      observacoes: laudo.observacoes || ''
+      observacoes: laudo.observacoes || '',
+      data_emissao: laudo.data_emissao || '2025-07-03',
+      revisao: laudo.revisao || '7',
     });
     setShowNovoLaudo(true);
   };
@@ -350,8 +338,7 @@ export default function Laudos() {
     if (!window.confirm('Tem certeza que deseja excluir este laudo? Esta ação não poderá ser desfeita.')) return;
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('laudos_liberacao')
         .delete()
         .eq('id', laudo.id);
@@ -388,7 +375,9 @@ export default function Laudos() {
       data_validade: '',
       resultado_geral: 'aprovado',
       responsavel_liberacao: '',
-      observacoes: 'São realizadas análises do produto acabado em laboratórios terceirizados de acordo com o plano de amostragem interno da Indústria de Alimentos Ser Bem Ltda., atendendo os respectivos dispositivos legais.'
+      observacoes: 'São realizadas análises do produto acabado em laboratórios terceirizados de acordo com o plano de amostragem interno da Indústria de Alimentos Ser Bem Ltda., atendendo os respectivos dispositivos legais.',
+      data_emissao: '2025-07-03',
+      revisao: '7',
     });
     setAnalises([]);
     setEditandoLaudo(null);
@@ -398,7 +387,8 @@ export default function Laudos() {
   const laudosFiltrados = laudos.filter(laudo => 
     laudo.numero_laudo.toString().includes(filtroTexto) ||
     laudo.marca_produto.toLowerCase().includes(filtroTexto.toLowerCase()) ||
-    laudo.responsavel_liberacao.toLowerCase().includes(filtroTexto.toLowerCase())
+    laudo.responsavel_liberacao.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+    (laudo.lote_producao || '').toLowerCase().includes(filtroTexto.toLowerCase())
   );
 
   // Calcular estatísticas das análises
@@ -409,8 +399,7 @@ export default function Laudos() {
 
   const carregarResponsaveis = async () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('responsaveis_tecnicos')
         .select('*')
         .order('nome');
@@ -423,8 +412,7 @@ export default function Laudos() {
 
   const carregarProdutos = async () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('products')
         .select('id, name')
         .order('name');
@@ -441,8 +429,7 @@ export default function Laudos() {
       return;
     }
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('responsaveis_tecnicos')
         .insert([{ ...novoResponsavel }]);
       if (error) throw error;
@@ -458,8 +445,7 @@ export default function Laudos() {
   const excluirResponsavel = async (id: string) => {
     if (!window.confirm('Excluir este responsável técnico?')) return;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('responsaveis_tecnicos')
         .delete()
         .eq('id', id);
@@ -526,6 +512,9 @@ export default function Laudos() {
                   <span className="dark:text-gray-200">Nº Laudo</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Lote</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <span className="dark:text-gray-200">Produto</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -541,7 +530,10 @@ export default function Laudos() {
                   <span className="dark:text-gray-200">Responsável</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <span className="dark:text-gray-200">Data Emissão</span>
+                  <span className="dark:text-gray-200">Data Emissão (Revisão)</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Data Emissão do Laudo</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <span className="dark:text-gray-200">Ações</span>
@@ -551,7 +543,7 @@ export default function Laudos() {
             <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
               {laudosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-300">
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-300">
                     <FileText className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
                     <p className="dark:text-gray-200">Nenhum laudo encontrado</p>
                     <p className="text-sm dark:text-gray-400">Clique em "Novo Laudo" para começar</p>
@@ -562,6 +554,9 @@ export default function Laudos() {
                   <tr key={laudo.id} className="hover:bg-gray-50 transition-colors dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                       #{laudo.numero_laudo}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      {laudo.lote_producao || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       <div className="flex flex-col">
@@ -594,6 +589,9 @@ export default function Laudos() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      {laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       <div className="flex items-center gap-2">
@@ -796,6 +794,33 @@ export default function Laudos() {
                   className="mt-1"
                 />
               </div>
+              <div>
+                <Label htmlFor="data_emissao" className="text-sm font-medium text-gray-700">
+                  Data de Emissão da Revisão *
+                </Label>
+                <Input
+                  id="data_emissao"
+                  type="date"
+                  value={novoLaudo.data_emissao}
+                  onChange={(e) => setNovoLaudo({ ...novoLaudo, data_emissao: e.target.value })}
+                  className="mt-1"
+                />
+                <span className="text-xs text-gray-500 dark:text-gray-400 block mt-1">
+                  Esta é a data de emissão da revisão do modelo de laudo (não do laudo individual).
+                </span>
+              </div>
+              <div>
+                <Label htmlFor="revisao" className="text-sm font-medium text-gray-700">
+                  Revisão *
+                </Label>
+                <Input
+                  id="revisao"
+                  type="text"
+                  value={novoLaudo.revisao}
+                  onChange={(e) => setNovoLaudo({ ...novoLaudo, revisao: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
             </div>
 
             {/* Resultado e Responsável */}
@@ -845,6 +870,14 @@ export default function Laudos() {
                 placeholder="Informações regulamentares e observações..."
               />
             </div>
+
+            {/* Exibir data de emissão do laudo individual no modo edição */}
+            {editandoLaudo && editandoLaudo.created_at && (
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Data de Emissão do Laudo</Label>
+                <Input value={new Date(editandoLaudo.created_at).toLocaleDateString('pt-BR')} readOnly className="mt-1 bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
+              </div>
+            )}
 
             {/* Botões */}
             <div className="flex justify-end gap-2">
