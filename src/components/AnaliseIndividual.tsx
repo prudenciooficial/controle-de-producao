@@ -111,16 +111,16 @@ export default function AnaliseIndividual({
 
   return (
     <Dialog open={true} onOpenChange={onVoltar}>
-      <DialogContent className="sm:max-w-[900px] max-h-[95vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] max-h-[95vh] overflow-y-auto bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <DialogHeader>
           <DialogTitle>Análises das Amostras</DialogTitle>
         </DialogHeader>
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Análises das Amostras</h2>
-              <p className="text-gray-600 mt-1">Amostra {analiseAtual} de {analises.length}</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Análises das Amostras</h2>
+              <p className="text-gray-600 dark:text-gray-300 mt-1">Amostra {analiseAtual} de {analises.length}</p>
             </div>
             <Button
               onClick={onVoltar}
@@ -133,11 +133,11 @@ export default function AnaliseIndividual({
 
           {/* Barra de progresso */}
           <div className="mt-4">
-            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 mb-2">
               <span>Progresso das análises</span>
               <span>{analisesCompletas}/{analises.length} completas</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2">
               <div 
                 className="bg-blue-600 h-2 rounded-full transition-all"
                 style={{ width: `${progresso}%` }}
@@ -147,9 +147,9 @@ export default function AnaliseIndividual({
         </div>
 
         {/* Navegador de amostras */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Selecionar Amostra</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Selecionar Amostra</h3>
             <div className="flex items-center gap-2">
               <Button
                 onClick={amostraAnterior}
@@ -179,7 +179,7 @@ export default function AnaliseIndividual({
                   key={numeroAmostra}
                   onClick={() => setAnaliseAtual(numeroAmostra)}
                   variant={analiseAtual === numeroAmostra ? "default" : preenchida ? "secondary" : "outline"}
-                  className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all ${analiseAtual === numeroAmostra ? 'shadow-lg' : ''}`}
+                  className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all ${analiseAtual === numeroAmostra ? 'shadow-lg' : ''} dark:bg-gray-800 dark:text-gray-100`}
                 >
                   {numeroAmostra}
                   {preenchida && analiseAtual !== numeroAmostra && (
@@ -192,24 +192,24 @@ export default function AnaliseIndividual({
         </div>
 
         {/* Formulário da análise - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Parâmetros Físico-Químicos */}
             <div className="space-y-6">
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-2">
                   <AlertCircle className="w-5 h-5" />
                   Parâmetros Físico-Químicos
                 </h3>
-                <p className="text-blue-700 text-sm mt-1">Medições precisas obrigatórias</p>
+                <p className="text-blue-700 dark:text-blue-300 text-sm mt-1">Medições precisas obrigatórias</p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Umidade (%) <span className="text-red-500">*</span>
                   </label>
-                  <p className="text-xs text-gray-500 mb-2">Conforme: 40% a 45%</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Conforme: 40% a 45%</p>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
@@ -221,7 +221,7 @@ export default function AnaliseIndividual({
                         ...dadosAnalise,
                         umidade: e.target.value ? parseFloat(e.target.value) : undefined
                       })}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Ex: 42.5"
                     />
                     <div className="w-8 h-8 flex items-center justify-center">
@@ -229,15 +229,15 @@ export default function AnaliseIndividual({
                     </div>
                   </div>
                   {dadosAnalise.umidade && !isUmidadeConforme(dadosAnalise.umidade) && (
-                    <p className="text-red-600 text-xs mt-1">⚠️ Valor fora da faixa conforme (40-45%)</p>
+                    <p className="text-red-600 dark:text-red-400 text-xs mt-1">⚠️ Valor fora da faixa conforme (40-45%)</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     pH <span className="text-red-500">*</span>
                   </label>
-                  <p className="text-xs text-gray-500 mb-2">Conforme: 3,6 a 5,6</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Conforme: 3,6 a 5,6</p>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
@@ -249,7 +249,7 @@ export default function AnaliseIndividual({
                         ...dadosAnalise,
                         ph: e.target.value ? parseFloat(e.target.value) : undefined
                       })}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Ex: 4.06"
                     />
                     <div className="w-8 h-8 flex items-center justify-center">
@@ -257,7 +257,7 @@ export default function AnaliseIndividual({
                     </div>
                   </div>
                   {dadosAnalise.ph && !isPhConforme(dadosAnalise.ph) && (
-                    <p className="text-red-600 text-xs mt-1">⚠️ Valor fora da faixa conforme (3,6-5,6)</p>
+                    <p className="text-red-600 dark:text-red-400 text-xs mt-1">⚠️ Valor fora da faixa conforme (3,6-5,6)</p>
                   )}
                 </div>
               </div>
@@ -265,17 +265,17 @@ export default function AnaliseIndividual({
 
             {/* Parâmetros Organolépticos */}
             <div className="space-y-6">
-              <div className="bg-green-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-green-900 flex items-center gap-2">
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-green-900 dark:text-green-200 flex items-center gap-2">
                   <CheckCircle className="w-5 h-5" />
                   Parâmetros Organolépticos
                 </h3>
-                <p className="text-green-700 text-sm mt-1">Avaliação sensorial</p>
+                <p className="text-green-700 dark:text-green-300 text-sm mt-1">Avaliação sensorial</p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Aspecto <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -284,7 +284,7 @@ export default function AnaliseIndividual({
                       ...dadosAnalise,
                       aspecto: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
@@ -293,7 +293,7 @@ export default function AnaliseIndividual({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Cor <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -302,7 +302,7 @@ export default function AnaliseIndividual({
                       ...dadosAnalise,
                       cor: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
@@ -311,7 +311,7 @@ export default function AnaliseIndividual({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Odor <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -320,7 +320,7 @@ export default function AnaliseIndividual({
                       ...dadosAnalise,
                       odor: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
@@ -329,7 +329,7 @@ export default function AnaliseIndividual({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Sabor <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -338,7 +338,7 @@ export default function AnaliseIndividual({
                       ...dadosAnalise,
                       sabor: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
@@ -347,7 +347,7 @@ export default function AnaliseIndividual({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Embalagem <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -356,7 +356,7 @@ export default function AnaliseIndividual({
                       ...dadosAnalise,
                       embalagem: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   >
                     <option value="">Selecione...</option>
                     <option value="Conforme">Conforme</option>
@@ -369,7 +369,7 @@ export default function AnaliseIndividual({
 
           {/* Observações */}
           <div className="mt-8">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
               Observações
             </label>
             <textarea
@@ -378,7 +378,7 @@ export default function AnaliseIndividual({
                 ...dadosAnalise,
                 observacoes: e.target.value
               })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
               rows={3}
               placeholder="Observações sobre esta amostra..."
             />
@@ -386,8 +386,8 @@ export default function AnaliseIndividual({
         </div>
 
         {/* Footer com ações */}
-        <div className="mt-8 flex justify-between items-center bg-gray-50 p-4 rounded-lg">
-          <div className="text-sm text-gray-600">
+        <div className="mt-8 flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
             <strong>{analisesCompletas}</strong> de <strong>{analises.length}</strong> análises completas
           </div>
 
@@ -400,7 +400,7 @@ export default function AnaliseIndividual({
             </Button>
             <Button
               onClick={salvar}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800"
             >
               <Save className="w-4 h-4 mr-2" />
               Salvar Análise

@@ -70,10 +70,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Função para verificar se é erro de JWT expirado
   const checkJWTError = (error: AuthError | Error | unknown): boolean => {
     const errorObj = error as { message?: string };
-    if (errorObj && errorObj.message?.includes('JWT expired')) {
-      // JWT expirado detectado, forçar logout silencioso
-      localStorage.removeItem('supabase.auth.token');
-      window.location.reload();
+    if (errorObj && errorObj.message?.toLowerCase().includes('jwt expired')) {
+      toast({
+        title: 'Sessão expirada',
+        description: 'Sua sessão expirou, faça login novamente.',
+        variant: 'destructive',
+      });
+      supabase.auth.signOut().finally(() => {
+        setUser(null);
+        setSession(null);
+        window.location.href = '/login';
+      });
       return true;
     }
     return false;

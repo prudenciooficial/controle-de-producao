@@ -500,8 +500,8 @@ export default function Laudos() {
 
       {/* Tabela de Laudos */}
       <div className="bg-white dark:bg-gray-800 dark:text-gray-100 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Histórico de Laudos ({laudosFiltrados.length})</h3>
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Histórico de Laudos ({laudosFiltrados.length})</h3>
         </div>
         
         <div className="overflow-x-auto">
