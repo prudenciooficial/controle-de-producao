@@ -72,22 +72,22 @@ const StatCard = ({ title, value, subtitle, icon: Icon, trend, trendColor }: {
   trend?: string;
   trendColor?: string;
 }) => (
-  <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+  <div className="bg-white dark:bg-gray-800 dark:text-gray-100 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm hover:shadow-md transition-shadow">
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{title}</p>
         <div className="flex items-center gap-2 mt-2">
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
           {trend && (
             <span className={`text-sm px-2 py-1 rounded-full ${trendColor}`}>
               {trend}
             </span>
           )}
         </div>
-        <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>
       </div>
-      <div className="p-3 bg-blue-50 rounded-lg">
-        <Icon className="w-6 h-6 text-blue-600" />
+      <div className="p-3 bg-blue-50 dark:bg-blue-900/50 rounded-lg">
+        <Icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
       </div>
     </div>
   </div>
@@ -98,19 +98,19 @@ const StatusBadge = ({ status }: { status: string }) => {
   const statusConfig = {
     em_andamento: { 
       label: 'Em Andamento', 
-      className: 'bg-yellow-50 text-yellow-700 border-yellow-200' 
+      className: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-200 dark:border-yellow-700' 
     },
     finalizada: { 
       label: 'Finalizada', 
-      className: 'bg-blue-50 text-blue-700 border-blue-200' 
+      className: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-200 dark:border-blue-700' 
     },
     aprovada: { 
       label: 'Aprovada', 
-      className: 'bg-green-50 text-green-700 border-green-200' 
+      className: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-200 dark:border-green-700' 
     },
     reprovada: { 
       label: 'Reprovada', 
-      className: 'bg-red-50 text-red-700 border-red-200' 
+      className: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-200 dark:border-red-700' 
     }
   };
 
@@ -513,12 +513,12 @@ export default function AnaliseQualidade() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Análises de Qualidade</h1>
-          <p className="text-gray-600">Controle de qualidade de amostras de produção</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Análise de Qualidade</h1>
+          <p className="text-gray-600 dark:text-gray-300">Gerenciamento de coletas e análises de amostras</p>
         </div>
         <Button
           onClick={() => setShowNovaColeta(true)}
@@ -564,69 +564,69 @@ export default function AnaliseQualidade() {
       </div>
 
       {/* Tabela de Coletas - Design Moderno */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 dark:text-gray-100 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Histórico de Coletas</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Histórico de Coletas</h3>
         </div>
         
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Lote
+                  <span className="dark:text-gray-200">Lote</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data Coleta
+                  <span className="dark:text-gray-200">Data Coleta</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Produção (kg)
+                  <span className="dark:text-gray-200">Produção (kg)</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amostras
+                  <span className="dark:text-gray-200">Amostras</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Responsável
+                  <span className="dark:text-gray-200">Responsável</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  <span className="dark:text-gray-200">Status</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
+                  <span className="dark:text-gray-200">Ações</span>
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
               {coletas.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                    <FileText className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                    <p>Nenhuma coleta registrada</p>
-                    <p className="text-sm">Clique em "Nova Coleta" para começar</p>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-300">
+                    <FileText className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+                    <p className="dark:text-gray-200">Nenhuma coleta registrada</p>
+                    <p className="text-sm dark:text-gray-400">Clique em "Nova Coleta" para começar</p>
                   </td>
                 </tr>
               ) : (
                 coletas.map((coleta) => (
-                  <tr key={coleta.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={coleta.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                       {coleta.lote_producao}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {new Date(coleta.data_coleta).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {coleta.quantidade_total_produzida.toLocaleString('pt-BR')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {coleta.quantidade_amostras}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {coleta.responsavel_coleta}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <StatusBadge status={coleta.status} />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
@@ -634,21 +634,21 @@ export default function AnaliseQualidade() {
                             setColetaSelecionada(coleta);
                             carregarAnalises(coleta.id);
                           }}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-200 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors"
                           title="Ver Análises"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => abrirEdicaoColeta(coleta)}
-                          className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
+                          className="text-amber-600 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 p-1 rounded hover:bg-amber-50 dark:hover:bg-amber-900/50 transition-colors"
                           title="Editar Coleta"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => apagarColeta(coleta)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors"
                           title="Apagar Coleta"
                         >
                           <Trash className="w-4 h-4" />
@@ -656,7 +656,7 @@ export default function AnaliseQualidade() {
                         {coletasComLaudo[coleta.id] && (
                           <button
                             onClick={() => visualizarLaudo(coleta.id)}
-                            className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors"
+                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-200 p-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/50 transition-colors"
                             title="Visualizar Laudo"
                           >
                             <Printer className="w-4 h-4" />

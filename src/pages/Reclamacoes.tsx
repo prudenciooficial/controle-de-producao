@@ -64,6 +64,7 @@ const Reclamacoes: React.FC = () => {
   const [resolverDialogOpen, setResolverDialogOpen] = useState(false);
   const [reclamacaoParaResolver, setReclamacaoParaResolver] = useState<Reclamacao | null>(null);
   const [tipoResolucao, setTipoResolucao] = useState('');
+  const [tiposReclamacao, setTiposReclamacao] = useState<string[]>([]);
   const [valorRessarcimento, setValorRessarcimento] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage] = useState(10);
@@ -196,6 +197,7 @@ const Reclamacoes: React.FC = () => {
     setReclamacaoParaResolver(reclamacao);
     setTipoResolucao('');
     setValorRessarcimento('');
+    setTiposReclamacao([]);
     setResolverDialogOpen(true);
   };
 
@@ -208,7 +210,14 @@ const Reclamacoes: React.FC = () => {
       });
       return;
     }
-
+    if (tiposReclamacao.length === 0) {
+      toast({
+        title: 'Erro',
+        description: 'Selecione pelo menos um tipo de reclamação.',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (tipoResolucao === 'Ressarcimento via pix' && !valorRessarcimento) {
       toast({
         title: 'Erro',
@@ -221,6 +230,7 @@ const Reclamacoes: React.FC = () => {
     try {
       const dadosResolucao: ResolucaoData = {
         tipo_resolucao: tipoResolucao,
+        tipos_reclamacao: tiposReclamacao,
       };
 
       if (tipoResolucao === 'Ressarcimento via pix') {
@@ -237,6 +247,7 @@ const Reclamacoes: React.FC = () => {
       setReclamacaoParaResolver(null);
       setTipoResolucao('');
       setValorRessarcimento('');
+      setTiposReclamacao([]);
 
       toast({
         title: 'Sucesso',
@@ -650,9 +661,24 @@ const Reclamacoes: React.FC = () => {
             Gerencie reclamações recebidas via WhatsApp (ManyChat)
           </p>
         </div>
-        <Button onClick={loadReclamacoes} variant="outline">
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={loadReclamacoes} variant="outline">
+            Atualizar
+          </Button>
+          <Button
+            asChild
+            variant="secondary"
+            className="bg-[#2563eb] text-white hover:bg-[#1e40af]"
+          >
+            <a
+              href="https://chatwoot.nossagoma.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Abrir chatwoot
+            </a>
+          </Button>
+        </div>
       </div>
 
       {/* Estatísticas */}
@@ -972,6 +998,29 @@ const Reclamacoes: React.FC = () => {
           </DialogHeader>
           
           <div className="space-y-4">
+            <div>
+              <Label>Tipo(s) de Reclamação *</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {['Cor', 'Odor', 'Sabor', 'Aspecto', 'Matéria-estranha', 'Outros'].map((tipo) => (
+                  <Button
+                    key={tipo}
+                    type="button"
+                    variant={tiposReclamacao.includes(tipo) ? 'default' : 'outline'}
+                    className={tiposReclamacao.includes(tipo) ? 'bg-blue-600 text-white' : ''}
+                    onClick={() => {
+                      setTiposReclamacao((prev) =>
+                        prev.includes(tipo)
+                          ? prev.filter((t) => t !== tipo)
+                          : [...prev, tipo]
+                      );
+                    }}
+                  >
+                    {tipo}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <Label>Tipo de Resolução *</Label>
               <Select value={tipoResolucao} onValueChange={setTipoResolucao}>

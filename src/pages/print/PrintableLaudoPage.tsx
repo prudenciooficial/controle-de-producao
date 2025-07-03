@@ -117,7 +117,8 @@ const PrintableLaudoPage = () => {
         setColeta(coletaData);
 
         // Buscar análises da coleta
-        const { data: analisesData, error: analisesError } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: analisesData, error: analisesError } = await (supabase as any)
           .from('analises_amostras')
           .select('*')
           .eq('coleta_id', laudoData.coleta_id)
@@ -130,17 +131,18 @@ const PrintableLaudoPage = () => {
           return;
         }
 
-        setAnalises((analisesData as Analise[]) || []);
+        setAnalises(analisesData || []);
         
         // Buscar responsável técnico pelo nome salvo no laudo
         if (laudoData.responsavel_liberacao) {
-          const { data: respData, error: respError } = await supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: respData, error: respError } = await (supabase as any)
             .from('responsaveis_tecnicos')
             .select('*')
             .ilike('nome', laudoData.responsavel_liberacao)
             .single();
           if (!respError && respData) {
-            setResponsavel(respData as ResponsavelTecnico);
+            setResponsavel(respData);
           } else {
             setResponsavel(null);
           }
@@ -212,7 +214,7 @@ const PrintableLaudoPage = () => {
   };
 
   return (
-    <div id="laudo-print-area">
+    <div id="laudo-print-area" style={{ color: '#111', background: '#fff' }}>
       {/* Botões de controle - só aparecem na tela */}
       <div className="no-print absolute top-4 right-4 flex gap-2 z-50">
         <button 
@@ -230,11 +232,30 @@ const PrintableLaudoPage = () => {
       </div>
 
       {/* Conteúdo do laudo */}
-      <div className="laudo-a4" style={{ fontSize: '10pt', padding: 0, width: '210mm', minHeight: '297mm', margin: '0 auto', boxShadow: '0 0 8px #e5e7eb' }}>
+      <div className="laudo-a4" style={{ fontSize: '10pt', padding: 0, width: '210mm', minHeight: '297mm', margin: '0 auto', boxShadow: '0 0 8px #e5e7eb', color: '#111', background: '#fff' }}>
+        {/* Papel timbrado como fundo */}
+        <div 
+          className="laudo-background"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: 'url(/images/papeltimbrado.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            zIndex: 1,
+            opacity: 1
+          }}
+        />
         {/* Marca d'água */}
-        <div className="laudo-watermark">INDÚSTRIA DE ALIMENTOS SER BEM LTDA.</div>
+        <div className="laudo-watermark" style={{ position: 'relative', zIndex: 2 }}>INDÚSTRIA DE ALIMENTOS SER BEM LTDA.</div>
         {/* Wrapper do conteúdo para não sobrepor o cabeçalho do papel timbrado */}
-        <div className="laudo-content-wrapper" style={{ position: 'absolute', top: '20mm', left: 0, right: 0, width: '100%', fontSize: '10pt', padding: '0 12mm', minHeight: '220mm' }}>
+        <div className="laudo-content-wrapper" style={{ position: 'absolute', top: '20mm', left: 0, right: 0, width: '100%', fontSize: '10pt', padding: '0 12mm', minHeight: '220mm', color: '#111', background: 'transparent', zIndex: 3 }}>
           {/* Título do laudo */}
           <div className="laudo-title" style={{ fontSize: '1.1em', marginBottom: 8 }}>
             LAUDO DE ANÁLISE DE PRODUTO ACABADO Nº {laudo.numero_laudo}

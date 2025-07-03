@@ -15,6 +15,7 @@ export interface Reclamacao {
   valor_ressarcimento?: number;     // Valor do ressarcimento (se aplicável)
   data_resolucao?: string;          // Data quando foi resolvida
   lote?: string;                    // Lote do produto da reclamação
+  tipos_reclamacao?: string[];      // Tipos de reclamação (cor, odor, etc)
 }
 
 export interface ReclamacaoCreate {
@@ -32,6 +33,7 @@ export interface ReclamacaoCreate {
   valor_ressarcimento?: number;
   data_resolucao?: string;
   lote?: string;
+  tipos_reclamacao?: string[];
 }
 
 export interface ReclamacaoUpdate {
@@ -40,6 +42,7 @@ export interface ReclamacaoUpdate {
   valor_ressarcimento?: number;
   data_resolucao?: string;
   lote?: string;
+  tipos_reclamacao?: string[];
   // Outros campos podem ser atualizados se necessário
 }
 
@@ -68,4 +71,5 @@ export interface ReclamacaoStats {
 export interface ResolucaoData {
   tipo_resolucao: string;
   valor_ressarcimento?: number;
+  tipos_reclamacao?: string[];
 } 

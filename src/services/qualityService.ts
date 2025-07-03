@@ -267,6 +267,9 @@ export const resolverReclamacao = async (id: number, dadosResolucao?: ResolucaoD
     if (dadosResolucao.valor_ressarcimento) {
       updateData.valor_ressarcimento = dadosResolucao.valor_ressarcimento;
     }
+    if (dadosResolucao.tipos_reclamacao) {
+      updateData.tipos_reclamacao = dadosResolucao.tipos_reclamacao;
+    }
   }
 
   // Usar updateReclamacao que já tem log
@@ -284,6 +287,7 @@ export const resolverReclamacao = async (id: number, dadosResolucao?: ResolucaoD
       action: 'resolucao',
       tipo_resolucao: dadosResolucao?.tipo_resolucao,
       valor_ressarcimento: dadosResolucao?.valor_ressarcimento,
+      tipos_reclamacao: dadosResolucao?.tipos_reclamacao,
       data_resolucao: updateData.data_resolucao
     }
   });

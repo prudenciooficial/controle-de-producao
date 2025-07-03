@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Printer, Edit, Trash, CheckCircle, Search, Calendar, User, Package, ImagePlus, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -256,6 +258,7 @@ export default function Laudos() {
       if (error) throw error;
 
       // Atualizar status da coleta para 'aprovada'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from('coletas_amostras')
         .update({ status: 'aprovada' })
@@ -477,12 +480,12 @@ export default function Laudos() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Laudos e Histórico</h1>
-          <p className="text-gray-600">Gerenciamento de laudos de liberação de produto acabado</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Laudos e Histórico</h1>
+          <p className="text-gray-600 dark:text-gray-300">Gerenciamento de laudos de liberação de produto acabado</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => setShowModalResponsavel(true)} className="inline-flex items-center gap-2" variant="outline">
@@ -497,86 +500,86 @@ export default function Laudos() {
       </div>
 
       {/* Filtro */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-gray-400" />
+          <Search className="w-4 h-4 text-gray-400 dark:text-gray-300" />
           <Input
             placeholder="Buscar por número do laudo, produto ou responsável..."
             value={filtroTexto}
             onChange={(e) => setFiltroTexto(e.target.value)}
-            className="flex-1"
+            className="flex-1 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
           />
         </div>
       </div>
 
       {/* Tabela de Laudos */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 dark:text-gray-100 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Histórico de Laudos ({laudosFiltrados.length})</h3>
         </div>
         
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nº Laudo
+                  <span className="dark:text-gray-200">Nº Laudo</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Produto
+                  <span className="dark:text-gray-200">Produto</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data Fabricação
+                  <span className="dark:text-gray-200">Data Fabricação</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data Validade
+                  <span className="dark:text-gray-200">Data Validade</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Resultado
+                  <span className="dark:text-gray-200">Resultado</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Responsável
+                  <span className="dark:text-gray-200">Responsável</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data Emissão
+                  <span className="dark:text-gray-200">Data Emissão</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
+                  <span className="dark:text-gray-200">Ações</span>
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
               {laudosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                    <FileText className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                    <p>Nenhum laudo encontrado</p>
-                    <p className="text-sm">Clique em "Novo Laudo" para começar</p>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-300">
+                    <FileText className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+                    <p className="dark:text-gray-200">Nenhum laudo encontrado</p>
+                    <p className="text-sm dark:text-gray-400">Clique em "Novo Laudo" para começar</p>
                   </td>
                 </tr>
               ) : (
                 laudosFiltrados.map((laudo) => (
-                  <tr key={laudo.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={laudo.id} className="hover:bg-gray-50 transition-colors dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                       #{laudo.numero_laudo}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       <div className="flex flex-col">
-                        <span className="font-medium">{laudo.marca_produto}</span>
-                        <span className="text-xs text-gray-400">{laudo.gramatura}</span>
+                        <span className="font-medium dark:text-gray-100">{laudo.marca_produto}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{laudo.gramatura}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {new Date(laudo.data_fabricacao).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {new Date(laudo.data_validade).toLocaleDateString('pt-BR')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         laudo.resultado_geral === 'aprovado' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' 
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200'
                       }`}>
                         {laudo.resultado_geral === 'aprovado' ? (
                           <CheckCircle className="w-3 h-3 mr-1" />
@@ -586,19 +589,19 @@ export default function Laudos() {
                         {laudo.resultado_geral === 'aprovado' ? 'Aprovado' : 'Reprovado'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {laudo.responsavel_liberacao}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       <div className="flex items-center gap-2">
                         <Button
                           onClick={() => visualizarLaudo(laudo)}
                           size="sm"
                           variant="outline"
-                          className="p-2"
+                          className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
                         >
                           <Printer className="w-4 h-4" />
                         </Button>
@@ -606,7 +609,7 @@ export default function Laudos() {
                           onClick={() => abrirEdicaoLaudo(laudo)}
                           size="sm"
                           variant="outline"
-                          className="p-2"
+                          className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -614,7 +617,7 @@ export default function Laudos() {
                           onClick={() => excluirLaudo(laudo)}
                           size="sm"
                           variant="outline"
-                          className="p-2 text-red-600 hover:text-red-700"
+                          className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:border-gray-600 dark:hover:bg-gray-700"
                         >
                           <Trash className="w-4 h-4" />
                         </Button>
@@ -649,7 +652,7 @@ export default function Laudos() {
             </div>
             <div>
               <Label>Assinatura</Label>
-              <select value={novoResponsavel.assinatura_url} onChange={e => setNovoResponsavel({ ...novoResponsavel, assinatura_url: e.target.value })}>
+              <select value={novoResponsavel.assinatura_url} onChange={e => setNovoResponsavel({ ...novoResponsavel, assinatura_url: e.target.value })} className="w-full mt-1 border border-gray-300 rounded dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700">
                 <option value="">Selecione uma assinatura</option>
                 {assinaturas.map(img => <option key={img} value={`/images/assinaturas/${img}`}>{img}</option>)}
               </select>
@@ -717,32 +720,32 @@ export default function Laudos() {
 
             {/* Resumo das Análises */}
             {analises.length > 0 && (
-              <div className="border rounded-lg p-3 bg-gray-50">
-                <div className="font-semibold mb-2 text-blue-900">Resumo das Análises Finalizadas</div>
-                <table className="w-full text-xs border">
+              <div className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-900 dark:text-gray-100">
+                <div className="font-semibold mb-2 text-blue-900 dark:text-blue-300">Resumo das Análises Finalizadas</div>
+                <table className="w-full text-xs border dark:border-gray-700">
                   <thead>
-                    <tr className="bg-blue-100">
-                      <th className="px-2 py-1 border">Amostra</th>
-                      <th className="px-2 py-1 border">Umidade (%)</th>
-                      <th className="px-2 py-1 border">pH</th>
-                      <th className="px-2 py-1 border">Aspecto</th>
-                      <th className="px-2 py-1 border">Cor</th>
-                      <th className="px-2 py-1 border">Odor</th>
-                      <th className="px-2 py-1 border">Sabor</th>
-                      <th className="px-2 py-1 border">Embalagem</th>
+                    <tr className="bg-blue-100 dark:bg-blue-900/50">
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Amostra</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Umidade (%)</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">pH</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Aspecto</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Cor</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Odor</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Sabor</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Embalagem</th>
                     </tr>
                   </thead>
                   <tbody>
                     {analises.map((a) => (
                       <tr key={a.id || a.numero_amostra}>
-                        <td className="px-2 py-1 border text-center">{a.numero_amostra}</td>
-                        <td className="px-2 py-1 border text-center">{a.umidade ?? '-'}</td>
-                        <td className="px-2 py-1 border text-center">{a.ph ?? '-'}</td>
-                        <td className="px-2 py-1 border text-center">{a.aspecto ?? '-'}</td>
-                        <td className="px-2 py-1 border text-center">{a.cor ?? '-'}</td>
-                        <td className="px-2 py-1 border text-center">{a.odor ?? '-'}</td>
-                        <td className="px-2 py-1 border text-center">{a.sabor ?? '-'}</td>
-                        <td className="px-2 py-1 border text-center">{a.embalagem ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.numero_amostra}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.umidade ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.ph ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.aspecto ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.cor ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.odor ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.sabor ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.embalagem ?? '-'}</td>
                       </tr>
                     ))}
                   </tbody>
