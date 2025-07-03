@@ -516,4 +516,19 @@
   /* Remover regras que mudam o layout do laudo em telas pequenas */
   .laudo-a4 {}
   .laudo-content-wrapper {}
+  .laudo-table-param {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+  }
+  .laudo-table-param thead, .laudo-table-param tbody, .laudo-table-param tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .laudo-table-param th, .laudo-table-param td {
+    min-width: 100px;
+    word-break: break-word;
+    white-space: normal;
+  }
 } 

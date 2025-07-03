@@ -798,7 +798,7 @@ const Reclamacoes: React.FC = () => {
 
       {/* Tabs para separar reclamações */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-auto">
+        <TabsList className="grid grid-cols-1 sm:grid-cols-2 w-full h-auto">
           <TabsTrigger 
             value="pendentes" 
             className="flex flex-col items-center gap-2 p-4 data-[state=active]:bg-yellow-100 data-[state=active]:text-yellow-800 data-[state=active]:border-yellow-300 dark:data-[state=active]:bg-yellow-900/20 dark:data-[state=active]:text-yellow-300"

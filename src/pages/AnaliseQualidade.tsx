@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AnaliseIndividual from '../components/AnaliseIndividual';
 import { useToast } from '@/components/ui/use-toast';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase';
 
 interface ColetaAmostra {
   id: string;
@@ -447,13 +449,13 @@ export default function AnaliseQualidade() {
       if (error) throw error;
 
       // Sincronizar quantidade de análises com a nova quantidade de amostras
-      const { data: analisesExistentes, error: errorAnalises } = await (supabase as any)
+      const { data: analisesExistentes, error: errorAnalises } = await (supabase as SupabaseClient<Database>)
         .from('analises_amostras')
         .select('*')
         .eq('coleta_id', editandoColeta.id)
         .order('numero_amostra');
       if (errorAnalises) throw errorAnalises;
-      const quantidadeAtual = analisesExistentes.length;
+      const quantidadeAtual = (analisesExistentes as AnaliseAmostra[]).length;
       const novaQuantidade = novaColeta.quantidade_amostras;
       if (novaQuantidade > quantidadeAtual) {
         // Adicionar novas análises
@@ -463,17 +465,17 @@ export default function AnaliseQualidade() {
           data_analise: new Date().toISOString()
         }));
         if (novasAnalises.length > 0) {
-          await (supabase as any)
+          await (supabase as SupabaseClient<Database>)
             .from('analises_amostras')
             .insert(novasAnalises);
         }
       } else if (novaQuantidade < quantidadeAtual) {
         // Remover análises excedentes
-        const idsParaRemover = analisesExistentes
-          .filter((a: any) => a.numero_amostra > novaQuantidade)
-          .map((a: any) => a.id);
+        const idsParaRemover = (analisesExistentes as AnaliseAmostra[])
+          .filter((a) => a.numero_amostra > novaQuantidade)
+          .map((a) => a.id);
         if (idsParaRemover.length > 0) {
-          await (supabase as any)
+          await (supabase as SupabaseClient<Database>)
             .from('analises_amostras')
             .delete()
             .in('id', idsParaRemover);
@@ -603,8 +605,8 @@ export default function AnaliseQualidade() {
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Histórico de Coletas</h3>
         </div>
-        
-        <div className="overflow-x-auto">
+        {/* Tabela tradicional para telas médias/grandes */}
+        <div className="overflow-x-auto hidden sm:block">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
@@ -704,6 +706,75 @@ export default function AnaliseQualidade() {
               )}
             </tbody>
           </table>
+        </div>
+        {/* Cards para mobile */}
+        <div className="block sm:hidden space-y-4 p-4">
+          {coletas.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-300">
+              <FileText className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+              <p className="dark:text-gray-200">Nenhuma coleta registrada</p>
+              <p className="text-sm dark:text-gray-400">Clique em "Nova Coleta" para começar</p>
+            </div>
+          ) : (
+            coletas.map((coleta) => (
+              <div key={coleta.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex flex-col gap-2 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-gray-900 dark:text-gray-100 text-base">Lote: {coleta.lote_producao}</span>
+                  <StatusBadge status={coleta.status} />
+                </div>
+                <div className="flex flex-wrap gap-2 text-sm mb-1">
+                  <span className="text-gray-700 dark:text-gray-200 font-medium">Data Coleta:</span>
+                  <span className="text-gray-900 dark:text-gray-100">{new Date(coleta.data_coleta).toLocaleDateString('pt-BR')}</span>
+                </div>
+                <div className="flex flex-wrap gap-2 text-sm mb-1">
+                  <span className="text-gray-700 dark:text-gray-200 font-medium">Produção (kg):</span>
+                  <span className="text-gray-900 dark:text-gray-100">{coleta.quantidade_total_produzida.toLocaleString('pt-BR')}</span>
+                  <span className="text-gray-700 dark:text-gray-200 font-medium ml-4">Amostras:</span>
+                  <span className="text-gray-900 dark:text-gray-100">{coleta.quantidade_amostras}</span>
+                </div>
+                <div className="flex flex-wrap gap-2 text-sm mb-1">
+                  <span className="text-gray-700 dark:text-gray-200 font-medium">Responsável:</span>
+                  <span className="text-gray-900 dark:text-gray-100">{coleta.responsavel_coleta}</span>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => {
+                      setShowAnalises(coleta.id);
+                      setColetaSelecionada(coleta);
+                      carregarAnalises(coleta.id);
+                    }}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-200 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors"
+                    title="Ver Análises"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => abrirEdicaoColeta(coleta)}
+                    className="text-amber-600 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 p-1 rounded hover:bg-amber-50 dark:hover:bg-amber-900/50 transition-colors"
+                    title="Editar Coleta"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => apagarColeta(coleta)}
+                    className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors"
+                    title="Apagar Coleta"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </button>
+                  {coletasComLaudo[coleta.id] && (
+                    <button
+                      onClick={() => visualizarLaudo(coleta.id)}
+                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-200 p-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/50 transition-colors"
+                      title="Visualizar Laudo"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

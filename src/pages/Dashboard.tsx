@@ -795,7 +795,8 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              {/* Tabela tradicional para telas médias/grandes */}
+              <div className="overflow-x-auto hidden sm:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -834,6 +835,41 @@ const Dashboard = () => {
                   </TableBody>
                 </Table>
               </div>
+              {/* Cards para mobile */}
+              <div className="block sm:hidden space-y-4">
+                {productTotals.length > 0 ? (
+                  productTotals.map((product) => (
+                    <div key={product.name} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex flex-col gap-2 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-gray-900 dark:text-gray-100 text-base">{product.name}</span>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewDetails(product, "product")}
+                          className="ml-2"
+                        >
+                          <Info className="h-4 w-4 mr-1" />
+                          Detalhes
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-4 mt-2">
+                        <div>
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">Quantidade</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatNumberBR(product.total)}</span>
+                        </div>
+                        <div>
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">Unidade</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{product.unitOfMeasure === 'kg' ? 'unidades' : product.unitOfMeasure}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500 dark:text-gray-300">
+                    Nenhum produto disponível em estoque.
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
           
@@ -851,45 +887,87 @@ const Dashboard = () => {
                         <span className="ml-2">{typeGroup.type}</span>
                       </h3>
                       <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Insumo</TableHead>
-                              <TableHead>Quantidade</TableHead>
-                              <TableHead>Un.</TableHead>
-                              <TableHead className="text-right">Ações</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {typeGroup.materials.map((material) => (
-                              <TableRow key={material.name} className="hover:bg-muted/50">
-                                <TableCell className="font-medium align-middle">{material.name}</TableCell>
-                                <TableCell className="align-middle">
-                                  {typeGroup.type.toLowerCase().includes('fécula') ? (
-                                    <span>
-                                      {formatNumberBR(material.total)} sacos
-                                    </span>
-                                  ) : (
-                                    formatNumberBR(material.total)
-                                  )}
-                                </TableCell>
-                                <TableCell className="align-middle">
-                                  {typeGroup.type.toLowerCase().includes('fécula') ? 'sacos' : (material.unitOfMeasure === 'kg' ? 'unidades' : material.unitOfMeasure)}
-                                </TableCell>
-                                <TableCell className="text-right align-middle">
+                        {/* Tabela tradicional para telas médias/grandes */}
+                        <div className="overflow-x-auto hidden sm:block">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Insumo</TableHead>
+                                <TableHead>Quantidade</TableHead>
+                                <TableHead>Un.</TableHead>
+                                <TableHead className="text-right">Ações</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {typeGroup.materials.map((material) => (
+                                <TableRow key={material.name} className="hover:bg-muted/50">
+                                  <TableCell className="font-medium align-middle">{material.name}</TableCell>
+                                  <TableCell className="align-middle">
+                                    {typeGroup.type.toLowerCase().includes('fécula') ? (
+                                      <span>
+                                        {formatNumberBR(material.total)} sacos
+                                      </span>
+                                    ) : (
+                                      formatNumberBR(material.total)
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="align-middle">
+                                    {typeGroup.type.toLowerCase().includes('fécula') ? 'sacos' : (material.unitOfMeasure === 'kg' ? 'unidades' : material.unitOfMeasure)}
+                                  </TableCell>
+                                  <TableCell className="text-right align-middle">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleViewDetails(material, "material")}
+                                    >
+                                      <Info className="h-4 w-4 mr-1" />
+                                      Detalhes
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        {/* Cards para mobile */}
+                        <div className="block sm:hidden space-y-4">
+                          {typeGroup.materials.length > 0 ? (
+                            typeGroup.materials.map((material) => (
+                              <div key={material.name} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex flex-col gap-2 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-gray-900 dark:text-gray-100 text-base">{material.name}</span>
                                   <Button 
                                     variant="outline" 
                                     size="sm"
                                     onClick={() => handleViewDetails(material, "material")}
+                                    className="ml-2"
                                   >
                                     <Info className="h-4 w-4 mr-1" />
                                     Detalhes
                                   </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                                </div>
+                                <div className="flex items-center gap-4 mt-2">
+                                  <div>
+                                    <span className="block text-xs text-gray-500 dark:text-gray-400">Tipo</span>
+                                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{typeGroup.type}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-xs text-gray-500 dark:text-gray-400">Quantidade</span>
+                                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{typeGroup.type.toLowerCase().includes('fécula') ? `${formatNumberBR(material.total)} sacos` : formatNumberBR(material.total)}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-xs text-gray-500 dark:text-gray-400">Unidade</span>
+                                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{typeGroup.type.toLowerCase().includes('fécula') ? 'sacos' : (material.unitOfMeasure === 'kg' ? 'unidades' : material.unitOfMeasure)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-4 text-gray-500 dark:text-gray-300">
+                              Nenhum material disponível em estoque.
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
