@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
@@ -51,7 +52,7 @@ const ModelosContratosPage = () => {
       const { data, error } = await supabase
         .from('modelos_contratos')
         .select('*')
-        .order('criado_em', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -60,8 +61,8 @@ const ModelosContratosPage = () => {
         nome: item.nome,
         descricao: item.descricao || '',
         conteudo: item.conteudo,
-        variaveis: Array.isArray(item.variaveis) ? (item.variaveis as unknown as VariavelContrato[]) : [],
-        ativo: item.ativo ?? true,
+        variaveis: item.variaveis as VariavelContrato[] || [],
+        ativo: item.ativo,
         criadoEm: new Date(item.criado_em || new Date()),
         atualizadoEm: new Date(item.atualizado_em || new Date()),
         criadoPor: item.criado_por || ''
@@ -83,10 +84,10 @@ const ModelosContratosPage = () => {
   const handleSalvarModelo = async () => {
     try {
       const dadosModelo = {
-        nome: novoModelo.nome!,
+        nome: novoModelo.nome,
         descricao: novoModelo.descricao,
-        conteudo: novoModelo.conteudo!,
-        variaveis: JSON.stringify(novoModelo.variaveis || []),
+        conteudo: novoModelo.conteudo,
+        variaveis: novoModelo.variaveis || [],
         ativo: novoModelo.ativo
       };
 
@@ -274,6 +275,7 @@ const ModelosContratosPage = () => {
           </DialogHeader>
           
           <div className="space-y-6">
+            {/* Dados Básicos */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Nome do Modelo *</Label>

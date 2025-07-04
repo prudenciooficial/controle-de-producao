@@ -59,7 +59,7 @@ const Losses = () => {
   const getBatchDetails = (batchId: string) => productionBatches.find((b) => b.id === batchId);
   
   const onSubmit = async (data: LossFormValues) => {
-    if (!hasPermission('losses', 'module')) {
+    if (!hasPermission('losses', 'create')) {
       toast({
         variant: "destructive",
         title: "Acesso Negado",
@@ -129,13 +129,13 @@ const Losses = () => {
           <Tabs value={activeTabId} onValueChange={setActiveTabId} className="w-full">
             <TabsList className={cn("grid w-full mb-6", isMobile ? "grid-cols-1 h-auto" : `grid-cols-${LOSS_TABS.length}`)}>
               {LOSS_TABS.map((tab) => (
-                <TabsTrigger key={tab.id} value={tab.id}>
+                <TabsTrigger key={tab.id} value={tab.id} /* disabled e onClick não são críticos para aba única */ >
                   <tab.icon className="mr-2 h-4 w-4" /> {tab.name}
                 </TabsTrigger>
               ))}
             </TabsList>
 
-            <TabsContent value="lossInfo" forceMount>
+            <TabsContent value="lossInfo" forceMount /* className para hidden não é necessário se sempre visível */>
               <Card>
                 <CardHeader>
                   <CardTitle>Detalhes da Perda</CardTitle>

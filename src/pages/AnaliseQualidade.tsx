@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AnaliseIndividual from '../components/AnaliseIndividual';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
 import { logSystemEvent } from '@/services/logService';
@@ -25,7 +25,6 @@ interface ColetaAmostra {
 }
 
 interface AnaliseAmostra {
-  [key: string]: unknown;
   id: string;
   coleta_id: string;
   numero_amostra: number;
@@ -320,7 +319,7 @@ export default function AnaliseQualidade() {
         actionType: isUpdate ? 'UPDATE' : 'CREATE',
         entityTable: 'analises_amostras',
         entityId: data.id,
-        ...(isUpdate ? { newData: data, oldData: analise as Record<string, unknown> } : { newData: data })
+        ...(isUpdate ? { newData: data, oldData: analise } : { newData: data })
       });
 
       // Atualizar lista de análises local
@@ -941,4 +940,4 @@ export default function AnaliseQualidade() {
       </Dialog>
     </div>
   );
-}
+} 

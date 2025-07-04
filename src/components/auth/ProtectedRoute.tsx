@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +6,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: 'admin' | 'editor' | 'viewer';
   requiredModule?: string;
-  requiredPermission?: 'page' | 'module';
+  requiredPermission?: 'view' | 'create' | 'edit' | 'delete';
 }
 
 export function ProtectedRoute({ 

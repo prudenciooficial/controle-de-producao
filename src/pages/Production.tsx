@@ -177,12 +177,8 @@ const Production = () => {
   }, [materialBatches]);
 
   const onSubmit = async (data: ProductionFormValues) => {
-    if (!hasPermission('production', 'module')) {
-      toast({
-        variant: "destructive", 
-        title: "Acesso Negado",
-        description: "Você não tem permissão para registrar produções.",
-      });
+    if (!hasPermission('production', 'create')) {
+      toast({ variant: "destructive", title: "Acesso Negado", description: "Você não tem permissão para registrar novas produções." });
       return;
     }
 
@@ -632,3 +628,4 @@ const Production = () => {
 };
 
 export default Production;
+

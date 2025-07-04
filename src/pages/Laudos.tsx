@@ -1,41 +1,44 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Loader, Plus, Search, FileText, Eye, Edit, Trash, Download, Printer } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { logSystemEvent } from "@/services/logService";
+import React, { useState, useEffect } from 'react';
+import { FileText, Plus, Printer, Edit, Trash, CheckCircle, Search, Calendar, User, Package, ImagePlus, UserPlus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/ui/use-toast';
+import { logSystemEvent } from '@/services/logService';
+
+interface ColetaAmostra {
+  id: string;
+  lote_producao: string;
+  data_coleta: string;
+  quantidade_total_produzida: number;
+  quantidade_amostras: number;
+  responsavel_coleta: string;
+  observacoes?: string;
+  status: 'em_andamento' | 'finalizada' | 'aprovada' | 'reprovada';
+  created_at: string;
+}
 
 interface AnaliseAmostra {
   id: string;
   coleta_id: string;
   numero_amostra: number;
-  data_analise: Date;
+  umidade?: number;
+  ph?: number;
   aspecto?: string;
   cor?: string;
   odor?: string;
   sabor?: string;
   embalagem?: string;
-  umidade?: number;
   umidade_conforme?: boolean;
-  ph?: number;
   ph_conforme?: boolean;
   observacoes?: string;
-  created_at: Date;
-  updated_at: Date;
+  data_analise: string;
 }
 
 interface LaudoLiberacao {
@@ -46,26 +49,14 @@ interface LaudoLiberacao {
   gramatura: string;
   data_fabricacao: string;
   data_validade: string;
-  revisao?: string;
-  data_emissao: Date;
+  resultado_geral: 'aprovado' | 'reprovado';
   responsavel_liberacao: string;
-  resultado_geral: "aprovado" | "reprovado";
   observacoes?: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-interface ColetaAmostra {
-  id: string;
-  lote_producao: string;
-  data_coleta: string;
-  responsavel_coleta: string;
-  quantidade_total_produzida: number;
-  quantidade_amostras: number;
-  status: "em_andamento" | "finalizada" | "aprovada" | "reprovada";
-  observacoes?: string;
-  created_at: Date;
-  updated_at: Date;
+  data_emissao: string;
+  created_at: string;
+  updated_at: string;
+  revisao: string;
+  lote_producao?: string;
 }
 
 interface NovoLaudo {
@@ -74,779 +65,965 @@ interface NovoLaudo {
   gramatura: string;
   data_fabricacao: string;
   data_validade: string;
-  revisao?: string;
+  resultado_geral: 'aprovado' | 'reprovado';
   responsavel_liberacao: string;
-  resultado_geral: "aprovado" | "reprovado";
-  observacoes?: string;
+  observacoes: string;
+  data_emissao: string;
+  revisao: string;
 }
 
 interface ResponsavelTecnico {
-  id?: string;
+  id: string;
   nome: string;
   funcao: string;
   carteira_tecnica: string;
   assinatura_url?: string;
-  created_at?: Date;
 }
 
-const formSchema = z.object({
-  coleta_id: z.string().min(1, { message: "Selecione a coleta" }),
-  marca_produto: z.string().min(2, { message: "Marca do produto é obrigatória" }),
-  gramatura: z.string().min(1, { message: "Gramatura é obrigatória" }),
-  data_fabricacao: z.string().min(1, { message: "Data de fabricação é obrigatória" }),
-  data_validade: z.string().min(1, { message: "Data de validade é obrigatória" }),
-  revisao: z.string().optional(),
-  responsavel_liberacao: z.string().min(2, { message: "Responsável pela liberação é obrigatório" }),
-  resultado_geral: z.enum(["aprovado", "reprovado"], {
-    required_error: "Resultado geral é obrigatório.",
-  }),
-  observacoes: z.string().optional(),
-});
+interface Produto {
+  id: string;
+  name: string;
+}
 
-type NovoLaudoValues = z.infer<typeof formSchema>;
+// Função utilitária para listar imagens da pasta public/images/assinaturas
+function useAssinaturasDisponiveis() {
+  const [assinaturas, setAssinaturas] = useState<string[]>([]);
+  useEffect(() => {
+    fetch('/images/assinaturas/assinaturas.json')
+      .then(res => res.json())
+      .then(setAssinaturas)
+      .catch(() => setAssinaturas([]));
+  }, []);
+  return assinaturas;
+}
 
-const Laudos = () => {
+export default function Laudos() {
   const [laudos, setLaudos] = useState<LaudoLiberacao[]>([]);
-  const [coletas, setColetas] = useState<ColetaAmostra[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isCreatingResponsaveis, setIsCreatingResponsaveis] = useState(false);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedLaudo, setSelectedLaudo] = useState<LaudoLiberacao | null>(null);
-  const navigate = useNavigate();
+  const [coletasAprovadas, setColetasAprovadas] = useState<ColetaAmostra[]>([]);
+  const [analises, setAnalises] = useState<AnaliseAmostra[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showNovoLaudo, setShowNovoLaudo] = useState(false);
+  const [editandoLaudo, setEditandoLaudo] = useState<LaudoLiberacao | null>(null);
+  const [filtroTexto, setFiltroTexto] = useState('');
   const { toast } = useToast();
 
-  const form = useForm<NovoLaudoValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      coleta_id: "",
-      marca_produto: "",
-      gramatura: "",
-      data_fabricacao: "",
-      data_validade: "",
-      revisao: "",
-      responsavel_liberacao: "",
-      resultado_geral: "aprovado",
-      observacoes: "",
-    },
+  // Estados para novo laudo
+  const [novoLaudo, setNovoLaudo] = useState<NovoLaudo>({
+    coleta_id: '',
+    marca_produto: 'MASSA PRONTA PARA TAPIOCA NOSSA GOMA',
+    gramatura: '1Kg',
+    data_fabricacao: '',
+    data_validade: '',
+    resultado_geral: 'aprovado',
+    responsavel_liberacao: '',
+    observacoes: 'São realizadas análises do produto acabado em laboratórios terceirizados de acordo com o plano de amostragem interno da Indústria de Alimentos Ser Bem Ltda., atendendo os respectivos dispositivos legais.',
+    data_emissao: '2025-07-03',
+    revisao: '7',
   });
 
+  const [responsaveis, setResponsaveis] = useState<ResponsavelTecnico[]>([]);
+  const [showModalResponsavel, setShowModalResponsavel] = useState(false);
+  const [novoResponsavel, setNovoResponsavel] = useState<Partial<ResponsavelTecnico>>({});
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const assinaturas = useAssinaturasDisponiveis();
+
   useEffect(() => {
-    fetchLaudos();
-    fetchColetas();
+    Promise.all([
+      carregarLaudos(),
+      carregarColetasAprovadas(),
+      carregarResponsaveis(),
+      carregarProdutos()
+    ]);
   }, []);
 
-  const fetchLaudos = async () => {
+  useEffect(() => {
+    // Carregar análises quando uma coleta for selecionada
+    if (novoLaudo.coleta_id) {
+      carregarAnalisesDaColeta(novoLaudo.coleta_id);
+    }
+  }, [novoLaudo.coleta_id]);
+
+  const carregarLaudos = async () => {
     try {
-      setIsLoading(true);
       const { data, error } = await supabase
         .from('laudos_liberacao')
-        .select(`
-          *,
-          coleta:coletas_amostras(lote_producao)
-        `)
+        .select('*, coleta:coletas_amostras(id, lote_producao)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      const laudosFormatted = (data || []).map((laudo: any) => ({
-        lote_producao: laudo.coleta?.lote_producao || 'N/A',
-        id: laudo.id,
-        coleta_id: laudo.coleta_id,
-        numero_laudo: laudo.numero_laudo,
-        marca_produto: laudo.marca_produto,
-        gramatura: laudo.gramatura,
-        data_fabricacao: laudo.data_fabricacao,
-        data_validade: laudo.data_validade,
-        revisao: laudo.revisao,
-        data_emissao: laudo.data_emissao,
-        responsavel_liberacao: laudo.responsavel_liberacao,
-        resultado_geral: laudo.resultado_geral as "aprovado" | "reprovado",
-        observacoes: laudo.observacoes,
-        created_at: laudo.created_at,
-        updated_at: laudo.updated_at,
-        coleta: laudo.coleta
-      }));
-
-      setLaudos(laudosFormatted);
+      setLaudos((data || []).map((laudo: LaudoLiberacao & { coleta?: { lote_producao?: string } }) => ({
+        ...laudo,
+        lote_producao: laudo.coleta?.lote_producao || '',
+      })));
     } catch (error) {
-      console.error('Erro ao buscar laudos:', error);
+      console.error('Erro ao carregar laudos:', error);
       toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Falha ao carregar laudos de liberação.",
+        title: 'Erro ao carregar laudos',
+        description: '❌ Não foi possível carregar os laudos.',
+        variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const fetchColetas = async () => {
+  const carregarColetasAprovadas = async () => {
     try {
       const { data, error } = await supabase
         .from('coletas_amostras')
         .select('*')
+        .in('status', ['finalizada', 'aprovada'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      const coletasFormatted = (data || []).map((coleta: any) => ({
-        ...coleta,
-        status: coleta.status as "em_andamento" | "finalizada" | "aprovada" | "reprovada"
-      }));
-
-      setColetas(coletasFormatted);
+      setColetasAprovadas(data || []);
     } catch (error) {
-      console.error('Erro ao buscar coletas:', error);
+      console.error('Erro ao carregar coletas aprovadas:', error);
+      toast({
+        title: 'Erro ao carregar coletas',
+        description: '❌ Não foi possível carregar as coletas aprovadas.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredLaudos = laudos.filter((laudo) =>
-    laudo.marca_produto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (laudo as any).lote_producao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    laudo.numero_laudo.toString().includes(searchTerm)
-  );
-
-  const handleCreateLaudo = async (data: NovoLaudo) => {
+  const carregarAnalisesDaColeta = async (coletaId: string) => {
     try {
-      setIsCreating(true);
-      
+      const { data, error } = await supabase
+        .from('analises_amostras')
+        .select('*')
+        .eq('coleta_id', coletaId)
+        .order('numero_amostra');
+
+      if (error) throw error;
+      setAnalises(data || []);
+
+      // Calcular resultado geral automaticamente baseado nas análises
+      const todasConformes = (data || []).every((a: AnaliseAmostra) => a.umidade_conforme && a.ph_conforme);
+      setNovoLaudo(prev => ({
+        ...prev,
+        resultado_geral: todasConformes ? 'aprovado' : 'reprovado'
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar análises:', error);
+    }
+  };
+
+  const selecionarColeta = (coletaId: string) => {
+    const coleta = coletasAprovadas.find(c => c.id === coletaId);
+    if (!coleta) return;
+
+    // Calcular data de validade (6 meses após fabricação)
+    const dataFabricacao = new Date(coleta.data_coleta);
+    const dataValidade = new Date(dataFabricacao);
+    dataValidade.setMonth(dataValidade.getMonth() + 6);
+
+    setNovoLaudo(prev => ({
+      ...prev,
+      coleta_id: coletaId,
+      data_fabricacao: coleta.data_coleta,
+      data_validade: dataValidade.toISOString().split('T')[0],
+      responsavel_liberacao: coleta.responsavel_coleta
+    }));
+  };
+
+  const criarLaudo = async () => {
+    if (!novoLaudo.coleta_id || !novoLaudo.marca_produto || !novoLaudo.responsavel_liberacao) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Por favor, preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
       const { error } = await supabase
         .from('laudos_liberacao')
-        .insert([{
-          ...data as any,
-          data_emissao: new Date().toISOString(),
-        }]);
+        .insert([{ ...novoLaudo }]);
 
       if (error) throw error;
 
-      toast({
-        title: "Laudo Criado",
-        description: "Laudo de liberação criado com sucesso.",
-      });
+      // Atualizar status da coleta para 'aprovada'
+      await supabase
+        .from('coletas_amostras')
+        .update({ status: 'aprovada' })
+        .eq('id', novoLaudo.coleta_id);
 
+      // Log de criação de laudo
+      const user = await supabase.auth.getUser();
       await logSystemEvent({
+        userId: user?.data?.user?.id,
+        userDisplayName: user?.data?.user?.user_metadata?.full_name || user?.data?.user?.email,
         actionType: 'CREATE',
         entityTable: 'laudos_liberacao',
-        newData: data as any
+        entityId: novoLaudo.coleta_id,
+        newData: novoLaudo
       });
 
-      setIsCreateDialogOpen(false);
-      form.reset();
-      fetchLaudos();
+      toast({
+        title: 'Laudo criado',
+        description: '✅ Laudo criado com sucesso!',
+        variant: 'default',
+      });
+
+      setShowNovoLaudo(false);
+      resetFormulario();
+      carregarLaudos();
+      carregarColetasAprovadas();
     } catch (error) {
       console.error('Erro ao criar laudo:', error);
       toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Falha ao criar laudo de liberação.",
+        title: 'Erro ao criar laudo',
+        description: '❌ Erro ao criar laudo',
+        variant: 'destructive',
       });
-    } finally {
-      setIsCreating(false);
     }
   };
 
-  const handleUpdateLaudo = async (data: NovoLaudo) => {
-    if (!selectedLaudo) return;
+  const editarLaudo = async () => {
+    if (!editandoLaudo || !novoLaudo.marca_produto || !novoLaudo.responsavel_liberacao) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Por favor, preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
-      setIsUpdating(true);
-      
       const { error } = await supabase
         .from('laudos_liberacao')
-        .update(data as any)
-        .eq('id', selectedLaudo.id);
+        .update({
+          marca_produto: novoLaudo.marca_produto,
+          gramatura: novoLaudo.gramatura,
+          data_fabricacao: novoLaudo.data_fabricacao,
+          data_validade: novoLaudo.data_validade,
+          resultado_geral: novoLaudo.resultado_geral,
+          responsavel_liberacao: novoLaudo.responsavel_liberacao,
+          observacoes: novoLaudo.observacoes,
+          data_emissao: novoLaudo.data_emissao,
+          revisao: novoLaudo.revisao,
+        })
+        .eq('id', editandoLaudo.id);
 
       if (error) throw error;
 
-      toast({
-        title: "Laudo Atualizado",
-        description: "Laudo de liberação atualizado com sucesso.",
-      });
-
+      // Log de edição de laudo
+      const user = await supabase.auth.getUser();
       await logSystemEvent({
+        userId: user?.data?.user?.id,
+        userDisplayName: user?.data?.user?.user_metadata?.full_name || user?.data?.user?.email,
         actionType: 'UPDATE',
         entityTable: 'laudos_liberacao',
-        entityId: selectedLaudo.id,
-        newData: data as any
+        entityId: editandoLaudo.id,
+        newData: novoLaudo
       });
 
-      setIsEditDialogOpen(false);
-      setSelectedLaudo(null);
-      fetchLaudos();
-    } catch (error) {
-      console.error('Erro ao atualizar laudo:', error);
       toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Falha ao atualizar laudo de liberação.",
+        title: 'Laudo editado',
+        description: '✅ Laudo editado com sucesso!',
+        variant: 'default',
       });
-    } finally {
-      setIsUpdating(false);
+
+      setShowNovoLaudo(false);
+      setEditandoLaudo(null);
+      resetFormulario();
+      carregarLaudos();
+    } catch (error) {
+      console.error('Erro ao editar laudo:', error);
+      toast({
+        title: 'Erro ao editar laudo',
+        description: '❌ Erro ao editar laudo',
+        variant: 'destructive',
+      });
     }
   };
 
-  const handleDeleteLaudo = async (laudo: LaudoLiberacao) => {
+  const abrirEdicaoLaudo = (laudo: LaudoLiberacao) => {
+    setEditandoLaudo(laudo);
+    setNovoLaudo({
+      coleta_id: laudo.coleta_id,
+      marca_produto: laudo.marca_produto,
+      gramatura: laudo.gramatura,
+      data_fabricacao: laudo.data_fabricacao,
+      data_validade: laudo.data_validade,
+      resultado_geral: laudo.resultado_geral,
+      responsavel_liberacao: laudo.responsavel_liberacao,
+      observacoes: laudo.observacoes || '',
+      data_emissao: laudo.data_emissao || '2025-07-03',
+      revisao: laudo.revisao || '7',
+    });
+    setShowNovoLaudo(true);
+  };
+
+  const excluirLaudo = async (laudo: LaudoLiberacao) => {
+    if (!window.confirm('Tem certeza que deseja excluir este laudo? Esta ação não poderá ser desfeita.')) return;
+
     try {
-      // Implemente a lógica para excluir o laudo
-      console.log('Excluindo laudo:', laudo.id);
+      const { error } = await supabase
+        .from('laudos_liberacao')
+        .delete()
+        .eq('id', laudo.id);
+
+      if (error) throw error;
+
+      // Log de exclusão de laudo
+      const user = await supabase.auth.getUser();
+      await logSystemEvent({
+        userId: user?.data?.user?.id,
+        userDisplayName: user?.data?.user?.user_metadata?.full_name || user?.data?.user?.email,
+        actionType: 'DELETE',
+        entityTable: 'laudos_liberacao',
+        entityId: laudo.id,
+        oldData: laudo
+      });
+
+      toast({
+        title: 'Laudo excluído',
+        description: '✅ Laudo excluído com sucesso!',
+        variant: 'default',
+      });
+
+      carregarLaudos();
     } catch (error) {
       console.error('Erro ao excluir laudo:', error);
-    }
-  };
-
-  const handleViewLaudo = async (laudo: LaudoLiberacao) => {
-    try {
-      // Implemente a lógica para visualizar o laudo
-      console.log('Visualizando laudo:', laudo.id);
-    } catch (error) {
-      console.error('Erro ao visualizar laudo:', error);
-    }
-  };
-
-  const handleEditLaudo = (laudo: LaudoLiberacao) => {
-    setSelectedLaudo(laudo);
-    form.setValue("coleta_id", laudo.coleta_id);
-    form.setValue("marca_produto", laudo.marca_produto);
-    form.setValue("gramatura", laudo.gramatura);
-    form.setValue("data_fabricacao", laudo.data_fabricacao);
-    form.setValue("data_validade", laudo.data_validade);
-    form.setValue("revisao", laudo.revisao || "");
-    form.setValue("responsavel_liberacao", laudo.responsavel_liberacao);
-    form.setValue("resultado_geral", laudo.resultado_geral);
-    form.setValue("observacoes", laudo.observacoes || "");
-    setIsEditDialogOpen(true);
-  };
-
-  const handlePrintLaudo = async (laudo: LaudoLiberacao) => {
-    try {
-      // Implemente a lógica para imprimir o laudo
-      console.log('Imprimindo laudo:', laudo.id);
-    } catch (error) {
-      console.error('Erro ao imprimir laudo:', error);
-    }
-  };
-
-  const handleBulkInsertResponsaveis = async () => {
-    try {
-      setIsCreatingResponsaveis(true);
-
-      const responsaveisIniciais: Omit<ResponsavelTecnico, 'id' | 'created_at'>[] = [
-        {
-          nome: "João da Silva",
-          funcao: "Técnico em Alimentos",
-          carteira_tecnica: "CRQ-0123456",
-        },
-        {
-          nome: "Maria Souza",
-          funcao: "Engenheira Química",
-          carteira_tecnica: "CREA-9876543",
-        },
-      ];
-
-      // Inserir cada responsável técnico no banco de dados
-      for (const responsavel of responsaveisIniciais) {
-        const { data, error } = await supabase
-          .from('responsaveis_tecnicos')
-          .insert([responsavel]);
-
-        if (error) {
-          console.error("Erro ao inserir responsável técnico:", error);
-          toast({
-            variant: "destructive",
-            title: "Erro",
-            description: `Falha ao inserir responsável técnico: ${responsavel.nome}.`,
-          });
-          continue; // Continue para o próximo responsável em caso de erro
-        }
-
-        console.log("Responsável técnico inserido com sucesso:", data);
-      }
-
       toast({
-        title: "Responsáveis Técnicos Criados",
-        description: "Responsáveis técnicos padrão criados com sucesso.",
+        title: 'Erro ao excluir laudo',
+        description: '❌ Erro ao excluir laudo',
+        variant: 'destructive',
       });
-    } catch (error) {
-      console.error("Erro ao criar responsáveis técnicos padrão:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Falha ao criar responsáveis técnicos padrão.",
-      });
-    } finally {
-      setIsCreatingResponsaveis(false);
     }
   };
+
+  const visualizarLaudo = (laudo: LaudoLiberacao) => {
+    window.open(`/print/laudo/${laudo.id}`, '_blank', 'width=800,height=600');
+  };
+
+  const resetFormulario = () => {
+    setNovoLaudo({
+      coleta_id: '',
+      marca_produto: 'MASSA PRONTA PARA TAPIOCA NOSSA GOMA',
+      gramatura: '1Kg',
+      data_fabricacao: '',
+      data_validade: '',
+      resultado_geral: 'aprovado',
+      responsavel_liberacao: '',
+      observacoes: 'São realizadas análises do produto acabado em laboratórios terceirizados de acordo com o plano de amostragem interno da Indústria de Alimentos Ser Bem Ltda., atendendo os respectivos dispositivos legais.',
+      data_emissao: '2025-07-03',
+      revisao: '7',
+    });
+    setAnalises([]);
+    setEditandoLaudo(null);
+  };
+
+  // Filtrar laudos
+  const laudosFiltrados = laudos.filter(laudo => 
+    laudo.numero_laudo.toString().includes(filtroTexto) ||
+    laudo.marca_produto.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+    laudo.responsavel_liberacao.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+    (laudo.lote_producao || '').toLowerCase().includes(filtroTexto.toLowerCase())
+  );
+
+  // Calcular estatísticas das análises
+  const mediaUmidade = analises.length > 0 ? 
+    (analises.reduce((sum, a) => sum + (a.umidade || 0), 0) / analises.length).toFixed(1) : '-';
+  const mediaPh = analises.length > 0 ? 
+    (analises.reduce((sum, a) => sum + (a.ph || 0), 0) / analises.length).toFixed(2) : '-';
+
+  const carregarResponsaveis = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('responsaveis_tecnicos')
+        .select('*')
+        .order('nome');
+      if (error) throw error;
+      setResponsaveis(data || []);
+    } catch (error) {
+      toast({ title: 'Erro ao carregar responsáveis técnicos', variant: 'destructive' });
+    }
+  };
+
+  const carregarProdutos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      setProdutos(data || []);
+    } catch (error) {
+      toast({ title: 'Erro ao carregar produtos', variant: 'destructive' });
+    }
+  };
+
+  const salvarResponsavel = async () => {
+    if (!novoResponsavel.nome || !novoResponsavel.funcao || !novoResponsavel.carteira_tecnica) {
+      toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('responsaveis_tecnicos')
+        .insert([{ ...novoResponsavel }]);
+      if (error) throw error;
+      toast({ title: 'Responsável cadastrado', variant: 'default' });
+      setShowModalResponsavel(false);
+      setNovoResponsavel({});
+      carregarResponsaveis();
+    } catch (error) {
+      toast({ title: 'Erro ao cadastrar responsável', variant: 'destructive' });
+    }
+  };
+
+  const excluirResponsavel = async (id: string) => {
+    if (!window.confirm('Excluir este responsável técnico?')) return;
+    try {
+      const { error } = await supabase
+        .from('responsaveis_tecnicos')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Responsável excluído', variant: 'default' });
+      carregarResponsaveis();
+    } catch (error) {
+      toast({ title: 'Erro ao excluir responsável', variant: 'destructive' });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Laudos de Liberação</h1>
-          <p className="text-muted-foreground">Gerencie os laudos de liberação dos produtos</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Laudos e Histórico</h1>
+          <p className="text-gray-600 dark:text-gray-300">Gerenciamento de laudos de liberação de produto acabado</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button onClick={() => setShowModalResponsavel(true)} className="inline-flex items-center gap-2 w-full sm:w-auto" variant="outline">
+            <UserPlus className="w-4 h-4" />
+            Adicionar Responsável Técnico
+          </Button>
+          <Button onClick={() => setShowNovoLaudo(true)} className="inline-flex items-center gap-2 w-full sm:w-auto">
+            <Plus className="w-4 h-4" />
             Novo Laudo
           </Button>
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                type="search"
-                placeholder="Buscar por lote, marca ou número do laudo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Content */}
-      {isLoading ? (
-        <div className="flex justify-center items-center p-8">
-          <Loader className="w-8 h-8 animate-spin" />
-          <span className="ml-2">Carregando laudos...</span>
+      {/* Filtro */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex items-center gap-2">
+          <Search className="w-4 h-4 text-gray-400 dark:text-gray-300" />
+          <Input
+            placeholder="Buscar por número do laudo, produto ou responsável..."
+            value={filtroTexto}
+            onChange={(e) => setFiltroTexto(e.target.value)}
+            className="flex-1 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
+          />
         </div>
-      ) : filteredLaudos.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-muted-foreground mb-2">
-              Nenhum laudo encontrado
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {searchTerm ? "Tente ajustar os filtros de busca." : "Comece criando um novo laudo de liberação."}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nº Laudo</TableHead>
-                  <TableHead>Lote</TableHead>
-                  <TableHead>Marca/Produto</TableHead>
-                  <TableHead>Data Fabricação</TableHead>
-                  <TableHead>Resultado</TableHead>
-                  <TableHead>Responsável</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLaudos.map((laudo) => (
-                  <TableRow key={laudo.id}>
-                    <TableCell className="font-medium">{laudo.numero_laudo}</TableCell>
-                    <TableCell>{(laudo as any).lote_producao}</TableCell>
-                    <TableCell>{laudo.marca_produto}</TableCell>
-                    <TableCell>
-                      {format(new Date(laudo.data_fabricacao), "dd/MM/yyyy", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={laudo.resultado_geral === 'aprovado' ? 'default' : 'destructive'}>
+      </div>
+
+      {/* Tabela de Laudos */}
+      <div className="bg-white dark:bg-gray-800 dark:text-gray-100 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Histórico de Laudos ({laudosFiltrados.length})</h3>
+        </div>
+        {/* Tabela tradicional para telas médias/grandes */}
+        <div className="overflow-x-auto hidden sm:block">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Nº Laudo</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Lote</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Produto</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Data Fabricação</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Data Validade</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Resultado</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Responsável</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Data Emissão (Revisão)</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Data Emissão do Laudo</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <span className="dark:text-gray-200">Ações</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+              {laudosFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500 dark:text-gray-300">
+                    <FileText className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+                    <p className="dark:text-gray-200">Nenhum laudo encontrado</p>
+                    <p className="text-sm dark:text-gray-400">Clique em "Novo Laudo" para começar</p>
+                  </td>
+                </tr>
+              ) : (
+                laudosFiltrados.map((laudo) => (
+                  <tr key={laudo.id} className="hover:bg-gray-50 transition-colors dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                      #{laudo.numero_laudo}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      {laudo.lote_producao || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      <div className="flex flex-col">
+                        <span className="font-medium dark:text-gray-100">{laudo.marca_produto}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{laudo.gramatura}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      {new Date(laudo.data_fabricacao).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      {new Date(laudo.data_validade).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        laudo.resultado_geral === 'aprovado' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' 
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200'
+                      }`}>
+                        {laudo.resultado_geral === 'aprovado' ? (
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                        ) : (
+                          <span className="w-3 h-3 mr-1">✗</span>
+                        )}
                         {laudo.resultado_geral === 'aprovado' ? 'Aprovado' : 'Reprovado'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{laudo.responsavel_liberacao}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleViewLaudo(laudo)}>
-                          <Eye className="h-4 w-4" />
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      {laudo.responsavel_liberacao}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      {laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => visualizarLaudo(laudo)}
+                          size="sm"
+                          variant="outline"
+                          className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
+                        >
+                          <Printer className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleEditLaudo(laudo)}>
-                          <Edit className="h-4 w-4" />
+                        <Button
+                          onClick={() => abrirEdicaoLaudo(laudo)}
+                          size="sm"
+                          variant="outline"
+                          className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
+                        >
+                          <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handlePrintLaudo(laudo)}>
-                          <Printer className="h-4 w-4" />
+                        <Button
+                          onClick={() => excluirLaudo(laudo)}
+                          size="sm"
+                          variant="outline"
+                          className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                        >
+                          <Trash className="w-4 h-4" />
                         </Button>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Bulk Insert Responsible Technical Members */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Responsáveis Técnicos</CardTitle>
-          <CardDescription>
-            Gerencie os responsáveis técnicos para os laudos
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Button 
-              onClick={handleBulkInsertResponsaveis}
-              disabled={isCreatingResponsaveis}
-            >
-              {isCreatingResponsaveis ? (
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="mr-2 h-4 w-4" />
+                    </td>
+                  </tr>
+                ))
               )}
-              Criar Responsáveis Técnicos Padrão
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            </tbody>
+          </table>
+        </div>
+        {/* Cards para mobile */}
+        <div className="block sm:hidden space-y-4 p-4">
+          {laudosFiltrados.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-300">
+              <FileText className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+              <p className="dark:text-gray-200">Nenhum laudo encontrado</p>
+              <p className="text-sm dark:text-gray-400">Clique em "Novo Laudo" para começar</p>
+            </div>
+          ) : (
+            laudosFiltrados.map((laudo) => (
+              <div key={laudo.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex flex-col gap-3 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-gray-900 dark:text-gray-100 text-base">Laudo #{laudo.numero_laudo}</span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    laudo.resultado_geral === 'aprovado' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' 
+                      : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200'
+                  }`}>
+                    {laudo.resultado_geral === 'aprovado' ? (
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                    ) : (
+                      <span className="w-3 h-3 mr-1">✗</span>
+                    )}
+                    {laudo.resultado_geral === 'aprovado' ? 'Aprovado' : 'Reprovado'}
+                  </span>
+                </div>
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+                  <div className="flex flex-wrap gap-2 text-sm mb-1">
+                    <span className="text-gray-700 dark:text-gray-200 font-medium">Lote:</span>
+                    <span className="text-gray-900 dark:text-gray-100">{laudo.lote_producao || '-'}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-sm mb-1">
+                    <span className="text-gray-700 dark:text-gray-200 font-medium">Produto:</span>
+                    <span className="text-gray-900 dark:text-gray-100">{laudo.marca_produto}</span>
+                    <span className="text-gray-700 dark:text-gray-200 font-medium ml-4">Gramatura:</span>
+                    <span className="text-gray-900 dark:text-gray-100">{laudo.gramatura}</span>
+                  </div>
+                </div>
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+                  <div className="flex flex-wrap gap-2 text-sm mb-1">
+                    <span className="text-gray-700 dark:text-gray-200 font-medium">Fabricação:</span>
+                    <span className="text-gray-900 dark:text-gray-100">{new Date(laudo.data_fabricacao).toLocaleDateString('pt-BR')}</span>
+                    <span className="text-gray-700 dark:text-gray-200 font-medium ml-4">Validade:</span>
+                    <span className="text-gray-900 dark:text-gray-100">{new Date(laudo.data_validade).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                </div>
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+                  <div className="flex flex-wrap gap-2 text-sm mb-1">
+                    <span className="text-gray-700 dark:text-gray-200 font-medium">Responsável:</span>
+                    <span className="text-gray-900 dark:text-gray-100">{laudo.responsavel_liberacao}</span>
+                  </div>
+                </div>
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+                  <div className="flex flex-wrap gap-2 text-sm mb-1">
+                    <span className="text-gray-700 dark:text-gray-200 font-medium">Emissão (Revisão):</span>
+                    <span className="text-gray-900 dark:text-gray-100">{new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}</span>
+                    <span className="text-gray-700 dark:text-gray-200 font-medium ml-4">Emissão do Laudo:</span>
+                    <span className="text-gray-900 dark:text-gray-100">{laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    onClick={() => visualizarLaudo(laudo)}
+                    size="sm"
+                    variant="outline"
+                    className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
+                  >
+                    <Printer className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={() => abrirEdicaoLaudo(laudo)}
+                    size="sm"
+                    variant="outline"
+                    className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={() => excluirLaudo(laudo)}
+                    size="sm"
+                    variant="outline"
+                    className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
 
-      {/* Create Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      {/* Modal Responsável Técnico */}
+      <Dialog open={showModalResponsavel} onOpenChange={setShowModalResponsavel}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Novo Laudo de Liberação</DialogTitle>
-            <DialogDescription>
-              Preencha os campos abaixo para criar um novo laudo
-            </DialogDescription>
+            <DialogTitle>Novo Responsável Técnico</DialogTitle>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleCreateLaudo)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="coleta_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Coleta</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a coleta" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {coletas.map((coleta) => (
-                          <SelectItem key={coleta.id} value={coleta.id}>
-                            {coleta.lote_producao} - {format(new Date(coleta.data_coleta), "dd/MM/yyyy", { locale: ptBR })}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="marca_produto"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Marca/Produto</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Marca do produto" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="gramatura"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gramatura</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Gramatura" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="data_fabricacao"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Fabricação</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="data_validade"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Validade</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="revisao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Revisão</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Revisão (opcional)" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="responsavel_liberacao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Responsável pela Liberação</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Responsável pela liberação" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="resultado_geral"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Resultado Geral</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o resultado" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="aprovado">Aprovado</SelectItem>
-                        <SelectItem value="reprovado">Reprovado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="observacoes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observações</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Observações (opcional)"
-                        className="resize-none"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={isCreating}>
-                {isCreating ? (
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="mr-2 h-4 w-4" />
-                )}
-                Criar Laudo
-              </Button>
-            </form>
-          </Form>
+          <div className="space-y-4">
+            <div>
+              <Label>Nome *</Label>
+              <Input value={novoResponsavel.nome || ''} onChange={e => setNovoResponsavel({ ...novoResponsavel, nome: e.target.value })} />
+            </div>
+            <div>
+              <Label>Função/Cargo *</Label>
+              <Input value={novoResponsavel.funcao || ''} onChange={e => setNovoResponsavel({ ...novoResponsavel, funcao: e.target.value })} />
+            </div>
+            <div>
+              <Label>Carteira Técnica *</Label>
+              <Input value={novoResponsavel.carteira_tecnica || ''} onChange={e => setNovoResponsavel({ ...novoResponsavel, carteira_tecnica: e.target.value })} />
+            </div>
+            <div>
+              <Label>Assinatura</Label>
+              <select value={novoResponsavel.assinatura_url} onChange={e => setNovoResponsavel({ ...novoResponsavel, assinatura_url: e.target.value })} className="w-full mt-1 border border-gray-300 rounded dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700">
+                <option value="">Selecione uma assinatura</option>
+                {assinaturas.map(img => <option key={img} value={`/images/assinaturas/${img}`}>{img}</option>)}
+              </select>
+              {novoResponsavel.assinatura_url && (
+                <div style={{ marginTop: 8 }}>
+                  <img
+                    src={novoResponsavel.assinatura_url}
+                    alt="Prévia da assinatura"
+                    style={{ maxWidth: 180, maxHeight: 60, border: '1px solid #eee', background: '#fff', padding: 4 }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowModalResponsavel(false)}>Cancelar</Button>
+              <Button onClick={salvarResponsavel}>Salvar</Button>
+            </div>
+          </div>
+          <div className="mt-4">
+            <h4 className="font-semibold mb-2">Responsáveis cadastrados</h4>
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
+              {responsaveis.map(r => (
+                <li key={r.id} className="flex items-center justify-between border-b pb-1">
+                  <span>{r.nome} - {r.funcao} ({r.carteira_tecnica})</span>
+                  <button onClick={() => excluirResponsavel(r.id)} className="text-red-500 hover:text-red-700"><Trash size={16} /></button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      {/* Modal Novo/Editar Laudo */}
+      <Dialog open={showNovoLaudo} onOpenChange={(open) => {
+        setShowNovoLaudo(open);
+        if (!open) resetFormulario();
+      }}>
+        <DialogContent className="sm:max-w-[800px] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Laudo de Liberação</DialogTitle>
-            <DialogDescription>
-              Edite os campos abaixo para atualizar o laudo
-            </DialogDescription>
+            <DialogTitle>
+              {editandoLaudo ? 'Editar Laudo' : 'Novo Laudo de Liberação'}
+            </DialogTitle>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdateLaudo)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="coleta_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Coleta</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a coleta" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {coletas.map((coleta) => (
-                          <SelectItem key={coleta.id} value={coleta.id}>
-                            {coleta.lote_producao} - {format(new Date(coleta.data_coleta), "dd/MM/yyyy", { locale: ptBR })}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="marca_produto"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Marca/Produto</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Marca do produto" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="gramatura"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gramatura</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Gramatura" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+          <div className="space-y-6">
+            {/* Seleção de Coleta */}
+            {!editandoLaudo && (
+              <div>
+                <Label className="text-sm font-medium text-gray-700">
+                  Selecionar Coleta Aprovada *
+                </Label>
+                <Select value={novoLaudo.coleta_id} onValueChange={selecionarColeta}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Escolha uma coleta aprovada" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {coletasAprovadas.map((coleta) => (
+                      <SelectItem key={coleta.id} value={coleta.id}>
+                        Lote {coleta.lote_producao} - {new Date(coleta.data_coleta).toLocaleDateString('pt-BR')} - {coleta.responsavel_coleta}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Resumo das Análises */}
+            {analises.length > 0 && (
+              <div className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-900 dark:text-gray-100">
+                <div className="font-semibold mb-2 text-blue-900 dark:text-blue-300">Resumo das Análises Finalizadas</div>
+                <table className="w-full text-xs border dark:border-gray-700">
+                  <thead>
+                    <tr className="bg-blue-100 dark:bg-blue-900/50">
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Amostra</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Umidade (%)</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">pH</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Aspecto</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Cor</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Odor</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Sabor</th>
+                      <th className="px-2 py-1 border dark:border-gray-700 dark:text-gray-100">Embalagem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analises.map((a) => (
+                      <tr key={a.id || a.numero_amostra}>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.numero_amostra}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.umidade ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.ph ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.aspecto ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.cor ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.odor ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.sabor ?? '-'}</td>
+                        <td className="px-2 py-1 border text-center dark:border-gray-700 dark:text-gray-200">{a.embalagem ?? '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Produto Acabado */}
+            <div>
+              <Label htmlFor="marca_produto" className="text-sm font-medium text-gray-700">
+                Produto Acabado *
+              </Label>
+              <Select value={novoLaudo.marca_produto} onValueChange={v => setNovoLaudo({ ...novoLaudo, marca_produto: v })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Selecione o produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {produtos.map(p => (
+                    <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Datas */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="data_fabricacao" className="text-sm font-medium text-gray-700">
+                  Data de Fabricação *
+                </Label>
+                <Input
+                  id="data_fabricacao"
+                  type="date"
+                  value={novoLaudo.data_fabricacao}
+                  onChange={(e) => setNovoLaudo({ ...novoLaudo, data_fabricacao: e.target.value })}
+                  className="mt-1"
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="data_fabricacao"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Fabricação</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="data_validade"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Validade</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div>
+                <Label htmlFor="data_validade" className="text-sm font-medium text-gray-700">
+                  Data de Validade *
+                </Label>
+                <Input
+                  id="data_validade"
+                  type="date"
+                  value={novoLaudo.data_validade}
+                  onChange={(e) => setNovoLaudo({ ...novoLaudo, data_validade: e.target.value })}
+                  className="mt-1"
                 />
               </div>
-              <FormField
-                control={form.control}
-                name="revisao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Revisão</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Revisão (opcional)" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              <div>
+                <Label htmlFor="data_emissao" className="text-sm font-medium text-gray-700">
+                  Data de Emissão da Revisão *
+                </Label>
+                <Input
+                  id="data_emissao"
+                  type="date"
+                  value={novoLaudo.data_emissao}
+                  onChange={(e) => setNovoLaudo({ ...novoLaudo, data_emissao: e.target.value })}
+                  className="mt-1"
+                />
+                <span className="text-xs text-gray-500 dark:text-gray-400 block mt-1">
+                  Esta é a data de emissão da revisão do modelo de laudo (não do laudo individual).
+                </span>
+              </div>
+              <div>
+                <Label htmlFor="revisao" className="text-sm font-medium text-gray-700">
+                  Revisão *
+                </Label>
+                <Input
+                  id="revisao"
+                  type="text"
+                  value={novoLaudo.revisao}
+                  onChange={(e) => setNovoLaudo({ ...novoLaudo, revisao: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            {/* Resultado e Responsável */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-700">
+                  Resultado Geral *
+                </Label>
+                <Select value={novoLaudo.resultado_geral} onValueChange={(value: 'aprovado' | 'reprovado') => setNovoLaudo({ ...novoLaudo, resultado_geral: value })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aprovado">Aprovado</SelectItem>
+                    <SelectItem value="reprovado">Reprovado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="responsavel_liberacao" className="text-sm font-medium text-gray-700">
+                  Responsável pela Liberação *
+                </Label>
+                <Select value={novoLaudo.responsavel_liberacao} onValueChange={v => setNovoLaudo({ ...novoLaudo, responsavel_liberacao: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione o responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {responsaveis.map(r => (
+                      <SelectItem key={r.id} value={r.nome}>{r.nome} - {r.funcao} ({r.carteira_tecnica})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Observações */}
+            <div>
+              <Label htmlFor="observacoes" className="text-sm font-medium text-gray-700">
+                Observações
+              </Label>
+              <Textarea
+                id="observacoes"
+                value={novoLaudo.observacoes}
+                onChange={(e) => setNovoLaudo({ ...novoLaudo, observacoes: e.target.value })}
+                rows={6}
+                className="mt-1"
+                placeholder="Informações regulamentares e observações..."
               />
-              <FormField
-                control={form.control}
-                name="responsavel_liberacao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Responsável pela Liberação</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Responsável pela liberação" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="resultado_geral"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Resultado Geral</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o resultado" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="aprovado">Aprovado</SelectItem>
-                        <SelectItem value="reprovado">Reprovado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="observacoes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observações</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Observações (opcional)"
-                        className="resize-none"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={isUpdating}>
-                {isUpdating ? (
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Edit className="mr-2 h-4 w-4" />
-                )}
-                Atualizar Laudo
+            </div>
+
+            {/* Exibir data de emissão do laudo individual no modo edição */}
+            {editandoLaudo && editandoLaudo.created_at && (
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Data de Emissão do Laudo</Label>
+                <Input value={new Date(editandoLaudo.created_at).toLocaleDateString('pt-BR')} readOnly className="mt-1 bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
+              </div>
+            )}
+
+            {/* Botões */}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowNovoLaudo(false);
+                  resetFormulario();
+                }}
+              >
+                Cancelar
               </Button>
-            </form>
-          </Form>
+              <Button
+                onClick={editandoLaudo ? editarLaudo : criarLaudo}
+                disabled={!novoLaudo.coleta_id || !novoLaudo.marca_produto || !novoLaudo.responsavel_liberacao}
+              >
+                {editandoLaudo ? 'Salvar Alterações' : 'Criar Laudo'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
   );
-};
-
-export default Laudos;
+} 
