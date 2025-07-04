@@ -43,6 +43,8 @@ import ContraProvas from "./pages/ContraProvas";
 import AnaliseQualidade from "./pages/AnaliseQualidade";
 import Laudos from "./pages/Laudos";
 import PrintableLaudoPage from "./pages/print/PrintableLaudoPage";
+import ContratosPage from "./pages/Commercial/ContratosPage";
+import AssinaturaExterna from "./pages/Commercial/AssinaturaExterna";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +84,7 @@ const AppContent = () => {
         <Route path="/print/traceability/:batchId" element={<PrintableTraceabilityPage />} />
         <Route path="/print/folha-ponto" element={<FolhaPontoPage />} />
         <Route path="/print/laudo/:laudoId" element={<PrintableLaudoPage />} />
+        <Route path="/assinatura/:contratoId" element={<AssinaturaExterna />} />
         
         <Route path="/*" element={
           <ProtectedRoute>
@@ -117,6 +120,7 @@ const AppContent = () => {
                   <Route path="/qualidade/contra-provas" element={<ContraProvas />} />
                   <Route path="/qualidade/analise" element={<AnaliseQualidade />} />
                   <Route path="/qualidade/laudos" element={<Laudos />} />
+                  <Route path="/comercial/contratos" element={<ContratosPage />} />
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
                   <Route path="*" element={<NotFound />} />

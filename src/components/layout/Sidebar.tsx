@@ -57,6 +57,14 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       ]
     },
     { 
+      name: "Comercial", 
+      icon: FileText, 
+      module: "commercial",
+      subItems: [
+        { name: "Contratos", path: "/comercial/contratos", icon: FileText }
+      ]
+    },
+    { 
       name: "RH", 
       icon: UserCheck, 
       module: "human_resources",
@@ -109,6 +117,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         '/estoque': 'estoque',
         '/perdas': 'perdas',
         '/cadastro': 'cadastro',
+        '/comercial/contratos': 'contratos',
         '/recursos-humanos': 'recursos_humanos',
         '/qualidade/reclamacoes': 'reclamacoes',
         '/qualidade/contra-provas': 'contra_provas',
