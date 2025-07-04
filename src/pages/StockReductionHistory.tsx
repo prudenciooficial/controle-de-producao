@@ -295,13 +295,13 @@ const StockReductionHistory = () => {
                     <Eye className="mr-2 h-4 w-4" />
                     Ver Detalhes
                   </DropdownMenuItem>
-                  {hasPermission('inventory', 'edit') && (
+                  {hasPermission('inventory', 'module') && (
                     <DropdownMenuItem onClick={() => openEditDialog(reduction)}>
                       <Edit className="mr-2 h-4 w-4" />
                       Editar
                     </DropdownMenuItem>
                   )}
-                  {hasPermission('inventory', 'delete') && (
+                  {hasPermission('inventory', 'module') && (
                     <DropdownMenuItem 
                       onClick={() => openDeleteDialog(reduction)}
                       className="text-destructive"
@@ -518,13 +518,13 @@ const StockReductionHistory = () => {
                             <Eye className="mr-2 h-4 w-4" />
                             Ver Detalhes
                           </DropdownMenuItem>
-                          {hasPermission('inventory', 'edit') && (
+                          {hasPermission('inventory', 'module') && (
                             <DropdownMenuItem onClick={() => openEditDialog(reduction)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                           )}
-                          {hasPermission('inventory', 'delete') && (
+                          {hasPermission('inventory', 'module') && (
                             <DropdownMenuItem 
                               onClick={() => openDeleteDialog(reduction)}
                               className="text-destructive"
@@ -692,4 +692,4 @@ const StockReductionHistory = () => {
   );
 };
 
-export default StockReductionHistory; 
+export default StockReductionHistory;

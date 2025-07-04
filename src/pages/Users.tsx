@@ -1,47 +1,99 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { UserPlus, Edit, Trash2, Ban, CheckCircle, Settings } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { UserDialog } from '@/components/users/UserDialog';
-import { UserPermissionsDialog } from '@/components/users/UserPermissionsDialog';
-import { logSystemEvent } from '@/services/logService';
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Loader, Plus, UserPlus, Edit, Trash, Users as UsersIcon } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface UserData {
   id: string;
   email?: string;
-  user_metadata: {
+  user_metadata?: {
+    [key: string]: unknown;
     full_name?: string;
-    username?: string;
-    role?: 'admin' | 'editor' | 'viewer';
+    permissions?: NewDetailedPermissions;
+    role?: string;
   };
-  created_at: string;
-  banned_until?: string;
-  aud?: string;
-  confirmed_at?: string;
-  email_confirmed_at?: string;
-  phone?: string;
-  last_sign_in_at?: string;
-  app_metadata?: {
-    provider?: string;
-    providers?: string[];
-  };
-  identities?: any[];
 }
 
-export default function Users() {
-  const { hasRole, getSession } = useAuth();
-  const { toast } = useToast();
+interface NewDetailedPermissions {
+  production: { module: boolean; page: boolean };
+  inventory: { module: boolean; page: boolean };
+  quality: { module: boolean; page: boolean };
+  maintenance: { module: boolean; page: boolean };
+  commercial: { module: boolean; page: boolean };
+  financial: { module: boolean; page: boolean };
+  admin: { module: boolean; page: boolean };
+}
+
+const userFormSchema = z.object({
+  full_name: z.string().min(2, {
+    message: "Nome completo deve ter pelo menos 2 caracteres.",
+  }),
+  role: z.string().min(2, {
+    message: "Função deve ter pelo menos 2 caracteres.",
+  }),
+  production_module: z.boolean().default(false),
+  production_page: z.boolean().default(false),
+  inventory_module: z.boolean().default(false),
+  inventory_page: z.boolean().default(false),
+  quality_module: z.boolean().default(false),
+  quality_page: z.boolean().default(false),
+  maintenance_module: z.boolean().default(false),
+  maintenance_page: z.boolean().default(false),
+  commercial_module: z.boolean().default(false),
+  commercial_page: z.boolean().default(false),
+  financial_module: z.boolean().default(false),
+  financial_page: z.boolean().default(false),
+  admin_module: z.boolean().default(false),
+  admin_page: z.boolean().default(false),
+});
+
+type UserFormValues = z.infer<typeof userFormSchema>;
+
+const Users = () => {
   const [users, setUsers] = useState<UserData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showUserDialog, setShowUserDialog] = useState(false);
-  const [showPermissionsDialog, setShowPermissionsDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      full_name: "",
+      role: "",
+      production_module: false,
+      production_page: false,
+      inventory_module: false,
+      inventory_page: false,
+      quality_module: false,
+      quality_page: false,
+      maintenance_module: false,
+      maintenance_page: false,
+      commercial_module: false,
+      commercial_page: false,
+      financial_module: false,
+      financial_page: false,
+      admin_module: false,
+      admin_page: false,
+    },
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -49,353 +101,573 @@ export default function Users() {
 
   const fetchUsers = async () => {
     try {
-      setLoading(true);
-      const session = await getSession();
-      if (!session) {
-        throw new Error("Sessão não encontrada, não é possível buscar usuários.");
-      }
-      
-      const { data, error } = await supabase.functions.invoke('get-users-admin', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        }
-      });
+      setIsLoading(true);
+      const { data, error } = await supabase.auth.admin.listUsers();
 
-      if (error) {
-        console.error('Error fetching users via function:', error);
-        throw error;
-      }
-      
-      setUsers(data || []);
+      if (error) throw error;
 
+      const usersFormatted = data.users.map(user => ({
+        id: user.id,
+        email: user.email,
+        user_metadata: user.user_metadata
+      }));
+
+      setUsers(usersFormatted);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error("Erro ao buscar usuários:", error);
       toast({
         variant: "destructive",
-        title: "Erro ao Carregar Usuários",
-        description: error.message || "Não foi possível carregar a lista de usuários.",
+        title: "Erro",
+        description: "Falha ao carregar lista de usuários.",
       });
-      setUsers([]);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleEditUser = (user: UserData) => {
-    setSelectedUser(user);
-    setShowUserDialog(true);
-  };
-
-  const handleManagePermissions = (user: UserData) => {
-    setSelectedUser(user);
-    setShowPermissionsDialog(true);
-  };
-
-  const handleToggleStatus = async (user: UserData) => {
-    if (!hasRole('admin')) {
-      toast({ variant: "destructive", title: "Acesso Negado", description: "Você não tem permissão para alterar status de usuários." });
-      return;
-    }
+  const handleCreateUser = async (data: UserFormValues) => {
     try {
-      setLoading(true);
-      const session = await getSession();
-      if (!session) {
-        throw new Error("Sessão não encontrada.");
-      }
+      setIsCreating(true);
 
-      const isCurrentlyBanned = user.banned_until && new Date(user.banned_until) > new Date();
-      const updatePayload = {
-        userId: user.id,
-        updateData: {
-          ban_duration: isCurrentlyBanned ? 'none' : `${100 * 365 * 24}h`,
-        }
-      };
-
-      const { error: invokeError } = await supabase.functions.invoke('update-user-admin', {
-        body: updatePayload,
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        }
-      });
-
-      if (invokeError) {
-        console.error('Error invoking update-user-admin:', invokeError);
-        throw invokeError;
-      }
-
-      // Registrar log da alteração de status
-      const currentUser = await getSession().then(s => s?.user);
-      await logSystemEvent({
-        userId: currentUser?.id,
-        userDisplayName: currentUser?.user_metadata?.full_name || currentUser?.email,
-        actionType: 'UPDATE',
-        entityTable: 'auth.users',
-        entityId: user.id,
-        oldData: {
-          status: isCurrentlyBanned ? 'inativo' : 'ativo',
-          banned_until: user.banned_until
+      const { data: newUser, error } = await supabase.auth.admin.createUser({
+        email: `${data.full_name.replace(/\s/g, '.').toLowerCase()}@starchfactory.com.br`,
+        password: 'changeme',
+        user_metadata: {
+          full_name: data.full_name,
+          role: data.role,
+          permissions: {
+            production: { module: data.production_module, page: data.production_page },
+            inventory: { module: data.inventory_module, page: data.inventory_page },
+            quality: { module: data.quality_module, page: data.quality_page },
+            maintenance: { module: data.maintenance_module, page: data.maintenance_page },
+            commercial: { module: data.commercial_module, page: data.commercial_page },
+            financial: { module: data.financial_module, page: data.financial_page },
+            admin: { module: data.admin_module, page: data.admin_page },
+          }
         },
-        newData: {
-          status: isCurrentlyBanned ? 'ativo' : 'inativo',
-          ban_duration: updatePayload.updateData.ban_duration
-        }
+        email_confirm: false,
       });
+
+      if (error) throw error;
 
       toast({
-        title: "Status atualizado",
-        description: `Usuário ${isCurrentlyBanned ? 'ativado' : 'desativado'} com sucesso.`,
+        title: "Usuário criado",
+        description: "Usuário criado com sucesso. A senha padrão é 'changeme'.",
       });
 
+      setIsCreateDialogOpen(false);
+      form.reset();
       fetchUsers();
     } catch (error) {
-      console.error('Error updating user status:', error);
+      console.error("Erro ao criar usuário:", error);
       toast({
         variant: "destructive",
-        title: "Erro ao Atualizar Status",
-        description: error.message || "Não foi possível alterar o status do usuário.",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao criar usuário.",
       });
     } finally {
-      setLoading(false);
+      setIsCreating(false);
     }
   };
 
-  const handleDeleteUser = async (user: UserData) => {
-    if (!hasRole('admin')) {
-      toast({ variant: "destructive", title: "Acesso Negado", description: "Você não tem permissão para excluir usuários." });
-      return;
-    }
-    if (!confirm('Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.')) {
-      return;
-    }
-
+  const handleUpdateUser = async (userData: UserData) => {
     try {
-      setLoading(true);
-      const session = await getSession();
-      if (!session) {
-        throw new Error("Sessão não encontrada.");
-      }
-
-      const deletePayload = { userId: user.id };
-
-      const { error: invokeError } = await supabase.functions.invoke('delete-user-admin', {
-        body: deletePayload,
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        }
-      });
+      setIsUpdating(true);
       
-      if (invokeError) {
-        console.error('Error invoking delete-user-admin:', invokeError);
-        throw invokeError;
+      if (!userData.email) {
+        throw new Error("Email é obrigatório");
       }
 
-      // Registrar log da exclusão de usuário
-      const currentUser = await getSession().then(s => s?.user);
-      await logSystemEvent({
-        userId: currentUser?.id,
-        userDisplayName: currentUser?.user_metadata?.full_name || currentUser?.email,
-        actionType: 'DELETE',
-        entityTable: 'auth.users',
-        entityId: user.id,
-        oldData: {
-          email: user.email,
-          full_name: user.user_metadata?.full_name,
-          username: user.user_metadata?.username,
-          role: user.user_metadata?.role,
-          created_at: user.created_at
-        }
+      const userToUpdate = {
+        id: userData.id,
+        email: userData.email,
+        user_metadata: userData.user_metadata
+      };
+
+      const { error } = await supabase.auth.admin.updateUserById(
+        userData.id,
+        userToUpdate
+      );
+
+      if (error) throw error;
+
+      toast({
+        title: "Usuário atualizado",
+        description: "As informações do usuário foram atualizadas com sucesso.",
       });
+
+      setIsEditDialogOpen(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (error) {
+      console.error("Erro ao atualizar usuário:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao atualizar usuário.",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      setIsUpdating(true);
+
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+
+      if (error) throw error;
 
       toast({
         title: "Usuário excluído",
-        description: "Usuário removido do sistema com sucesso.",
+        description: "O usuário foi excluído com sucesso.",
       });
 
       fetchUsers();
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error("Erro ao excluir usuário:", error);
       toast({
         variant: "destructive",
-        title: "Erro ao Excluir Usuário",
-        description: error.message || "Não foi possível excluir o usuário.",
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao excluir usuário.",
       });
     } finally {
-      setLoading(false);
+      setIsUpdating(false);
     }
   };
-
-  const getRoleBadgeVariant = (role?: string) => {
-    switch (role) {
-      case 'admin':
-        return 'destructive';
-      case 'editor':
-        return 'default';
-      case 'viewer':
-        return 'secondary';
-      default:
-        return 'outline';
-    }
-  };
-
-  const getRoleLabel = (role?: string) => {
-    switch (role) {
-      case 'admin':
-        return 'Administrador';
-      case 'editor':
-        return 'Editor';
-      case 'viewer':
-        return 'Visualizador';
-      default:
-        return role || 'Não Definido';
-    }
-  };
-
-  const isActionDisabled = !hasRole('admin');
 
   return (
-    <ProtectedRoute requiredRole="admin">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Usuários</h1>
-            <p className="text-muted-foreground">
-              Gerencie usuários e suas permissões no sistema
-            </p>
-          </div>
-          <Button onClick={() => setShowUserDialog(true)} disabled={isActionDisabled}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Novo Usuário
-          </Button>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Gerenciar Usuários</h1>
+          <p className="text-muted-foreground">Crie, edite e gerencie os usuários do sistema</p>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Lista de Usuários</CardTitle>
-            <CardDescription>
-              Todos os usuários cadastrados no sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-8">Carregando usuários...</div>
-            ) : users.length === 0 ? (
-              <div className="text-center py-8">Nenhum usuário encontrado.</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Nome de Usuário</TableHead>
-                    <TableHead>Papel</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Criado em</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.user_metadata?.full_name || user.email || 'N/A'}
-                      </TableCell>
-                      <TableCell>{user.email || 'N/A'}</TableCell>
-                      <TableCell>{user.user_metadata?.username || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.user_metadata?.role)}>
-                          {getRoleLabel(user.user_metadata?.role)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.banned_until && new Date(user.banned_until) > new Date() ? 'secondary' : 'default'}>
-                          {user.banned_until && new Date(user.banned_until) > new Date() ? 'Inativo' : 'Ativo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(user.created_at).toLocaleDateString('pt-BR')}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditUser(user)}
-                            disabled={isActionDisabled}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleManagePermissions(user)}
-                            disabled={isActionDisabled}
-                          >
-                            Permissões
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleStatus(user)}
-                            disabled={isActionDisabled}
-                          >
-                            {user.banned_until && new Date(user.banned_until) > new Date() ? (
-                              <CheckCircle className="h-4 w-4" />
-                            ) : (
-                              <Ban className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user)}
-                            disabled={isActionDisabled}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        {showUserDialog && (
-        <UserDialog
-          open={showUserDialog}
-            onOpenChange={(isOpen) => {
-              if (!isOpen) {
-                setShowUserDialog(false);
-                setSelectedUser(null);
-            fetchUsers();
-              } else {
-                setShowUserDialog(true);
-              }
-          }}
-            user={selectedUser}
-            onUserUpdated={fetchUsers}
-        />
-        )}
-
-        {showPermissionsDialog && selectedUser && (
-        <UserPermissionsDialog
-          open={showPermissionsDialog}
-            onOpenChange={(isOpen) => {
-              if (!isOpen) {
-                setShowPermissionsDialog(false);
-                setSelectedUser(null);
-            fetchUsers();
-              } else {
-                setShowPermissionsDialog(true);
-              }
-          }}
-            user={selectedUser}
-            onPermissionsUpdated={fetchUsers}
-        />
-        )}
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Novo Usuário
+        </Button>
       </div>
-    </ProtectedRoute>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Usuários</CardTitle>
+          <CardDescription>
+            Visualize e gerencie os usuários cadastrados no sistema.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center items-center p-8">
+              <Loader className="w-8 h-8 animate-spin" />
+              <span className="ml-2">Carregando usuários...</span>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Função</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.user_metadata?.full_name || "N/A"}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{user.user_metadata?.role || "N/A"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          setSelectedUser(user);
+                          setIsEditDialogOpen(true);
+                        }}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {user.id !== this.user?.id && (
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create User Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Criar Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Preencha os campos abaixo para criar um novo usuário. Um email será enviado
+              para o usuário com as instruções de primeiro acesso.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleCreateUser)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="full_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome Completo</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nome Completo" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Função</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Função" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <FormField
+                  control={form.control}
+                  name="production_module"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Produção (Módulo)</FormLabel>
+                        <FormDescription>Acesso total ao módulo de produção.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="production_page"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Produção (Página)</FormLabel>
+                        <FormDescription>Acesso à página de produção.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="inventory_module"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Estoque (Módulo)</FormLabel>
+                        <FormDescription>Acesso total ao módulo de estoque.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="inventory_page"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Estoque (Página)</FormLabel>
+                        <FormDescription>Acesso à página de estoque.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <FormField
+                  control={form.control}
+                  name="quality_module"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Qualidade (Módulo)</FormLabel>
+                        <FormDescription>Acesso total ao módulo de qualidade.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="quality_page"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Qualidade (Página)</FormLabel>
+                        <FormDescription>Acesso à página de qualidade.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="maintenance_module"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Manutenção (Módulo)</FormLabel>
+                        <FormDescription>Acesso total ao módulo de manutenção.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="maintenance_page"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Manutenção (Página)</FormLabel>
+                        <FormDescription>Acesso à página de manutenção.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <FormField
+                  control={form.control}
+                  name="commercial_module"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Comercial (Módulo)</FormLabel>
+                        <FormDescription>Acesso total ao módulo comercial.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="commercial_page"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Comercial (Página)</FormLabel>
+                        <FormDescription>Acesso à página comercial.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="financial_module"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Financeiro (Módulo)</FormLabel>
+                        <FormDescription>Acesso total ao módulo financeiro.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="financial_page"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Financeiro (Página)</FormLabel>
+                        <FormDescription>Acesso à página financeira.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <FormField
+                  control={form.control}
+                  name="admin_module"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Admin (Módulo)</FormLabel>
+                        <FormDescription>Acesso total ao módulo de administração.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="admin_page"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Admin (Página)</FormLabel>
+                        <FormDescription>Acesso à página de administração.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <Button type="submit" disabled={isCreating}>
+                {isCreating ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    Criando...
+                  </>
+                ) : (
+                  "Criar Usuário"
+                )}
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              Altere as informações do usuário.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <FormLabel htmlFor="name" className="text-right">
+                  Nome
+                </FormLabel>
+                <Input
+                  id="name"
+                  defaultValue={selectedUser.user_metadata?.full_name || ""}
+                  className="col-span-3"
+                  onChange={(e) => setSelectedUser({
+                    ...selectedUser,
+                    user_metadata: {
+                      ...selectedUser.user_metadata,
+                      full_name: e.target.value
+                    }
+                  })}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <FormLabel htmlFor="email" className="text-right">
+                  Email
+                </FormLabel>
+                <Input
+                  id="email"
+                  defaultValue={selectedUser.email || ""}
+                  className="col-span-3"
+                  onChange={(e) => setSelectedUser({
+                    ...selectedUser,
+                    email: e.target.value
+                  })}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <FormLabel htmlFor="role" className="text-right">
+                  Função
+                </FormLabel>
+                <Input
+                  id="role"
+                  defaultValue={selectedUser.user_metadata?.role || ""}
+                  className="col-span-3"
+                  onChange={(e) => setSelectedUser({
+                    ...selectedUser,
+                    user_metadata: {
+                      ...selectedUser.user_metadata,
+                      role: e.target.value
+                    }
+                  })}
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button variant="secondary" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedUser) {
+                  handleUpdateUser(selectedUser);
+                }
+              }}
+            >
+              {isUpdating ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
-}
+};
+
+export default Users;

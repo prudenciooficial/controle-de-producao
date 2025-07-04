@@ -35,7 +35,7 @@ export async function buscarModelosContratos(): Promise<ModeloContrato[]> {
       nome: modelo.nome,
       descricao: modelo.descricao,
       conteudo: modelo.conteudo,
-      variaveis: modelo.variaveis || [],
+      variaveis: Array.isArray(modelo.variaveis) ? modelo.variaveis as any : [],
       ativo: modelo.ativo,
       criadoEm: new Date(modelo.criado_em),
       atualizadoEm: new Date(modelo.atualizado_em),
@@ -54,14 +54,14 @@ export async function criarModeloContrato(modelo: Omit<ModeloContrato, 'id' | 'c
 
     const { data, error } = await supabase
       .from('modelos_contratos')
-      .insert([{
+      .insert({
         nome: modelo.nome,
         descricao: modelo.descricao,
         conteudo: modelo.conteudo,
-        variaveis: modelo.variaveis,
+        variaveis: modelo.variaveis as any,
         ativo: modelo.ativo,
         criado_por: user.data.user.id
-      }])
+      })
       .select()
       .single();
 
@@ -74,7 +74,7 @@ export async function criarModeloContrato(modelo: Omit<ModeloContrato, 'id' | 'c
       actionType: 'CREATE',
       entityTable: 'modelos_contratos',
       entityId: data.id,
-      newData: modelo
+      newData: modelo as any
     });
 
     return {
@@ -82,7 +82,7 @@ export async function criarModeloContrato(modelo: Omit<ModeloContrato, 'id' | 'c
       nome: data.nome,
       descricao: data.descricao,
       conteudo: data.conteudo,
-      variaveis: data.variaveis || [],
+      variaveis: Array.isArray(data.variaveis) ? data.variaveis as any : [],
       ativo: data.ativo,
       criadoEm: new Date(data.criado_em),
       atualizadoEm: new Date(data.atualizado_em),
@@ -142,7 +142,7 @@ export async function buscarContratos(filtros: FiltrosContrato = {}): Promise<Re
       modeloId: contrato.modelo_id,
       titulo: contrato.titulo,
       conteudo: contrato.conteudo,
-      dadosVariaveis: contrato.dados_variaveis || {},
+      dadosVariaveis: (contrato.dados_variaveis as any) || {},
       status: contrato.status as StatusContrato,
       urlPdf: contrato.url_pdf,
       hashDocumento: contrato.hash_documento,
@@ -209,17 +209,17 @@ export async function criarContrato(dados: DadosCriarContrato): Promise<Contrato
 
     const { data, error } = await supabase
       .from('contratos')
-      .insert([{
+      .insert({
         modelo_id: dados.modeloId,
         titulo: dados.titulo,
         conteudo: conteudoFinal,
-        dados_variaveis: dados.dadosVariaveis,
+        dados_variaveis: dados.dadosVariaveis as any,
         assinante_externo_nome: dados.assinanteExternoNome,
         assinante_externo_email: dados.assinanteExternoEmail,
         assinante_externo_documento: dados.assinanteExternoDocumento,
         assinante_interno_id: dados.assinanteInternoId,
         criado_por: user.data.user.id
-      }])
+      })
       .select()
       .single();
 
@@ -239,7 +239,7 @@ export async function criarContrato(dados: DadosCriarContrato): Promise<Contrato
       actionType: 'CREATE',
       entityTable: 'contratos',
       entityId: data.id,
-      newData: dados
+      newData: dados as any
     });
 
     return {
@@ -248,7 +248,7 @@ export async function criarContrato(dados: DadosCriarContrato): Promise<Contrato
       modeloId: data.modelo_id,
       titulo: data.titulo,
       conteudo: data.conteudo,
-      dadosVariaveis: data.dados_variaveis || {},
+      dadosVariaveis: (data.dados_variaveis as any) || {},
       status: data.status as StatusContrato,
       urlPdf: data.url_pdf,
       hashDocumento: data.hash_documento,
@@ -746,4 +746,4 @@ export async function gerarRelatorioAuditoria(contratoId: string): Promise<Relat
     console.error('Erro ao gerar relatório de auditoria:', error);
     throw error;
   }
-} 
+}
