@@ -4,10 +4,11 @@ import { useData } from "@/context/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table } from "@/components/ui/table";
-import { CalendarDate, Loader, Trash } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Calendar, Loader, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { formatDate } from "@/components/helpers/dateUtils";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const ProductionHistory = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -70,6 +71,15 @@ const ProductionHistory = () => {
     }
   };
 
+  const formatDate = (date: string | Date) => {
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      return format(dateObj, "dd/MM/yyyy", { locale: ptBR });
+    } catch (error) {
+      return 'Data inválida';
+    }
+  };
+
   const sortedProductions = React.useMemo(() => {
     const sortableProductions = [...productions];
     sortableProductions.sort((a, b) => {
@@ -121,49 +131,49 @@ const ProductionHistory = () => {
       ) : (
         <div className="rounded-md border">
           <Table>
-            <Table.Header>
-              <Table.Row>
-                <Table.Head className="w-[100px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">
                   <Button variant="ghost" onClick={() => handleSort("productionDate")}>
                     Data
                     {sortColumn === "productionDate" && (sortDirection === "asc" ? " ▲" : " ▼")}
                   </Button>
-                </Table.Head>
-                <Table.Head>
+                </TableHead>
+                <TableHead>
                   <Button variant="ghost" onClick={() => handleSort("batchNumber")}>
                     Lote
                     {sortColumn === "batchNumber" && (sortDirection === "asc" ? " ▲" : " ▼")}
                   </Button>
-                </Table.Head>
-                <Table.Head>
+                </TableHead>
+                <TableHead>
                   <Button variant="ghost" onClick={() => handleSort("productName")}>
                     Produto
                     {sortColumn === "productName" && (sortDirection === "asc" ? " ▲" : " ▼")}
                   </Button>
-                </Table.Head>
-                <Table.Head className="text-right">Ações</Table.Head>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
+                </TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {sortedProductions.length === 0 ? (
-                <Table.Row>
-                  <Table.Cell colSpan={4} className="h-24 text-center">
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
                     Nenhum registro de produção encontrado.
-                  </Table.Cell>
-                </Table.Row>
+                  </TableCell>
+                </TableRow>
               ) : (
                 sortedProductions.map((production) => (
-                  <Table.Row key={production.id}>
-                    <Table.Cell className="font-medium">{formatDate(production.productionDate)}</Table.Cell>
-                    <Table.Cell>{production.batchNumber}</Table.Cell>
-                    <Table.Cell>{production.productName || "N/A"}</Table.Cell>
-                    <Table.Cell className="text-right">
+                  <TableRow key={production.id}>
+                    <TableCell className="font-medium">{formatDate(production.productionDate)}</TableCell>
+                    <TableCell>{production.batchNumber}</TableCell>
+                    <TableCell>{production.productName || "N/A"}</TableCell>
+                    <TableCell className="text-right">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/producao/${production.id}`)}
                       >
-                        <CalendarDate className="mr-2 h-4 w-4" />
+                        <Calendar className="mr-2 h-4 w-4" />
                         Ver Detalhes
                       </Button>
                       {canDelete && (
@@ -177,11 +187,11 @@ const ProductionHistory = () => {
                           Excluir
                         </Button>
                       )}
-                    </Table.Cell>
-                  </Table.Row>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </Table.Body>
+            </TableBody>
           </Table>
         </div>
       )}

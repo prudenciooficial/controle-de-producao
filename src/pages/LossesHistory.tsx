@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -70,7 +71,7 @@ const LossesHistory = () => {
   const [selectedLoss, setSelectedLoss] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
-  const form = React.useForm<UpdateLossFormValues>({
+  const form = useForm<UpdateLossFormValues>({
     resolver: zodResolver(updateLossFormSchema),
     defaultValues: {
       date: "",
@@ -121,7 +122,7 @@ const LossesHistory = () => {
     }
   };
 
-  const handleUpdateLoss = async () => {
+  const handleUpdateLoss = async (data: UpdateLossFormValues) => {
     if (!hasPermission('losses', 'module')) {
       toast({
         variant: "destructive",
@@ -132,7 +133,6 @@ const LossesHistory = () => {
     }
 
     try {
-      const data = form.getValues();
       if (!selectedLoss) {
         throw new Error("Nenhuma perda selecionada para atualizar.");
       }
