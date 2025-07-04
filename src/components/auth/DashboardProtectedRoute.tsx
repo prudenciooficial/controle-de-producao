@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,7 +25,7 @@ export function DashboardProtectedRoute({ children }: DashboardProtectedRoutePro
     }
 
     // Verificar se tem permissão para dashboard
-    const hasDashboardPermission = hasPermission('dashboard', 'view');
+    const hasDashboardPermission = hasPermission('dashboard', 'page');
     
     if (!hasDashboardPermission) {
       // Se não tem permissão para dashboard, redireciona para welcome
@@ -46,7 +47,7 @@ export function DashboardProtectedRoute({ children }: DashboardProtectedRoutePro
   }
 
   // Se tem permissão para dashboard, permite
-  const hasDashboardPermission = hasPermission('dashboard', 'view');
+  const hasDashboardPermission = hasPermission('dashboard', 'page');
   if (hasDashboardPermission) {
     return <>{children}</>;
   }

@@ -52,7 +52,7 @@ const ModelosContratosPage = () => {
       const { data, error } = await supabase
         .from('modelos_contratos')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('criado_em', { ascending: false });
 
       if (error) throw error;
 
@@ -61,8 +61,8 @@ const ModelosContratosPage = () => {
         nome: item.nome,
         descricao: item.descricao || '',
         conteudo: item.conteudo,
-        variaveis: item.variaveis as VariavelContrato[] || [],
-        ativo: item.ativo,
+        variaveis: Array.isArray(item.variaveis) ? item.variaveis as VariavelContrato[] : [],
+        ativo: item.ativo ?? true,
         criadoEm: new Date(item.criado_em || new Date()),
         atualizadoEm: new Date(item.atualizado_em || new Date()),
         criadoPor: item.criado_por || ''
@@ -84,10 +84,10 @@ const ModelosContratosPage = () => {
   const handleSalvarModelo = async () => {
     try {
       const dadosModelo = {
-        nome: novoModelo.nome,
+        nome: novoModelo.nome!,
         descricao: novoModelo.descricao,
-        conteudo: novoModelo.conteudo,
-        variaveis: novoModelo.variaveis || [],
+        conteudo: novoModelo.conteudo!,
+        variaveis: JSON.stringify(novoModelo.variaveis || []),
         ativo: novoModelo.ativo
       };
 

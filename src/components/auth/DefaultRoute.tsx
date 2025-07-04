@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +28,7 @@ export function DefaultRoute() {
     }
 
     // Verificar se tem permissão para dashboard
-    const hasDashboardPermission = hasPermission('dashboard', 'view');
+    const hasDashboardPermission = hasPermission('dashboard', 'page');
     console.log('📊 Permissão Dashboard:', hasDashboardPermission);
     
     if (hasDashboardPermission) {

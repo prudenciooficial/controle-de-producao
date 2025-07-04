@@ -94,7 +94,7 @@ const Inventory = () => {
 
   // Função para processar baixa de estoque
   const onStockReductionSubmit = async (data: StockReductionValues) => {
-    if (!hasPermission('inventory', 'edit')) {
+    if (!hasEditPermission) {
       toast({
         variant: "destructive",
         title: "Acesso Negado",
