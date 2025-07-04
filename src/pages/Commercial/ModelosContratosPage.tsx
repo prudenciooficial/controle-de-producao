@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
@@ -61,7 +60,7 @@ const ModelosContratosPage = () => {
         nome: item.nome,
         descricao: item.descricao || '',
         conteudo: item.conteudo,
-        variaveis: Array.isArray(item.variaveis) ? item.variaveis as VariavelContrato[] : [],
+        variaveis: Array.isArray(item.variaveis) ? (item.variaveis as unknown as VariavelContrato[]) : [],
         ativo: item.ativo ?? true,
         criadoEm: new Date(item.criado_em || new Date()),
         atualizadoEm: new Date(item.atualizado_em || new Date()),
@@ -275,7 +274,6 @@ const ModelosContratosPage = () => {
           </DialogHeader>
           
           <div className="space-y-6">
-            {/* Dados Básicos */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Nome do Modelo *</Label>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { UsedMaterial } from "@/types";
 
@@ -22,31 +23,26 @@ export const useConservantLogic = (
 
   // Initialize conservant usages when materials change
   useEffect(() => {
-    // Effect para calcular usages
-    
     if (!conservantMaterials || conservantMaterials.length === 0) {
-      // Sem materiais conservantes, definindo usages como vazio
       setConservantUsages([]);
       return;
     }
 
-    // Calcular a quantidade baseada no total de mexidas e fator
-    const usages = conservantMaterials.map((material, index) => {
-      const assignedMixes = material.mixAssignments || [1]; // Default: primeiro mix
-      const calculatedQuantity = (totalMixes * conservantUsageFactor) / assignedMixes.length;
-      
-      // Mapeando material com quantidade calculada
+    // Calculate quantity based on total mixes and factor
+    const usages = conservantMaterials.map((material) => {
+      const calculatedQuantity = totalMixes * conservantUsageFactor;
       
       return {
+        materialBatchId: material.materialBatchId,
         materialName: material.materialName,
-        calculatedQuantity: calculatedQuantity,
-        mixAssignments: assignedMixes,
-        materialId: material.materialId,
-        notes: material.notes || ''
+        batchNumber: material.batchNumber,
+        maxMixes: Math.floor((material.quantity || 0) / conservantUsageFactor),
+        assignedMixes: totalMixes,
+        quantity: calculatedQuantity,
+        unitOfMeasure: material.unitOfMeasure
       };
     });
 
-    // Usages calculados para definir
     setConservantUsages(usages);
   }, [conservantMaterials, totalMixes, conservantUsageFactor]);
 
@@ -122,7 +118,6 @@ export const useConservantLogic = (
     }));
   };
 
-  // Retornando da função
   return {
     conservantUsages,
     isValid,

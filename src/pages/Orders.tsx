@@ -155,11 +155,11 @@ const Orders = () => {
   };
   
   const onSubmit = async (data: OrdersFormValues) => {
-    if (!hasPermission('orders', 'create')) {
+    if (!hasPermission('orders', 'module')) {
       toast({
         variant: "destructive",
         title: "Acesso Negado",
-        description: "Você não tem permissão para registrar novos pedidos.",
+        description: "Você não tem permissão para criar pedidos.",
       });
       return;
     }

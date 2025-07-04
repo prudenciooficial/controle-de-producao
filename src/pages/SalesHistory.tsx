@@ -156,19 +156,18 @@ const SalesHistory = () => {
     }
   }, [newItem.productId, getAvailableProducts]);
   
-  const handleDelete = async (id: string) => {
-    if (!hasPermission('sales', 'delete')) {
+  const handleDeleteSale = async (saleId: string) => {
+    if (!hasPermission('sales', 'module')) {
       toast({
         variant: "destructive",
-        title: "Acesso Negado",
-        description: "Você não tem permissão para excluir registros de vendas.",
+        title: "Acesso negado",
+        description: "Você não tem permissão para excluir vendas",
       });
-      setShowDeleteDialog(false);
       return;
     }
     try {
       setIsDeleting(true);
-      await deleteSale(id);
+      await deleteSale(saleId);
       setShowDeleteDialog(false);
       
       // Refresh automático para sincronizar dados
@@ -186,16 +185,13 @@ const SalesHistory = () => {
     }
   };
   
-  const handleEdit = async () => {
-    if (!selectedSale || !editForm) return;
-
-    if (!hasPermission('sales', 'update')) {
+  const handleUpdateSale = async () => {
+    if (!hasPermission('sales', 'module')) {
       toast({
         variant: "destructive",
-        title: "Acesso Negado",
-        description: "Você não tem permissão para atualizar registros de vendas.",
+        title: "Acesso negado",
+        description: "Você não tem permissão para editar vendas",
       });
-      setShowEditDialog(false);
       return;
     }
     
@@ -382,13 +378,13 @@ const SalesHistory = () => {
                     <Eye className="mr-2 h-4 w-4" />
                     Ver Detalhes
                   </DropdownMenuItem>
-                  {hasPermission('sales', 'update') && (
+                  {canEdit && (
                     <DropdownMenuItem onClick={() => { setSelectedSale(sale); setShowEditDialog(true); }} className="cursor-pointer">
                       <Edit className="mr-2 h-4 w-4" />
                       Editar
                     </DropdownMenuItem>
                   )}
-                  {hasPermission('sales', 'delete') && (
+                  {canDelete && (
                     <DropdownMenuItem 
                       onClick={() => { setSelectedSale(sale); setShowDeleteDialog(true); }} 
                       className="cursor-pointer text-red-600 dark:text-red-400"
@@ -708,13 +704,13 @@ const SalesHistory = () => {
                             <Eye className="mr-2 h-4 w-4" />
                               Ver Detalhes
                           </DropdownMenuItem>
-                          {hasPermission('sales', 'update') && (
+                          {canEdit && (
                               <DropdownMenuItem onClick={() => { setSelectedSale(sale); setShowEditDialog(true); }}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                           )}
-                          {hasPermission('sales', 'delete') && (
+                          {canDelete && (
                             <DropdownMenuItem
                                 onClick={() => { setSelectedSale(sale); setShowDeleteDialog(true); }}
                                 className="text-red-600 dark:text-red-400"
@@ -764,7 +760,7 @@ const SalesHistory = () => {
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => selectedSale && handleDelete(selectedSale.id)}
+              onClick={() => selectedSale && handleDeleteSale(selectedSale.id)}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
@@ -1028,7 +1024,7 @@ const SalesHistory = () => {
               Cancelar
             </Button>
             <Button 
-              onClick={handleEdit}
+              onClick={handleUpdateSale}
               disabled={isSubmitting}
               className="w-full sm:w-auto"
             >

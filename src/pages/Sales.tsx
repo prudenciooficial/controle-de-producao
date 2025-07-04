@@ -84,11 +84,11 @@ const Sales = () => {
   };
   
   const onSubmit = async (data: SalesFormValues) => {
-    if (!hasPermission('sales', 'create')) {
+    if (!hasPermission('sales', 'module')) {
       toast({
         variant: "destructive",
         title: "Acesso Negado",
-        description: "Você não tem permissão para registrar novas vendas.",
+        description: "Você não tem permissão para registrar vendas.",
       });
       return;
     }
