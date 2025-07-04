@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import AnaliseIndividual from '../components/AnaliseIndividual';
 import { useToast } from '@/components/ui/use-toast';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/types/supabase';
+import { Database } from '@/integrations/supabase/types';
+import { logSystemEvent } from '@/services/logService';
 
 interface ColetaAmostra {
   id: string;
@@ -309,6 +310,18 @@ export default function AnaliseQualidade() {
 
       if (error) throw error;
 
+      // Log de criação/edição de análise
+      const user = await supabase.auth.getUser();
+      const isUpdate = !!analise.id;
+      await logSystemEvent({
+        userId: user?.data?.user?.id,
+        userDisplayName: user?.data?.user?.user_metadata?.full_name || user?.data?.user?.email,
+        actionType: isUpdate ? 'UPDATE' : 'CREATE',
+        entityTable: 'analises_amostras',
+        entityId: data.id,
+        ...(isUpdate ? { newData: data, oldData: analise } : { newData: data })
+      });
+
       // Atualizar lista de análises local
       setAnalises(prev => {
         const updated = prev.map(a => a.id === data.id ? data : a);
@@ -465,20 +478,47 @@ export default function AnaliseQualidade() {
           data_analise: new Date().toISOString()
         }));
         if (novasAnalises.length > 0) {
-          await (supabase as SupabaseClient<Database>)
+          const { data: insertedAnalises } = await (supabase as SupabaseClient<Database>)
             .from('analises_amostras')
-            .insert(novasAnalises);
+            .insert(novasAnalises)
+            .select();
+          // Log de criação de análises
+          const user = await supabase.auth.getUser();
+          if (insertedAnalises) {
+            for (const novaAnalise of insertedAnalises) {
+              await logSystemEvent({
+                userId: user?.data?.user?.id,
+                userDisplayName: user?.data?.user?.user_metadata?.full_name || user?.data?.user?.email,
+                actionType: 'CREATE',
+                entityTable: 'analises_amostras',
+                entityId: novaAnalise.id,
+                newData: novaAnalise
+              });
+            }
+          }
         }
       } else if (novaQuantidade < quantidadeAtual) {
         // Remover análises excedentes
-        const idsParaRemover = (analisesExistentes as AnaliseAmostra[])
-          .filter((a) => a.numero_amostra > novaQuantidade)
-          .map((a) => a.id);
+        const analisesRemovidas = (analisesExistentes as AnaliseAmostra[])
+          .filter((a) => a.numero_amostra > novaQuantidade);
+        const idsParaRemover = analisesRemovidas.map((a) => a.id);
         if (idsParaRemover.length > 0) {
           await (supabase as SupabaseClient<Database>)
             .from('analises_amostras')
             .delete()
             .in('id', idsParaRemover);
+          // Log de exclusão de análises
+          const user = await supabase.auth.getUser();
+          for (const analiseRemovida of analisesRemovidas) {
+            await logSystemEvent({
+              userId: user?.data?.user?.id,
+              userDisplayName: user?.data?.user?.user_metadata?.full_name || user?.data?.user?.email,
+              actionType: 'DELETE',
+              entityTable: 'analises_amostras',
+              entityId: analiseRemovida.id,
+              oldData: analiseRemovida
+            });
+          }
         }
       }
 

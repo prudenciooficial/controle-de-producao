@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { logSystemEvent } from '@/services/logService';
 
 interface ColetaAmostra {
   id: string;
@@ -249,6 +250,17 @@ export default function Laudos() {
         .update({ status: 'aprovada' })
         .eq('id', novoLaudo.coleta_id);
 
+      // Log de criação de laudo
+      const user = await supabase.auth.getUser();
+      await logSystemEvent({
+        userId: user?.data?.user?.id,
+        userDisplayName: user?.data?.user?.user_metadata?.full_name || user?.data?.user?.email,
+        actionType: 'CREATE',
+        entityTable: 'laudos_liberacao',
+        entityId: novoLaudo.coleta_id,
+        newData: novoLaudo
+      });
+
       toast({
         title: 'Laudo criado',
         description: '✅ Laudo criado com sucesso!',
@@ -297,6 +309,17 @@ export default function Laudos() {
 
       if (error) throw error;
 
+      // Log de edição de laudo
+      const user = await supabase.auth.getUser();
+      await logSystemEvent({
+        userId: user?.data?.user?.id,
+        userDisplayName: user?.data?.user?.user_metadata?.full_name || user?.data?.user?.email,
+        actionType: 'UPDATE',
+        entityTable: 'laudos_liberacao',
+        entityId: editandoLaudo.id,
+        newData: novoLaudo
+      });
+
       toast({
         title: 'Laudo editado',
         description: '✅ Laudo editado com sucesso!',
@@ -344,6 +367,17 @@ export default function Laudos() {
         .eq('id', laudo.id);
 
       if (error) throw error;
+
+      // Log de exclusão de laudo
+      const user = await supabase.auth.getUser();
+      await logSystemEvent({
+        userId: user?.data?.user?.id,
+        userDisplayName: user?.data?.user?.user_metadata?.full_name || user?.data?.user?.email,
+        actionType: 'DELETE',
+        entityTable: 'laudos_liberacao',
+        entityId: laudo.id,
+        oldData: laudo
+      });
 
       toast({
         title: 'Laudo excluído',

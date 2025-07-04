@@ -119,6 +119,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setUser(session.user);
         setSession(session);
+        // Adicionar log de login (não bloquear o fluxo)
+        logSystemEvent({
+          userId: session.user.id,
+          userDisplayName: session.user.user_metadata?.full_name || session.user.email,
+          actionType: 'LOGIN',
+          entityTable: 'auth.users',
+          entityId: session.user.id,
+          newData: {
+            email: session.user.email,
+            login_time: new Date().toISOString(),
+          },
+        }).catch(e => {
+          // Não bloquear login por erro de log
+          console.error('Erro ao registrar log de login:', e);
+        });
       }
       
       setLoading(false);
