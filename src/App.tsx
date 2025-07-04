@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,6 +36,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PrintableTraceabilityPage from "./pages/print/PrintableTraceabilityPage";
 import { FolhaPontoPage } from "./pages/print/FolhaPontoPage";
+import PrintableContratoPage from "./pages/print/PrintableContratoPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import { cn } from "./lib/utils";
 import SystemLogsPage from "./pages/SystemLogsPage/SystemLogsPage";
@@ -44,6 +46,7 @@ import AnaliseQualidade from "./pages/AnaliseQualidade";
 import Laudos from "./pages/Laudos";
 import PrintableLaudoPage from "./pages/print/PrintableLaudoPage";
 import ContratosPage from "./pages/Commercial/ContratosPage";
+import ModelosContratosPage from "./pages/Commercial/ModelosContratosPage";
 import AssinaturaExterna from "./pages/Commercial/AssinaturaExterna";
 
 const queryClient = new QueryClient();
@@ -84,6 +87,7 @@ const AppContent = () => {
         <Route path="/print/traceability/:batchId" element={<PrintableTraceabilityPage />} />
         <Route path="/print/folha-ponto" element={<FolhaPontoPage />} />
         <Route path="/print/laudo/:laudoId" element={<PrintableLaudoPage />} />
+        <Route path="/print/contrato/:contratoId" element={<PrintableContratoPage />} />
         <Route path="/assinatura/:contratoId" element={<AssinaturaExterna />} />
         
         <Route path="/*" element={
@@ -121,6 +125,7 @@ const AppContent = () => {
                   <Route path="/qualidade/analise" element={<AnaliseQualidade />} />
                   <Route path="/qualidade/laudos" element={<Laudos />} />
                   <Route path="/comercial/contratos" element={<ContratosPage />} />
+                  <Route path="/comercial/modelos" element={<ModelosContratosPage />} />
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
                   <Route path="*" element={<NotFound />} />

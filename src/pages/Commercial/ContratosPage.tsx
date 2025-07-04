@@ -12,7 +12,9 @@ import {
   AlertCircle,
   PenTool,
   Download,
-  BarChart3
+  BarChart3,
+  Printer,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -225,6 +227,16 @@ export default function ContratosPage() {
     }
   };
 
+  const handleImprimirContrato = (contratoId: string) => {
+    const printUrl = `/print/contrato/${contratoId}`;
+    window.open(printUrl, '_blank');
+  };
+
+  const handleBaixarContrato = (contratoId: string) => {
+    const printUrl = `/print/contrato/${contratoId}`;
+    window.open(printUrl, '_blank');
+  };
+
   const renderVariavelInput = (variavel: VariavelContrato) => {
     const valor = novoContrato.dadosVariaveis[variavel.nome] || '';
 
@@ -307,13 +319,23 @@ export default function ContratosPage() {
             Gestão de contratos com assinaturas digitais
           </p>
         </div>
-        <Button 
-          onClick={() => setShowNovoContrato(true)} 
-          className="inline-flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Contrato
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => window.open('/comercial/modelos', '_blank')}
+            className="inline-flex items-center gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            Modelos
+          </Button>
+          <Button 
+            onClick={() => setShowNovoContrato(true)} 
+            className="inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Contrato
+          </Button>
+        </div>
       </div>
 
       {/* Estatísticas */}
@@ -490,9 +512,22 @@ export default function ContratosPage() {
                             {contrato.criadoEm.toLocaleDateString('pt-BR')}
                           </td>
                           <td className="p-2">
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="outline" onClick={() => { setContratoSelecionado(contrato); setShowVisualizarContrato(true); }}>
+                            <div className="flex gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => { setContratoSelecionado(contrato); setShowVisualizarContrato(true); }}
+                                title="Visualizar"
+                              >
                                 <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleImprimirContrato(contrato.id)}
+                                title="Imprimir/PDF"
+                              >
+                                <Printer className="w-4 h-4" />
                               </Button>
                               {contrato.status === 'rascunho' && (
                                 <>
@@ -500,10 +535,15 @@ export default function ContratosPage() {
                                     size="sm" 
                                     variant="outline"
                                     onClick={() => handleFinalizarContrato(contrato)}
+                                    title="Finalizar"
                                   >
                                     <CheckCircle className="w-4 h-4" />
                                   </Button>
-                                  <Button size="sm" variant="outline">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    title="Editar"
+                                  >
                                     <Edit className="w-4 h-4" />
                                   </Button>
                                 </>
@@ -512,12 +552,18 @@ export default function ContratosPage() {
                                 <Button 
                                   size="sm" 
                                   onClick={() => handleAssinarInternamente(contrato)}
+                                  title="Assinar Internamente"
                                 >
                                   <PenTool className="w-4 h-4" />
                                 </Button>
                               )}
                               {contrato.status === 'concluido' && (
-                                <Button size="sm" variant="outline">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleBaixarContrato(contrato.id)}
+                                  title="Baixar PDF Final"
+                                >
                                   <Download className="w-4 h-4" />
                                 </Button>
                               )}
@@ -564,9 +610,21 @@ export default function ContratosPage() {
                         </div>
 
                         <div className="flex gap-2 mt-4">
-                          <Button size="sm" variant="outline" className="flex-1" onClick={() => { setContratoSelecionado(contrato); setShowVisualizarContrato(true); }}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="flex-1" 
+                            onClick={() => { setContratoSelecionado(contrato); setShowVisualizarContrato(true); }}
+                          >
                             <Eye className="w-4 h-4 mr-1" />
                             Ver
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleImprimirContrato(contrato.id)}
+                          >
+                            <Printer className="w-4 h-4" />
                           </Button>
                           {contrato.status === 'rascunho' && (
                             <Button 
@@ -589,7 +647,12 @@ export default function ContratosPage() {
                             </Button>
                           )}
                           {contrato.status === 'concluido' && (
-                            <Button size="sm" variant="outline" className="flex-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="flex-1"
+                              onClick={() => handleBaixarContrato(contrato.id)}
+                            >
                               <Download className="w-4 h-4 mr-1" />
                               Download
                             </Button>
@@ -759,4 +822,4 @@ export default function ContratosPage() {
       </Dialog>
     </div>
   );
-} 
+}
