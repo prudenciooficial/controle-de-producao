@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { logSystemEvent } from '@/services/logService';
+import type { Json } from '@/integrations/supabase/types';
 import type { 
   ModeloContrato, 
   Contrato, 
@@ -15,7 +16,8 @@ import type {
   DadosAssinaturaExterna,
   RelatorioAuditoria,
   StatusContrato,
-  TipoEventoContrato
+  TipoEventoContrato,
+  VariavelContrato
 } from '@/types';
 
 // ==================== MODELOS DE CONTRATOS ====================
@@ -35,7 +37,7 @@ export async function buscarModelosContratos(): Promise<ModeloContrato[]> {
       nome: modelo.nome,
       descricao: modelo.descricao,
       conteudo: modelo.conteudo,
-      variaveis: modelo.variaveis || [],
+      variaveis: typeof modelo.variaveis === 'string' ? (JSON.parse(modelo.variaveis) as VariavelContrato[]) : (modelo.variaveis as unknown as VariavelContrato[] || []),
       ativo: modelo.ativo,
       criadoEm: new Date(modelo.criado_em),
       atualizadoEm: new Date(modelo.atualizado_em),
@@ -58,7 +60,7 @@ export async function criarModeloContrato(modelo: Omit<ModeloContrato, 'id' | 'c
         nome: modelo.nome,
         descricao: modelo.descricao,
         conteudo: modelo.conteudo,
-        variaveis: modelo.variaveis,
+        variaveis: modelo.variaveis as unknown as Json,
         ativo: modelo.ativo,
         criado_por: user.data.user.id
       }])
@@ -82,7 +84,7 @@ export async function criarModeloContrato(modelo: Omit<ModeloContrato, 'id' | 'c
       nome: data.nome,
       descricao: data.descricao,
       conteudo: data.conteudo,
-      variaveis: data.variaveis || [],
+      variaveis: typeof data.variaveis === 'string' ? (JSON.parse(data.variaveis) as VariavelContrato[]) : (data.variaveis as unknown as VariavelContrato[] || []),
       ativo: data.ativo,
       criadoEm: new Date(data.criado_em),
       atualizadoEm: new Date(data.atualizado_em),
@@ -90,6 +92,102 @@ export async function criarModeloContrato(modelo: Omit<ModeloContrato, 'id' | 'c
     };
   } catch (error) {
     console.error('Erro ao criar modelo de contrato:', error);
+    throw error;
+  }
+}
+
+export async function updateModeloContrato(id: string, modelo: Partial<ModeloContrato>): Promise<ModeloContrato> {
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error('Usuário não autenticado');
+
+    const { error } = await supabase
+      .from('modelos_contratos')
+      .update({
+        nome: modelo.nome,
+        descricao: modelo.descricao,
+        conteudo: modelo.conteudo,
+        variaveis: modelo.variaveis ? (modelo.variaveis as unknown as Json) : [],
+        ativo: modelo.ativo,
+        atualizado_em: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // Buscar modelo atualizado
+    const { data, error: fetchError } = await supabase
+      .from('modelos_contratos')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (fetchError) throw fetchError;
+
+    // Log do sistema
+    await logSystemEvent({
+      userId: user.data.user.id,
+      userDisplayName: user.data.user.user_metadata?.full_name || user.data.user.email,
+      actionType: 'UPDATE',
+      entityTable: 'modelos_contratos',
+      entityId: id,
+      newData: modelo
+    });
+
+    return {
+      id: data.id,
+      nome: data.nome,
+      descricao: data.descricao,
+      conteudo: data.conteudo,
+      variaveis: typeof data.variaveis === 'string' ? (JSON.parse(data.variaveis) as VariavelContrato[]) : (data.variaveis as unknown as VariavelContrato[] || []),
+      ativo: data.ativo,
+      criadoEm: new Date(data.criado_em),
+      atualizadoEm: new Date(data.atualizado_em),
+      criadoPor: data.criado_por
+    };
+  } catch (error) {
+    console.error('Erro ao atualizar modelo de contrato:', error);
+    throw error;
+  }
+}
+
+export async function excluirModeloContrato(id: string): Promise<void> {
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error('Usuário não autenticado');
+
+    // Verificar se existem contratos usando este modelo
+    const { data: contratos, error: contratosError } = await supabase
+      .from('contratos')
+      .select('id')
+      .eq('modelo_id', id)
+      .limit(1);
+
+    if (contratosError) throw contratosError;
+
+    if (contratos && contratos.length > 0) {
+      throw new Error('Não é possível excluir este modelo pois existem contratos que o utilizam');
+    }
+
+    // Excluir modelo
+    const { error } = await supabase
+      .from('modelos_contratos')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // Log do sistema
+    await logSystemEvent({
+      userId: user.data.user.id,
+      userDisplayName: user.data.user.user_metadata?.full_name || user.data.user.email,
+      actionType: 'DELETE',
+      entityTable: 'modelos_contratos',
+      entityId: id,
+      newData: { deleted: true }
+    });
+
+  } catch (error) {
+    console.error('Erro ao excluir modelo de contrato:', error);
     throw error;
   }
 }
@@ -203,7 +301,7 @@ export async function criarContrato(dados: DadosCriarContrato): Promise<Contrato
     // Substituir variáveis no conteúdo
     let conteudoFinal = modelo.conteudo;
     Object.entries(dados.dadosVariaveis).forEach(([chave, valor]) => {
-      const regex = new RegExp(`\\[${chave}\\]`, 'g');
+      const regex = new RegExp(`\\{\\{${chave}\\}\\}`, 'g');
       conteudoFinal = conteudoFinal.replace(regex, String(valor));
     });
 
@@ -213,7 +311,7 @@ export async function criarContrato(dados: DadosCriarContrato): Promise<Contrato
         modelo_id: dados.modeloId,
         titulo: dados.titulo,
         conteudo: conteudoFinal,
-        dados_variaveis: dados.dadosVariaveis,
+        dados_variaveis: dados.dadosVariaveis as unknown as Json,
         assinante_externo_nome: dados.assinanteExternoNome,
         assinante_externo_email: dados.assinanteExternoEmail,
         assinante_externo_documento: dados.assinanteExternoDocumento,
@@ -270,6 +368,161 @@ export async function criarContrato(dados: DadosCriarContrato): Promise<Contrato
     };
   } catch (error) {
     console.error('Erro ao criar contrato:', error);
+    throw error;
+  }
+}
+
+export async function atualizarContrato(contratoId: string, dados: DadosCriarContrato): Promise<Contrato> {
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error('Usuário não autenticado');
+
+    // Verificar se o contrato ainda está em rascunho
+    const { data: contratoAtual, error: contratoError } = await supabase
+      .from('contratos')
+      .select('status')
+      .eq('id', contratoId)
+      .single();
+
+    if (contratoError) throw contratoError;
+    
+    if (contratoAtual.status !== 'rascunho') {
+      throw new Error('Apenas contratos em rascunho podem ser editados');
+    }
+
+    // Buscar o modelo para recalcular o conteúdo
+    const { data: modelo, error: modeloError } = await supabase
+      .from('modelos_contratos')
+      .select('*')
+      .eq('id', dados.modeloId)
+      .single();
+
+    if (modeloError) throw modeloError;
+
+    // Substituir variáveis no conteúdo
+    let conteudoFinal = modelo.conteudo;
+    Object.entries(dados.dadosVariaveis).forEach(([chave, valor]) => {
+      const regex = new RegExp(`\\{\\{${chave}\\}\\}`, 'g');
+      conteudoFinal = conteudoFinal.replace(regex, String(valor));
+    });
+
+    // Atualizar contrato
+    const { data, error } = await supabase
+      .from('contratos')
+      .update({
+        titulo: dados.titulo,
+        conteudo: conteudoFinal,
+        dados_variaveis: dados.dadosVariaveis as unknown as Json,
+        assinante_externo_nome: dados.assinanteExternoNome,
+        assinante_externo_email: dados.assinanteExternoEmail,
+        assinante_externo_documento: dados.assinanteExternoDocumento,
+        atualizado_em: new Date().toISOString()
+      })
+      .eq('id', contratoId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Registrar log de auditoria
+    await registrarLogAuditoria(contratoId, 'contrato_atualizado', 'Contrato atualizado', {
+      titulo: dados.titulo,
+      assinante_externo: dados.assinanteExternoEmail,
+      alteracoes: Object.keys(dados.dadosVariaveis)
+    });
+
+    // Log do sistema
+    await logSystemEvent({
+      userId: user.data.user.id,
+      userDisplayName: user.data.user.user_metadata?.full_name || user.data.user.email,
+      actionType: 'UPDATE',
+      entityTable: 'contratos',
+      entityId: contratoId,
+      newData: dados
+    });
+
+    return {
+      id: data.id,
+      numeroContrato: data.numero_contrato,
+      modeloId: data.modelo_id,
+      titulo: data.titulo,
+      conteudo: data.conteudo,
+      dadosVariaveis: typeof data.dados_variaveis === 'string' ? JSON.parse(data.dados_variaveis) : (data.dados_variaveis as Record<string, string | number | boolean | Date> || {}),
+      status: data.status as StatusContrato,
+      urlPdf: data.url_pdf,
+      hashDocumento: data.hash_documento,
+      assinanteInternoId: data.assinante_interno_id,
+      assinanteInternoNome: data.assinante_interno_nome,
+      assinanteInternoEmail: data.assinante_interno_email,
+      assinadoInternamenteEm: data.assinado_internamente_em ? new Date(data.assinado_internamente_em) : undefined,
+      dadosAssinaturaInterna: typeof data.dados_assinatura_interna === 'string' ? JSON.parse(data.dados_assinatura_interna) : (data.dados_assinatura_interna as unknown),
+      assinanteExternoNome: data.assinante_externo_nome,
+      assinanteExternoEmail: data.assinante_externo_email,
+      assinanteExternoDocumento: data.assinante_externo_documento,
+      assinadoExternamenteEm: data.assinado_externamente_em ? new Date(data.assinado_externamente_em) : undefined,
+      tokenAssinaturaExterna: data.token_assinatura_externa,
+      tokenExpiraEm: data.token_expira_em ? new Date(data.token_expira_em) : undefined,
+      dadosAssinaturaExterna: typeof data.dados_assinatura_externa === 'string' ? JSON.parse(data.dados_assinatura_externa) : (data.dados_assinatura_externa as unknown),
+      criadoEm: new Date(data.criado_em),
+      atualizadoEm: new Date(data.atualizado_em),
+      criadoPor: data.criado_por
+    };
+  } catch (error) {
+    console.error('Erro ao atualizar contrato:', error);
+    throw error;
+  }
+}
+
+export async function excluirContrato(contratoId: string): Promise<void> {
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error('Usuário não autenticado');
+
+    // Verificar se o contrato pode ser excluído (apenas rascunhos)
+    const { data: contrato, error: contratoError } = await supabase
+      .from('contratos')
+      .select('status, titulo')
+      .eq('id', contratoId)
+      .single();
+
+    if (contratoError) throw contratoError;
+    
+    if (contrato.status !== 'rascunho') {
+      throw new Error('Apenas contratos em rascunho podem ser excluídos');
+    }
+
+    // Excluir logs relacionados primeiro
+    await supabase
+      .from('logs_auditoria_contratos')
+      .delete()
+      .eq('contrato_id', contratoId);
+
+    // Excluir tokens relacionados
+    await supabase
+      .from('tokens_verificacao_contratos')
+      .delete()
+      .eq('contrato_id', contratoId);
+
+    // Excluir contrato
+    const { error } = await supabase
+      .from('contratos')
+      .delete()
+      .eq('id', contratoId);
+
+    if (error) throw error;
+
+    // Log do sistema
+    await logSystemEvent({
+      userId: user.data.user.id,
+      userDisplayName: user.data.user.user_metadata?.full_name || user.data.user.email,
+      actionType: 'DELETE',
+      entityTable: 'contratos',
+      entityId: contratoId,
+      newData: { deleted: true, titulo: contrato.titulo }
+    });
+
+  } catch (error) {
+    console.error('Erro ao excluir contrato:', error);
     throw error;
   }
 }

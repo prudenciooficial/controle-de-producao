@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
@@ -20,6 +19,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import type { ModeloContrato, VariavelContrato } from '@/types';
+import type { Json } from '@/integrations/supabase/types';
+import { updateModeloContrato, excluirModeloContrato } from '@/services/commercialService';
 
 const ModelosContratosPage = () => {
   const [modelos, setModelos] = useState<ModeloContrato[]>([]);
@@ -52,7 +53,7 @@ const ModelosContratosPage = () => {
       const { data, error } = await supabase
         .from('modelos_contratos')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('criado_em', { ascending: false });
 
       if (error) throw error;
 
@@ -61,7 +62,7 @@ const ModelosContratosPage = () => {
         nome: item.nome,
         descricao: item.descricao || '',
         conteudo: item.conteudo,
-        variaveis: item.variaveis as VariavelContrato[] || [],
+        variaveis: typeof item.variaveis === 'string' ? (JSON.parse(item.variaveis) as VariavelContrato[]) : (item.variaveis as unknown as VariavelContrato[] || []),
         ativo: item.ativo,
         criadoEm: new Date(item.criado_em || new Date()),
         atualizadoEm: new Date(item.atualizado_em || new Date()),
@@ -91,25 +92,19 @@ const ModelosContratosPage = () => {
         ativo: novoModelo.ativo
       };
 
-      let resultado;
-
       if (editingModelo) {
-        // Atualizar modelo existente
-        resultado = await supabase
-          .from('modelos_contratos')
-          .update(dadosModelo)
-          .eq('id', editingModelo.id);
+        await updateModeloContrato(editingModelo.id, dadosModelo);
       } else {
         // Criar novo modelo
-        resultado = await supabase
+        const resultado = await supabase
           .from('modelos_contratos')
           .insert([{
             ...dadosModelo,
+            variaveis: novoModelo.variaveis as unknown as Json,
             criado_por: (await supabase.auth.getUser()).data.user?.id
           }]);
+        if (resultado.error) throw resultado.error;
       }
-
-      if (resultado.error) throw resultado.error;
 
       toast({
         title: 'Sucesso',
@@ -147,6 +142,28 @@ const ModelosContratosPage = () => {
       ativo: modelo.ativo
     });
     setShowModal(true);
+  };
+
+  const handleExcluirModelo = async (modelo: ModeloContrato) => {
+    if (!confirm(`Tem certeza que deseja excluir o modelo "${modelo.nome}"?`)) {
+      return;
+    }
+
+    try {
+      await excluirModeloContrato(modelo.id);
+      toast({
+        title: 'Sucesso',
+        description: 'Modelo excluído com sucesso!'
+      });
+      carregarModelos();
+    } catch (error: unknown) {
+      console.error('Erro ao excluir modelo:', error);
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao excluir modelo',
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleAdicionarVariavel = () => {
@@ -242,6 +259,13 @@ const ModelosContratosPage = () => {
                 >
                   <Edit className="w-4 h-4 mr-1" />
                   Editar
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => handleExcluirModelo(modelo)}
+                >
+                  <Trash className="w-4 h-4" />
                 </Button>
               </div>
             </CardContent>
@@ -362,7 +386,7 @@ const ModelosContratosPage = () => {
                     <Label>Nome da Variável</Label>
                     <Input
                       value={novaVariavel.nome}
-                      onChange={(e) => setNovaVariavel({...novaVariavel, nome: e.target.value.toUpperCase()})}
+                      onChange={(e) => setNovaVariavel({...novaVariavel, nome: e.target.value})}
                       placeholder="NOME_CLIENTE"
                     />
                   </div>
@@ -378,7 +402,7 @@ const ModelosContratosPage = () => {
                     <Label>Tipo</Label>
                     <Select 
                       value={novaVariavel.tipo}
-                      onValueChange={(value) => setNovaVariavel({...novaVariavel, tipo: value as any})}
+                      onValueChange={(value) => setNovaVariavel({...novaVariavel, tipo: value as 'text' | 'textarea' | 'date' | 'currency' | 'number' | 'email' | 'select'})}
                     >
                       <SelectTrigger>
                         <SelectValue />

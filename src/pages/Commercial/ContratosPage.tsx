@@ -29,6 +29,8 @@ import {
   buscarContratos,
   buscarModelosContratos,
   criarContrato,
+  atualizarContrato,
+  excluirContrato,
   buscarEstatisticasComercial,
   finalizarContratoEIniciarAssinaturas,
   assinarInternamente
@@ -42,6 +44,8 @@ import type {
   DadosCriarContrato,
   VariavelContrato
 } from '@/types';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const statusConfig = {
   rascunho: { label: 'Rascunho', color: 'bg-gray-100 text-gray-800', icon: Edit },
@@ -62,6 +66,7 @@ export default function ContratosPage() {
   const [contratoSelecionado, setContratoSelecionado] = useState<Contrato | null>(null);
   const [showVisualizarContrato, setShowVisualizarContrato] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Estados para novo contrato
   const [novoContrato, setNovoContrato] = useState<DadosCriarContrato>({
@@ -180,10 +185,21 @@ export default function ContratosPage() {
 
   const handleFinalizarContrato = async (contrato: Contrato) => {
     try {
+      // Obter usuário atual para usar como assinante interno se não estiver definido
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Erro',
+          description: 'Usuário não autenticado',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       await finalizarContratoEIniciarAssinaturas({
         contratoId: contrato.id,
         conteudoFinal: contrato.conteudo,
-        assinanteInternoId: contrato.assinanteInternoId || ''
+        assinanteInternoId: contrato.assinanteInternoId || user.id
       });
 
       toast({
@@ -235,6 +251,98 @@ export default function ContratosPage() {
   const handleBaixarContrato = (contratoId: string) => {
     const printUrl = `/print/contrato/${contratoId}`;
     window.open(printUrl, '_blank');
+  };
+
+  const handleEditarContrato = (contrato: Contrato) => {
+    setContratoSelecionado(contrato);
+    setNovoContrato({
+      modeloId: contrato.modeloId,
+      titulo: contrato.titulo,
+      dadosVariaveis: contrato.dadosVariaveis,
+      assinanteExternoNome: contrato.assinanteExternoNome || '',
+      assinanteExternoEmail: contrato.assinanteExternoEmail,
+      assinanteExternoDocumento: contrato.assinanteExternoDocumento || ''
+    });
+    const modelo = modelos.find(m => m.id === contrato.modeloId);
+    if (modelo) {
+      setModeloSelecionado(modelo);
+    }
+    setShowEditarContrato(true);
+  };
+
+  const handleAtualizarContrato = async () => {
+    try {
+      if (!contratoSelecionado || !modeloSelecionado) {
+        toast({
+          title: 'Erro',
+          description: 'Dados do contrato não encontrados',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validar variáveis obrigatórias
+      const variaveisObrigatorias = modeloSelecionado.variaveis.filter(v => v.obrigatorio);
+      const variaveisFaltando = variaveisObrigatorias.filter(v => !novoContrato.dadosVariaveis[v.nome]);
+
+      if (variaveisFaltando.length > 0) {
+        toast({
+          title: 'Campos obrigatórios',
+          description: `Preencha os campos: ${variaveisFaltando.map(v => v.rotulo).join(', ')}`,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      await atualizarContrato(contratoSelecionado.id, novoContrato);
+      
+      toast({
+        title: 'Sucesso',
+        description: 'Contrato atualizado com sucesso!'
+      });
+
+      setShowEditarContrato(false);
+      setContratoSelecionado(null);
+      setNovoContrato({
+        modeloId: '',
+        titulo: '',
+        dadosVariaveis: {},
+        assinanteExternoNome: '',
+        assinanteExternoEmail: '',
+        assinanteExternoDocumento: ''
+      });
+      setModeloSelecionado(null);
+      carregarDados();
+    } catch (error) {
+      console.error('Erro ao atualizar contrato:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao atualizar contrato',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleExcluirContrato = async (contrato: Contrato) => {
+    if (!confirm(`Tem certeza que deseja excluir o contrato "${contrato.titulo}"?`)) {
+      return;
+    }
+
+    try {
+      await excluirContrato(contrato.id);
+      toast({
+        title: 'Sucesso',
+        description: 'Contrato excluído com sucesso!'
+      });
+      carregarDados();
+    } catch (error: unknown) {
+      console.error('Erro ao excluir contrato:', error);
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao excluir contrato',
+        variant: 'destructive'
+      });
+    }
   };
 
   const renderVariavelInput = (variavel: VariavelContrato) => {
@@ -322,7 +430,7 @@ export default function ContratosPage() {
         <div className="flex gap-2">
           <Button 
             variant="outline"
-            onClick={() => window.open('/comercial/modelos', '_blank')}
+            onClick={() => navigate('/comercial/modelos')}
             className="inline-flex items-center gap-2"
           >
             <Settings className="w-4 h-4" />
@@ -533,18 +641,18 @@ export default function ContratosPage() {
                                 <>
                                   <Button 
                                     size="sm" 
-                                    variant="outline"
+                                    className="flex-1"
                                     onClick={() => handleFinalizarContrato(contrato)}
-                                    title="Finalizar"
                                   >
-                                    <CheckCircle className="w-4 h-4" />
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    Finalizar
                                   </Button>
                                   <Button 
                                     size="sm" 
-                                    variant="outline"
-                                    title="Editar"
+                                    variant="ghost"
+                                    onClick={() => handleExcluirContrato(contrato)}
                                   >
-                                    <Edit className="w-4 h-4" />
+                                    <Trash className="w-4 h-4" />
                                   </Button>
                                 </>
                               )}
@@ -627,14 +735,23 @@ export default function ContratosPage() {
                             <Printer className="w-4 h-4" />
                           </Button>
                           {contrato.status === 'rascunho' && (
-                            <Button 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => handleFinalizarContrato(contrato)}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Finalizar
-                            </Button>
+                            <>
+                              <Button 
+                                size="sm" 
+                                className="flex-1"
+                                onClick={() => handleFinalizarContrato(contrato)}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Finalizar
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => handleExcluirContrato(contrato)}
+                              >
+                                <Trash className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                           {contrato.status === 'aguardando_assinatura_interna' && (
                             <Button 
@@ -814,10 +931,108 @@ export default function ContratosPage() {
                   </a>
                 </div>
               )}
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  onClick={() => handleImprimirContrato(contratoSelecionado.id)}
+                  className="inline-flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  Visualizar Impressão
+                </Button>
+              </div>
             </div>
           ) : (
             <div>Selecione um contrato para visualizar.</div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Editar Contrato */}
+      <Dialog open={showEditarContrato} onOpenChange={setShowEditarContrato}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Contrato</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Dados Básicos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Título do Contrato *</Label>
+                <Input
+                  value={novoContrato.titulo}
+                  onChange={(e) => setNovoContrato(prev => ({ ...prev, titulo: e.target.value }))}
+                  placeholder="Ex: Contrato de Prestação de Serviços - Cliente X"
+                />
+              </div>
+            </div>
+
+            {/* Dados do Cliente */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Dados do Cliente</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Nome do Cliente *</Label>
+                  <Input
+                    value={novoContrato.assinanteExternoNome}
+                    onChange={(e) => setNovoContrato(prev => ({ ...prev, assinanteExternoNome: e.target.value }))}
+                    placeholder="Nome completo ou razão social"
+                  />
+                </div>
+                <div>
+                  <Label>E-mail do Cliente *</Label>
+                  <Input
+                    type="email"
+                    value={novoContrato.assinanteExternoEmail}
+                    onChange={(e) => setNovoContrato(prev => ({ ...prev, assinanteExternoEmail: e.target.value }))}
+                    placeholder="email@exemplo.com"
+                  />
+                </div>
+                <div>
+                  <Label>CPF/CNPJ</Label>
+                  <Input
+                    value={novoContrato.assinanteExternoDocumento}
+                    onChange={(e) => setNovoContrato(prev => ({ ...prev, assinanteExternoDocumento: e.target.value }))}
+                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Variáveis do Modelo */}
+            {modeloSelecionado && modeloSelecionado.variaveis.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Dados do Contrato</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {modeloSelecionado.variaveis.map(variavel => (
+                    <div key={variavel.nome}>
+                      <Label>
+                        {variavel.rotulo}
+                        {variavel.obrigatorio && <span className="text-red-500 ml-1">*</span>}
+                      </Label>
+                      {renderVariavelInput(variavel)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Botões */}
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowEditarContrato(false)}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleAtualizarContrato}
+                disabled={!novoContrato.titulo || !novoContrato.assinanteExternoNome || !novoContrato.assinanteExternoEmail}
+              >
+                Atualizar Contrato
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

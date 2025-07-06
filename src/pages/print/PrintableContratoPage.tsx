@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader, Printer, X } from 'lucide-react';
@@ -59,22 +58,22 @@ const PrintableContratoPage = () => {
           modeloId: data.modelo_id,
           titulo: data.titulo,
           conteudo: data.conteudo,
-          dadosVariaveis: data.dados_variaveis || {},
-          status: data.status,
+          dadosVariaveis: typeof data.dados_variaveis === 'string' ? JSON.parse(data.dados_variaveis) : (data.dados_variaveis as Record<string, string | number | boolean | Date> || {}),
+          status: data.status as 'rascunho' | 'aguardando_assinatura_interna' | 'aguardando_assinatura_externa' | 'concluido' | 'cancelado',
           urlPdf: data.url_pdf,
           hashDocumento: data.hash_documento,
           assinanteInternoId: data.assinante_interno_id,
           assinanteInternoNome: data.assinante_interno_nome,
           assinanteInternoEmail: data.assinante_interno_email,
           assinadoInternamenteEm: data.assinado_internamente_em ? new Date(data.assinado_internamente_em) : undefined,
-          dadosAssinaturaInterna: data.dados_assinatura_interna,
+          dadosAssinaturaInterna: typeof data.dados_assinatura_interna === 'string' ? JSON.parse(data.dados_assinatura_interna) : (data.dados_assinatura_interna as unknown),
           assinanteExternoNome: data.assinante_externo_nome,
           assinanteExternoEmail: data.assinante_externo_email,
           assinanteExternoDocumento: data.assinante_externo_documento,
           assinadoExternamenteEm: data.assinado_externamente_em ? new Date(data.assinado_externamente_em) : undefined,
           tokenAssinaturaExterna: data.token_assinatura_externa,
           tokenExpiraEm: data.token_expira_em ? new Date(data.token_expira_em) : undefined,
-          dadosAssinaturaExterna: data.dados_assinatura_externa,
+          dadosAssinaturaExterna: typeof data.dados_assinatura_externa === 'string' ? JSON.parse(data.dados_assinatura_externa) : (data.dados_assinatura_externa as unknown),
           criadoEm: new Date(data.criado_em || new Date()),
           atualizadoEm: new Date(data.atualizado_em || new Date()),
           criadoPor: data.criado_por || '',
@@ -204,157 +203,160 @@ const PrintableContratoPage = () => {
       </div>
 
       {/* Conteúdo do contrato */}
-      <div className="laudo-a4" style={{ 
-        fontSize: '10pt', 
-        padding: 0, 
-        width: '210mm', 
-        minHeight: '297mm', 
-        margin: '0 auto', 
-        boxShadow: '0 0 8px #e5e7eb', 
-        color: '#111', 
-        background: '#fff' 
-      }}>
-        {/* Papel timbrado como fundo */}
-        <div 
-          className="laudo-background"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100%',
-            height: '100%',
-            backgroundImage: 'url(/images/papeltimbrado.jpg)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            zIndex: 1,
-            opacity: 1
-          }}
-        />
-        
-        {/* Wrapper do conteúdo */}
-        <div className="laudo-content-wrapper" style={{ 
-          position: 'absolute', 
-          top: '20mm', 
-          left: 0, 
-          right: 0, 
-          width: '100%', 
-          fontSize: '10pt', 
-          padding: '0 12mm', 
-          minHeight: '220mm', 
-          color: '#111', 
-          background: 'transparent', 
-          zIndex: 3 
-        }}>
-          {/* Título do contrato */}
-          <div className="laudo-title" style={{ fontSize: '1.2em', marginBottom: 8, fontWeight: 'bold', textAlign: 'center' }}>
-            CONTRATO Nº {contrato.numeroContrato}
-          </div>
-          
-          {/* Título secundário */}
-          <div style={{ fontSize: '1.1em', marginBottom: 16, fontWeight: 'bold', textAlign: 'center' }}>
+      <div className="laudo-a4">
+        {/* Cabeçalho */}
+        <div className="contract-header">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
             {contrato.titulo}
-          </div>
+          </h1>
+          <p className="text-sm text-gray-600">
+            Contrato Nº: {contrato.numeroContrato}
+          </p>
+        </div>
 
-          {/* Seção de Identificação */}
-          <div className="laudo-section-title" style={{ fontSize: '1em', marginBottom: 8, fontWeight: 'bold' }}>
-            IDENTIFICAÇÃO DO CONTRATO
-          </div>
-          
-          <table className="laudo-table-id" style={{ fontSize: '9pt', marginBottom: 16, width: '100%', borderCollapse: 'collapse' }}>
-            <tbody>
-              <tr>
-                <td style={{ border: '1px solid #ccc', padding: '4px', fontWeight: 'bold' }}>STATUS:</td>
-                <td style={{ border: '1px solid #ccc', padding: '4px' }}>{statusLabel[contrato.status] || contrato.status}</td>
-                <td style={{ border: '1px solid #ccc', padding: '4px', fontWeight: 'bold' }}>DATA DE CRIAÇÃO:</td>
-                <td style={{ border: '1px solid #ccc', padding: '4px' }}>{contrato.criadoEm ? contrato.criadoEm.toLocaleDateString('pt-BR') : '-'}</td>
-              </tr>
-              <tr>
-                <td style={{ border: '1px solid #ccc', padding: '4px', fontWeight: 'bold' }}>CLIENTE:</td>
-                <td style={{ border: '1px solid #ccc', padding: '4px' }}>{contrato.assinanteExternoNome}</td>
-                <td style={{ border: '1px solid #ccc', padding: '4px', fontWeight: 'bold' }}>CPF/CNPJ:</td>
-                <td style={{ border: '1px solid #ccc', padding: '4px' }}>{contrato.assinanteExternoDocumento || '-'}</td>
-              </tr>
-              <tr>
-                <td style={{ border: '1px solid #ccc', padding: '4px', fontWeight: 'bold' }}>E-MAIL:</td>
-                <td style={{ border: '1px solid #ccc', padding: '4px' }}>{contrato.assinanteExternoEmail}</td>
-                <td style={{ border: '1px solid #ccc', padding: '4px', fontWeight: 'bold' }}>RESPONSÁVEL INTERNO:</td>
-                <td style={{ border: '1px solid #ccc', padding: '4px' }}>{contrato.assinanteInternoNome || '-'}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* Conteúdo do contrato */}
-          <div className="laudo-section-title" style={{ fontSize: '1em', marginBottom: 8, fontWeight: 'bold' }}>
-            CONTEÚDO DO CONTRATO
-          </div>
-          
-          <div style={{ 
-            border: '1px solid #ccc', 
-            borderRadius: '4px', 
-            padding: '12px', 
-            backgroundColor: '#f9f9f9', 
-            whiteSpace: 'pre-line', 
-            marginBottom: 16,
-            minHeight: 200,
-            lineHeight: '1.5'
-          }}>
-            {contrato.conteudo}
-          </div>
-
-          {/* Seção de assinaturas */}
-          {(contrato.assinadoInternamenteEm || contrato.assinadoExternamenteEm) && (
-            <div style={{ marginTop: 24, borderTop: '1px solid #ccc', paddingTop: 16 }}>
-              <div className="laudo-section-title" style={{ fontSize: '1em', marginBottom: 8, fontWeight: 'bold' }}>
-                REGISTRO DE ASSINATURAS
-              </div>
-              
-              {contrato.assinadoInternamenteEm && (
-                <div style={{ marginBottom: 12 }}>
-                  <strong>Assinatura Interna:</strong> {contrato.assinanteInternoNome}<br/>
-                  <strong>Data/Hora:</strong> {contrato.assinadoInternamenteEm.toLocaleString('pt-BR')}<br/>
-                  <strong>Tipo:</strong> Assinatura Eletrônica Qualificada (ICP-Brasil)
-                </div>
-              )}
-              
-              {contrato.assinadoExternamenteEm && (
-                <div style={{ marginBottom: 12 }}>
-                  <strong>Assinatura Externa:</strong> {contrato.assinanteExternoNome}<br/>
-                  <strong>Data/Hora:</strong> {contrato.assinadoExternamenteEm.toLocaleString('pt-BR')}<br/>
-                  <strong>Tipo:</strong> Assinatura Eletrônica Simples com Verificação por Token
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Hash e integridade */}
-          <div style={{ marginTop: 24, borderTop: '1px solid #ccc', paddingTop: 16 }}>
-            <div className="laudo-section-title" style={{ fontSize: '1em', marginBottom: 8, fontWeight: 'bold' }}>
-              VERIFICAÇÃO DE INTEGRIDADE
-            </div>
+        {/* Conteúdo do contrato */}
+        <div className="contract-content">
+          {contrato.conteudo.split('\n\n').map((paragrafo, index) => {
+            if (paragrafo.trim() === '') return null;
             
-            <div style={{ fontSize: '8pt', color: '#666', marginBottom: 8 }}>
-              <strong>Hash SHA-256 do Documento:</strong><br/>
-              <span style={{ fontFamily: 'monospace', wordBreak: 'break-all', fontSize: '7pt' }}>
-                {documentHash || contrato.hashDocumento || 'Calculando...'}
-              </span>
-            </div>
-            
-            <div style={{ fontSize: '8pt', color: '#666' }}>
-              <strong>Documento gerado em:</strong> {new Date().toLocaleString('pt-BR')}<br/>
-              Este hash garante a integridade e autenticidade do documento conforme Lei 14.063/2020.
-            </div>
-          </div>
+            return (
+              <p key={index} className="contract-paragraph">
+                {paragrafo}
+              </p>
+            );
+          })}
+        </div>
 
-          {/* Footer */}
-          <div style={{ marginTop: 24, textAlign: 'center', fontSize: '8pt', color: '#888' }}>
-            Documento gerado eletronicamente pelo Sistema de Gestão Comercial<br/>
-            Válido com assinatura eletrônica conforme legislação vigente
-          </div>
+        {/* Rodapé */}
+        <div className="contract-footer">
+          <p>Este documento foi gerado eletronicamente em {new Date().toLocaleString('pt-BR')}</p>
+          <p>Hash do documento: {contrato.hashDocumento || 'Não disponível'}</p>
         </div>
       </div>
+
+      <style>{`
+        @media print {
+          body {
+            margin: 0;
+            padding: 0;
+            background: white !important;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+            font-family: 'Times New Roman', serif;
+          }
+          
+          @page {
+            size: A4;
+            margin: 15mm 20mm 20mm 20mm;
+            background-image: url('/images/papeltimbrado.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+          }
+          
+          .no-print {
+            display: none !important;
+          }
+          
+          .laudo-a4 {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            box-shadow: none;
+            min-height: auto;
+          }
+          
+          .contract-header {
+            text-align: center;
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+          }
+          
+          .contract-content {
+            font-size: 12pt;
+            color: #333;
+            text-align: justify;
+            margin-bottom: 40px;
+          }
+          
+          .contract-paragraph {
+            margin-bottom: 1em;
+            text-indent: 2em;
+            orphans: 3;
+            widows: 3;
+          }
+          
+          .contract-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 8pt;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 5px;
+            background: white;
+          }
+        }
+        
+        @media screen {
+          .laudo-a4 {
+            width: 210mm;
+            min-height: auto;
+            margin: 0 auto;
+            padding: 20mm;
+            background: white;
+            box-shadow: 0 0 8px #e5e7eb;
+            position: relative;
+            background-image: url('/images/papeltimbrado.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+          }
+          
+          .contract-header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 5px;
+          }
+          
+          .contract-content {
+            position: relative;
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 5px;
+            line-height: 1.6;
+            text-align: justify;
+          }
+          
+          .contract-paragraph {
+            margin-bottom: 1em;
+            text-indent: 2em;
+          }
+          
+          .contract-footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10pt;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+            position: relative;
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+          }
+        }
+      `}</style>
     </div>
   );
 };
