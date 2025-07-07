@@ -540,6 +540,7 @@ export type Database = {
           data_validade: string
           gramatura: string
           id: string
+          link_publico: string | null
           marca_produto: string
           numero_laudo: number
           observacoes: string | null
@@ -556,6 +557,7 @@ export type Database = {
           data_validade: string
           gramatura: string
           id?: string
+          link_publico?: string | null
           marca_produto: string
           numero_laudo?: number
           observacoes?: string | null
@@ -572,6 +574,7 @@ export type Database = {
           data_validade?: string
           gramatura?: string
           id?: string
+          link_publico?: string | null
           marca_produto?: string
           numero_laudo?: number
           observacoes?: string | null

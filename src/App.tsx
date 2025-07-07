@@ -48,6 +48,7 @@ import PrintableLaudoPage from "./pages/print/PrintableLaudoPage";
 import ContratosPage from "./pages/Commercial/ContratosPage";
 import ModelosContratosPage from "./pages/Commercial/ModelosContratosPage";
 import AssinaturaExterna from "./pages/Commercial/AssinaturaExterna";
+import LaudoPublicoPage from "./pages/LaudoPublicoPage";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const AppContent = () => {
         <Route path="/print/laudo/:laudoId" element={<PrintableLaudoPage />} />
         <Route path="/print/contrato/:contratoId" element={<PrintableContratoPage />} />
         <Route path="/assinatura/:contratoId" element={<AssinaturaExterna />} />
+        <Route path="/laudo-publico/:linkPublico" element={<LaudoPublicoPage />} />
         
         <Route path="/*" element={
           <ProtectedRoute>

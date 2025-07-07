@@ -125,6 +125,22 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
+// Função para obter data local no formato YYYY-MM-DD
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Função para formatar data do banco para exibição, evitando problemas de fuso horário
+const formatDateFromDB = (dateString: string) => {
+  // Criar data assumindo que é local (sem conversão de fuso horário)
+  const [year, month, day] = dateString.split('-');
+  const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  return date.toLocaleDateString('pt-BR');
+};
+
 export default function AnaliseQualidade() {
   const [coletas, setColetas] = useState<ColetaAmostra[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +151,7 @@ export default function AnaliseQualidade() {
   // Estados para nova coleta
   const [novaColeta, setNovaColeta] = useState({
     lote_producao: '',
-    data_coleta: new Date().toISOString().split('T')[0],
+    data_coleta: getLocalDateString(),
     quantidade_total_produzida: '',
     quantidade_amostras: 13,
     responsavel_coleta: '',
@@ -254,7 +270,7 @@ export default function AnaliseQualidade() {
       setShowNovaColeta(false);
       setNovaColeta({
         lote_producao: '',
-        data_coleta: new Date().toISOString().split('T')[0],
+        data_coleta: getLocalDateString(),
         quantidade_total_produzida: '',
         quantidade_amostras: 13,
         responsavel_coleta: '',
@@ -531,7 +547,7 @@ export default function AnaliseQualidade() {
       setEditandoColeta(null);
       setNovaColeta({
         lote_producao: '',
-        data_coleta: new Date().toISOString().split('T')[0],
+        data_coleta: getLocalDateString(),
         quantidade_total_produzida: '',
         quantidade_amostras: 13,
         responsavel_coleta: '',
@@ -689,7 +705,7 @@ export default function AnaliseQualidade() {
                       {coleta.lote_producao}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
-                      {new Date(coleta.data_coleta).toLocaleDateString('pt-BR')}
+                      {formatDateFromDB(coleta.data_coleta)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       {coleta.quantidade_total_produzida.toLocaleString('pt-BR')}
@@ -764,7 +780,7 @@ export default function AnaliseQualidade() {
                 </div>
                 <div className="flex flex-wrap gap-2 text-sm mb-1">
                   <span className="text-gray-700 dark:text-gray-200 font-medium">Data Coleta:</span>
-                  <span className="text-gray-900 dark:text-gray-100">{new Date(coleta.data_coleta).toLocaleDateString('pt-BR')}</span>
+                  <span className="text-gray-900 dark:text-gray-100">{formatDateFromDB(coleta.data_coleta)}</span>
                 </div>
                 <div className="flex flex-wrap gap-2 text-sm mb-1">
                   <span className="text-gray-700 dark:text-gray-200 font-medium">Produção (kg):</span>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader, Printer, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,12 +24,82 @@ const calculateSHA256 = async (content: string): Promise<string> => {
   return hashHex;
 };
 
+interface PaginatedPage {
+  content: string[];
+  isFirstPage: boolean;
+  pageNumber: number;
+}
+
 const PrintableContratoPage = () => {
   const { contratoId } = useParams();
   const [contrato, setContrato] = useState<ContratoCustom | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [documentHash, setDocumentHash] = useState<string>('');
+  const [paginatedContent, setPaginatedContent] = useState<PaginatedPage[]>([]);
+
+  // Função para paginar o conteúdo
+  const paginateContent = useCallback((content: string): PaginatedPage[] => {
+    const paragraphs = content.split('\n\n').filter(p => p.trim() !== '');
+
+    if (paragraphs.length === 0) {
+      return [{
+        content: ['Conteúdo não disponível'],
+        isFirstPage: true,
+        pageNumber: 1
+      }];
+    }
+
+    const pages: PaginatedPage[] = [];
+    let currentPageContent: string[] = [];
+    let currentPageLines = 0;
+    let pageNumber = 1;
+
+    // Configurações de página A4
+    const firstPageMaxLines = 25; // Primeira página com cabeçalho
+    const otherPagesMaxLines = 35; // Páginas seguintes
+    const avgCharsPerLine = 80; // Caracteres por linha estimados
+
+    for (const paragraph of paragraphs) {
+      // Estimar quantas linhas este parágrafo ocupará
+      const paragraphLines = Math.max(1, Math.ceil(paragraph.length / avgCharsPerLine));
+      const maxLinesForCurrentPage = pageNumber === 1 ? firstPageMaxLines : otherPagesMaxLines;
+
+      // Se adicionar este parágrafo exceder o limite, criar nova página
+      if (currentPageLines + paragraphLines > maxLinesForCurrentPage && currentPageContent.length > 0) {
+        // Finalizar página atual
+        pages.push({
+          content: [...currentPageContent],
+          isFirstPage: pageNumber === 1,
+          pageNumber: pageNumber
+        });
+
+        // Iniciar nova página
+        pageNumber++;
+        currentPageContent = [paragraph];
+        currentPageLines = paragraphLines;
+      } else {
+        // Adicionar à página atual
+        currentPageContent.push(paragraph);
+        currentPageLines += paragraphLines;
+      }
+    }
+
+    // Adicionar última página se houver conteúdo
+    if (currentPageContent.length > 0) {
+      pages.push({
+        content: [...currentPageContent],
+        isFirstPage: pageNumber === 1,
+        pageNumber: pageNumber
+      });
+    }
+
+    return pages.length > 0 ? pages : [{
+      content: paragraphs,
+      isFirstPage: true,
+      pageNumber: 1
+    }];
+  }, []);
 
   useEffect(() => {
     const fetchContrato = async () => {
@@ -80,7 +150,11 @@ const PrintableContratoPage = () => {
         };
         
         setContrato(contrato);
-        
+
+        // Paginar o conteúdo
+        const pages = paginateContent(contrato.conteudo);
+        setPaginatedContent(pages);
+
         // Calcular hash do documento
         const contentForHash = `${contrato.numeroContrato}-${contrato.titulo}-${contrato.conteudo}`;
         const hash = await calculateSHA256(contentForHash);
@@ -202,37 +276,42 @@ const PrintableContratoPage = () => {
         </button>
       </div>
 
-      {/* Conteúdo do contrato */}
-      <div className="laudo-a4">
-        {/* Cabeçalho */}
-        <div className="contract-header">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {contrato.titulo}
-          </h1>
-          <p className="text-sm text-gray-600">
-            Contrato Nº: {contrato.numeroContrato}
-          </p>
-        </div>
+      {/* Conteúdo do contrato paginado */}
+      {paginatedContent.map((page, pageIndex) => (
+        <div key={pageIndex} className="contract-page">
+          {/* Cabeçalho - apenas na primeira página */}
+          {page.isFirstPage && (
+            <div className="contract-header">
+              <h1>{contrato.titulo}</h1>
+              <p>Contrato Nº: {contrato.numeroContrato}</p>
+            </div>
+          )}
 
-        {/* Conteúdo do contrato */}
-        <div className="contract-content">
-          {contrato.conteudo.split('\n\n').map((paragrafo, index) => {
-            if (paragrafo.trim() === '') return null;
-            
-            return (
-              <p key={index} className="contract-paragraph">
+          {/* Número da página - em todas as páginas exceto a primeira */}
+          {!page.isFirstPage && (
+            <div className="page-number">
+              Página {page.pageNumber} de {paginatedContent.length}
+            </div>
+          )}
+
+          {/* Conteúdo da página */}
+          <div className="contract-content">
+            {page.content.map((paragrafo, paragraphIndex) => (
+              <p key={`${pageIndex}-${paragraphIndex}`} className="contract-paragraph">
                 {paragrafo}
               </p>
-            );
-          })}
-        </div>
+            ))}
+          </div>
 
-        {/* Rodapé */}
-        <div className="contract-footer">
-          <p>Este documento foi gerado eletronicamente em {new Date().toLocaleString('pt-BR')}</p>
-          <p>Hash do documento: {contrato.hashDocumento || 'Não disponível'}</p>
+          {/* Rodapé - apenas na última página */}
+          {pageIndex === paginatedContent.length - 1 && (
+            <div className="contract-footer">
+              <p>Este documento foi gerado eletronicamente em {new Date().toLocaleString('pt-BR')}</p>
+              <p>Hash do documento: {contrato.hashDocumento || documentHash || 'Não disponível'}</p>
+            </div>
+          )}
         </div>
-      </div>
+      ))}
 
       <style>{`
         @media print {
@@ -244,116 +323,184 @@ const PrintableContratoPage = () => {
             color-adjust: exact;
             font-family: 'Times New Roman', serif;
           }
-          
+
           @page {
             size: A4;
-            margin: 15mm 20mm 20mm 20mm;
+            margin: 0;
             background-image: url('/images/papeltimbrado.jpg');
-            background-size: cover;
-            background-position: center;
+            background-size: 210mm 297mm;
+            background-position: 0 0;
             background-repeat: no-repeat;
           }
-          
+
           .no-print {
             display: none !important;
           }
-          
-          .laudo-a4 {
-            width: 100%;
+
+          .contract-page {
+            width: 210mm;
+            height: 297mm;
             margin: 0;
             padding: 0;
+            page-break-after: always;
+            position: relative;
             background: transparent;
-            box-shadow: none;
-            min-height: auto;
           }
-          
+
+          .contract-page:last-child {
+            page-break-after: auto;
+          }
+
           .contract-header {
+            position: absolute;
+            top: 50mm;
+            left: 25mm;
+            right: 25mm;
             text-align: center;
-            margin-bottom: 30px;
-            page-break-inside: avoid;
           }
-          
+
+          .contract-header h1 {
+            font-size: 16pt !important;
+            font-weight: bold !important;
+            margin: 0 0 10px 0 !important;
+            color: #000 !important;
+          }
+
+          .contract-header p {
+            font-size: 12pt !important;
+            margin: 0 !important;
+            color: #333 !important;
+          }
+
           .contract-content {
+            position: absolute;
+            top: 90mm;
+            left: 25mm;
+            right: 25mm;
+            bottom: 40mm;
             font-size: 12pt;
-            color: #333;
+            color: #000;
             text-align: justify;
-            margin-bottom: 40px;
+            line-height: 1.5;
           }
-          
+
+          .contract-page:not(:first-child) .contract-content {
+            top: 30mm;
+          }
+
           .contract-paragraph {
-            margin-bottom: 1em;
+            margin-bottom: 1.2em;
             text-indent: 2em;
-            orphans: 3;
-            widows: 3;
+            color: #000;
           }
-          
+
           .contract-footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            position: absolute;
+            bottom: 20mm;
+            left: 25mm;
+            right: 25mm;
             text-align: center;
             font-size: 8pt;
             color: #666;
             border-top: 1px solid #ccc;
             padding-top: 5px;
-            background: white;
+          }
+
+          .page-number {
+            position: absolute;
+            top: 20mm;
+            right: 25mm;
+            font-size: 10pt;
+            color: #666;
           }
         }
-        
+
         @media screen {
-          .laudo-a4 {
+          .contract-page {
             width: 210mm;
-            min-height: auto;
-            margin: 0 auto;
-            padding: 20mm;
+            height: 297mm;
+            margin: 20px auto;
             background: white;
             box-shadow: 0 0 8px #e5e7eb;
             position: relative;
             background-image: url('/images/papeltimbrado.jpg');
-            background-size: cover;
-            background-position: center;
+            background-size: 210mm 297mm;
+            background-position: 0 0;
             background-repeat: no-repeat;
-            position: relative;
           }
-          
+
           .contract-header {
+            position: absolute;
+            top: 50mm;
+            left: 25mm;
+            right: 25mm;
             text-align: center;
-            margin-bottom: 30px;
-            position: relative;
-            z-index: 2;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             padding: 15px;
             border-radius: 5px;
           }
-          
+
+          .contract-header h1 {
+            font-size: 18pt;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+            color: #000;
+          }
+
+          .contract-header p {
+            font-size: 12pt;
+            margin: 0;
+            color: #333;
+          }
+
           .contract-content {
-            position: relative;
-            z-index: 2;
-            background: rgba(255, 255, 255, 0.9);
+            position: absolute;
+            top: 90mm;
+            left: 25mm;
+            right: 25mm;
+            bottom: 40mm;
+            background: rgba(255, 255, 255, 0.95);
             padding: 20px;
             border-radius: 5px;
             line-height: 1.6;
             text-align: justify;
+            overflow-y: auto;
           }
-          
+
+          .contract-page:not(:first-child) .contract-content {
+            top: 30mm;
+          }
+
           .contract-paragraph {
-            margin-bottom: 1em;
+            margin-bottom: 1.2em;
             text-indent: 2em;
+            color: #000;
           }
-          
+
           .contract-footer {
-            margin-top: 30px;
+            position: absolute;
+            bottom: 20mm;
+            left: 25mm;
+            right: 25mm;
             text-align: center;
             font-size: 10pt;
             color: #666;
             border-top: 1px solid #ccc;
             padding-top: 10px;
-            position: relative;
-            z-index: 2;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             padding: 10px;
             border-radius: 5px;
+          }
+
+          .page-number {
+            position: absolute;
+            top: 20mm;
+            right: 25mm;
+            font-size: 10pt;
+            color: #666;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 5px 10px;
+            border-radius: 3px;
           }
         }
       `}</style>
