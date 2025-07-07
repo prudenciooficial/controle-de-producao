@@ -97,6 +97,23 @@ function useAssinaturasDisponiveis() {
   return assinaturas;
 }
 
+// Função utilitária para formatar datas corretamente (evita problema de fuso horário)
+const formatDateToBR = (dateString: string): string => {
+  if (!dateString) return '-';
+  
+  // Se a data já está no formato YYYY-MM-DD, criar data local
+  if (dateString.includes('T')) {
+    // Data com timestamp - usar como UTC e converter
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR');
+  } else {
+    // Data apenas com YYYY-MM-DD - criar data local para evitar conversão de fuso
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return date.toLocaleDateString('pt-BR');
+  }
+};
+
 export default function Laudos() {
   const [laudos, setLaudos] = useState<LaudoLiberacao[]>([]);
   const [coletasAprovadas, setColetasAprovadas] = useState<ColetaAmostra[]>([]);
@@ -151,10 +168,23 @@ export default function Laudos() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setLaudos((data || []).map((laudo: LaudoLiberacao & { coleta?: { lote_producao?: string } }) => ({
-        ...laudo,
+      setLaudos((data || []).map((laudo: Database['public']['Tables']['laudos_liberacao']['Row'] & { coleta?: { lote_producao?: string } }) => ({
+        id: laudo.id,
+        coleta_id: laudo.coleta_id,
+        numero_laudo: laudo.numero_laudo,
+        marca_produto: laudo.marca_produto,
+        gramatura: laudo.gramatura,
+        data_fabricacao: laudo.data_fabricacao,
+        data_validade: laudo.data_validade,
+        resultado_geral: laudo.resultado_geral,
+        responsavel_liberacao: laudo.responsavel_liberacao,
+        observacoes: laudo.observacoes,
+        data_emissao: laudo.data_emissao,
+        created_at: laudo.created_at,
+        updated_at: laudo.updated_at,
+        revisao: laudo.revisao,
         lote_producao: laudo.coleta?.lote_producao || '',
-      })));
+      })) as LaudoLiberacao[]);
     } catch (error) {
       console.error('Erro ao carregar laudos:', error);
       toast({
@@ -174,7 +204,10 @@ export default function Laudos() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setColetasAprovadas(data || []);
+      setColetasAprovadas((data || []).map(coleta => ({
+        ...coleta,
+        status: coleta.status as 'em_andamento' | 'finalizada' | 'aprovada' | 'reprovada'
+      })));
     } catch (error) {
       console.error('Erro ao carregar coletas aprovadas:', error);
       toast({
@@ -258,7 +291,7 @@ export default function Laudos() {
         actionType: 'CREATE',
         entityTable: 'laudos_liberacao',
         entityId: novoLaudo.coleta_id,
-        newData: novoLaudo
+        newData: { ...novoLaudo } as Record<string, unknown>
       });
 
       toast({
@@ -317,7 +350,7 @@ export default function Laudos() {
         actionType: 'UPDATE',
         entityTable: 'laudos_liberacao',
         entityId: editandoLaudo.id,
-        newData: novoLaudo
+        newData: { ...novoLaudo } as Record<string, unknown>
       });
 
       toast({
@@ -376,7 +409,7 @@ export default function Laudos() {
         actionType: 'DELETE',
         entityTable: 'laudos_liberacao',
         entityId: laudo.id,
-        oldData: laudo
+        oldData: { ...laudo } as Record<string, unknown>
       });
 
       toast({
@@ -463,9 +496,15 @@ export default function Laudos() {
       return;
     }
     try {
+      const responsavelCompleto = {
+        nome: novoResponsavel.nome!,
+        funcao: novoResponsavel.funcao!,
+        carteira_tecnica: novoResponsavel.carteira_tecnica!,
+        assinatura_url: novoResponsavel.assinatura_url
+      };
       const { error } = await supabase
         .from('responsaveis_tecnicos')
-        .insert([{ ...novoResponsavel }]);
+        .insert([responsavelCompleto]);
       if (error) throw error;
       toast({ title: 'Responsável cadastrado', variant: 'default' });
       setShowModalResponsavel(false);
@@ -599,10 +638,10 @@ export default function Laudos() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
-                      {new Date(laudo.data_fabricacao).toLocaleDateString('pt-BR')}
+                      {formatDateToBR(laudo.data_fabricacao)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
-                      {new Date(laudo.data_validade).toLocaleDateString('pt-BR')}
+                      {formatDateToBR(laudo.data_validade)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -622,10 +661,10 @@ export default function Laudos() {
                       {laudo.responsavel_liberacao}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
-                      {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}
+                      {formatDateToBR(laudo.data_emissao)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
-                      {laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}
+                      {laudo.created_at ? formatDateToBR(laudo.created_at) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-200">
                       <div className="flex items-center gap-2">
@@ -702,9 +741,9 @@ export default function Laudos() {
                 <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
                   <div className="flex flex-wrap gap-2 text-sm mb-1">
                     <span className="text-gray-700 dark:text-gray-200 font-medium">Fabricação:</span>
-                    <span className="text-gray-900 dark:text-gray-100">{new Date(laudo.data_fabricacao).toLocaleDateString('pt-BR')}</span>
+                    <span className="text-gray-900 dark:text-gray-100">{formatDateToBR(laudo.data_fabricacao)}</span>
                     <span className="text-gray-700 dark:text-gray-200 font-medium ml-4">Validade:</span>
-                    <span className="text-gray-900 dark:text-gray-100">{new Date(laudo.data_validade).toLocaleDateString('pt-BR')}</span>
+                    <span className="text-gray-900 dark:text-gray-100">{formatDateToBR(laudo.data_validade)}</span>
                   </div>
                 </div>
                 <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
@@ -716,9 +755,9 @@ export default function Laudos() {
                 <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
                   <div className="flex flex-wrap gap-2 text-sm mb-1">
                     <span className="text-gray-700 dark:text-gray-200 font-medium">Emissão (Revisão):</span>
-                    <span className="text-gray-900 dark:text-gray-100">{new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}</span>
+                    <span className="text-gray-900 dark:text-gray-100">{formatDateToBR(laudo.data_emissao)}</span>
                     <span className="text-gray-700 dark:text-gray-200 font-medium ml-4">Emissão do Laudo:</span>
-                    <span className="text-gray-900 dark:text-gray-100">{laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}</span>
+                    <span className="text-gray-900 dark:text-gray-100">{laudo.created_at ? formatDateToBR(laudo.created_at) : '-'}</span>
                   </div>
                 </div>
                 <div className="flex gap-2 mt-2">
@@ -832,7 +871,7 @@ export default function Laudos() {
                   <SelectContent>
                     {coletasAprovadas.map((coleta) => (
                       <SelectItem key={coleta.id} value={coleta.id}>
-                        Lote {coleta.lote_producao} - {new Date(coleta.data_coleta).toLocaleDateString('pt-BR')} - {coleta.responsavel_coleta}
+                        Lote {coleta.lote_producao} - {formatDateToBR(coleta.data_coleta)} - {coleta.responsavel_coleta}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -999,7 +1038,7 @@ export default function Laudos() {
             {editandoLaudo && editandoLaudo.created_at && (
               <div>
                 <Label className="text-sm font-medium text-gray-700">Data de Emissão do Laudo</Label>
-                <Input value={new Date(editandoLaudo.created_at).toLocaleDateString('pt-BR')} readOnly className="mt-1 bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
+                <Input value={formatDateToBR(editandoLaudo.created_at)} readOnly className="mt-1 bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
               </div>
             )}
 

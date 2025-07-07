@@ -17,6 +17,23 @@ import { Loader, Printer, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import './print-laudo.css';
 
+// Função utilitária para formatar datas corretamente (evita problema de fuso horário)
+const formatDateToBR = (dateString: string): string => {
+  if (!dateString) return '-';
+  
+  // Se a data já está no formato YYYY-MM-DD, criar data local
+  if (dateString.includes('T')) {
+    // Data com timestamp - usar como UTC e converter
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR');
+  } else {
+    // Data apenas com YYYY-MM-DD - criar data local para evitar conversão de fuso
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return date.toLocaleDateString('pt-BR');
+  }
+};
+
 // Tipos para o laudo
 interface Laudo {
   id: string;
@@ -270,15 +287,15 @@ const PrintableLaudoPage = () => {
           <table className="laudo-table-id" style={{ fontSize: '9pt', marginBottom: 8 }}>
             <tbody>
               <tr>
-                <td><strong>DATA DA ANÁLISE:</strong> {laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}</td>
+                <td><strong>DATA DA ANÁLISE:</strong> {formatDateToBR(laudo.created_at)}</td>
                 <td><strong>LOTE:</strong> {coleta.lote_producao}</td>
               </tr>
               <tr>
                 <td><strong>PRODUTO ACABADO:</strong> {laudo.marca_produto}</td>
               </tr>
               <tr>
-                <td><strong>FABRICAÇÃO:</strong> {new Date(laudo.data_fabricacao).toLocaleDateString('pt-BR')}</td>
-                <td><strong>VALIDADE:</strong> {new Date(laudo.data_validade).toLocaleDateString('pt-BR')}</td>
+                <td><strong>FABRICAÇÃO:</strong> {formatDateToBR(laudo.data_fabricacao)}</td>
+                <td><strong>VALIDADE:</strong> {formatDateToBR(laudo.data_validade)}</td>
               </tr>
             </tbody>
           </table>
@@ -337,7 +354,7 @@ const PrintableLaudoPage = () => {
               {laudo.resultado_geral === 'aprovado' ? 'Aprovado' : 'Reprovado'}
             </span>
             <div className="laudo-parecer-data" style={{ marginLeft: 'auto' }}>
-              Data do Parecer: {laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}
+              Data do Parecer: {formatDateToBR(laudo.created_at)}
             </div>
           </div>
           {/* Observações */}
@@ -357,8 +374,8 @@ const PrintableLaudoPage = () => {
             <div className="laudo-infos-final" style={{ fontSize: '8pt', color: '#64748b', marginTop: 8, textAlign: 'left' }}>
               <div>Código: CQNG-LCQ</div>
               <div>Revisão: {laudo.revisao || '7'}</div>
-              <div>Data de emissão da revisão: {new Date(laudo.data_emissao).toLocaleDateString('pt-BR')}</div>
-              <div>Data de emissão do laudo: {laudo.created_at ? new Date(laudo.created_at).toLocaleDateString('pt-BR') : '-'}</div>
+              <div>Data de emissão da revisão: {formatDateToBR(laudo.data_emissao)}</div>
+              <div>Data de emissão do laudo: {formatDateToBR(laudo.created_at)}</div>
             </div>
           </div>
           {/* Assinatura */}
