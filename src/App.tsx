@@ -45,8 +45,10 @@ import ContraProvas from "./pages/ContraProvas";
 import AnaliseQualidade from "./pages/AnaliseQualidade";
 import Laudos from "./pages/Laudos";
 import PrintableLaudoPage from "./pages/print/PrintableLaudoPage";
-import ContratosPage from "./pages/Commercial/ContratosPage";
-import ModelosContratosPage from "./pages/Commercial/ModelosContratosPage";
+import ComercialPage from "./pages/Commercial/ComercialPage";
+import ModelosPage from "./pages/Commercial/ModelosPage";
+import EditorContratosPage from "./pages/Commercial/EditorContratosPage";
+import ContratoDetalhePage from "./pages/Commercial/ContratoDetalhePage";
 import AssinaturaExterna from "./pages/Commercial/AssinaturaExterna";
 import LaudoPublicoPage from "./pages/LaudoPublicoPage";
 
@@ -89,7 +91,7 @@ const AppContent = () => {
         <Route path="/print/folha-ponto" element={<FolhaPontoPage />} />
         <Route path="/print/laudo/:laudoId" element={<PrintableLaudoPage />} />
         <Route path="/print/contrato/:contratoId" element={<PrintableContratoPage />} />
-        <Route path="/assinatura/:contratoId" element={<AssinaturaExterna />} />
+        <Route path="/assinatura-externa/:contratoId" element={<AssinaturaExterna />} />
         <Route path="/laudo-publico/:linkPublico" element={<LaudoPublicoPage />} />
         
         <Route path="/*" element={
@@ -126,8 +128,10 @@ const AppContent = () => {
                   <Route path="/qualidade/contra-provas" element={<ContraProvas />} />
                   <Route path="/qualidade/analise" element={<AnaliseQualidade />} />
                   <Route path="/qualidade/laudos" element={<Laudos />} />
-                  <Route path="/comercial/contratos" element={<ContratosPage />} />
-                  <Route path="/comercial/modelos" element={<ModelosContratosPage />} />
+                  <Route path="/comercial" element={<ComercialPage />} />
+                  <Route path="/comercial/modelos" element={<ModelosPage />} />
+                  <Route path="/comercial/novo-contrato" element={<EditorContratosPage />} />
+                  <Route path="/comercial/contrato/:contratoId" element={<ContratoDetalhePage />} />
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
                   <Route path="*" element={<NotFound />} />

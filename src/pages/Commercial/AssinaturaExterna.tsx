@@ -21,14 +21,10 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  validarToken,
-  assinarExternamente
-} from '@/services/commercialService';
-import type { 
-  Contrato, 
-  ResultadoValidacaoToken
-} from '@/types';
+import { TokenVerificacaoService, type ResultadoValidacaoToken } from '@/services/tokenVerificacaoService';
+import type {
+  Contrato
+} from '@/types/index';
 
 export default function AssinaturaExterna() {
   const { contratoId } = useParams<{ contratoId: string }>();
@@ -49,7 +45,8 @@ export default function AssinaturaExterna() {
   } | null>(null);
   const [contratoAssinado, setContratoAssinado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  
+  const [tempoRestante, setTempoRestante] = useState<string>('');
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -85,21 +82,42 @@ export default function AssinaturaExterna() {
       setLoading(true);
       setErro(null);
       
-      const resultado: ResultadoValidacaoToken = await validarToken(contratoId, token);
+      // Obter IP e user agent
+      const ipAddress = await TokenVerificacaoService.obterIP();
+      const userAgent = navigator.userAgent;
+
+      const resultado: ResultadoValidacaoToken = await TokenVerificacaoService.validarToken(
+        contratoId,
+        token,
+        ipAddress,
+        userAgent
+      );
       
-      if (resultado.valido && resultado.contrato) {
-        setTokenValidado(true);
-        setContrato(resultado.contrato);
-        setMostrarContrato(true);
-        toast({
-          title: 'Token válido!',
-          description: 'Você pode agora visualizar e assinar o contrato.'
-        });
+      if (resultado.valido) {
+        // Buscar dados do contrato
+        const contratoData = await TokenVerificacaoService.buscarContratoPorId(contratoId);
+
+        if (contratoData) {
+          setTokenValidado(true);
+          setContrato(contratoData);
+          setMostrarContrato(true);
+          toast({
+            title: 'Token válido!',
+            description: 'Você pode agora visualizar e assinar o contrato.'
+          });
+        } else {
+          setErro('Contrato não encontrado ou não disponível para assinatura');
+          toast({
+            title: 'Contrato não encontrado',
+            description: 'O contrato não está disponível para assinatura.',
+            variant: 'destructive'
+          });
+        }
       } else {
-        setErro(resultado.mensagem);
+        setErro(resultado.erro || 'Token inválido');
         toast({
           title: 'Token inválido',
-          description: resultado.mensagem,
+          description: resultado.erro || 'Token inválido',
           variant: 'destructive'
         });
       }
@@ -129,11 +147,17 @@ export default function AssinaturaExterna() {
     try {
       setAssinando(true);
       
-      await assinarExternamente({
-        contratoId,
-        token,
-        aceitaTermos,
-        dadosGeolocalizacao: geolocalizacao || undefined
+      // Obter dados para assinatura
+      const ipAddress = await TokenVerificacaoService.obterIP();
+      const userAgent = navigator.userAgent;
+
+      await TokenVerificacaoService.registrarAssinaturaExterna(contratoId, {
+        signatario_nome: contrato.assinante_externo_nome,
+        signatario_email: contrato.assinante_externo_email,
+        signatario_documento: contrato.assinante_externo_documento,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        token_validado: token
       });
 
       setContratoAssinado(true);

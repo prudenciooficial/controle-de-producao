@@ -118,6 +118,204 @@ export type Database = {
           },
         ]
       }
+      assinaturas_contratos: {
+        Row: {
+          assinado_em: string | null
+          certificado_dados: Json | null
+          certificado_valido_ate: string | null
+          contrato_id: string
+          criado_em: string | null
+          id: string
+          ip_address: string
+          signatario_documento: string
+          signatario_email: string
+          signatario_nome: string
+          status: string | null
+          timestamp_assinatura: string
+          tipo: string
+          token_validado_em: string | null
+          token_valido_ate: string | null
+          token_verificacao: string | null
+          user_agent: string
+        }
+        Insert: {
+          assinado_em?: string | null
+          certificado_dados?: Json | null
+          certificado_valido_ate?: string | null
+          contrato_id: string
+          criado_em?: string | null
+          id?: string
+          ip_address: string
+          signatario_documento: string
+          signatario_email: string
+          signatario_nome: string
+          status?: string | null
+          timestamp_assinatura: string
+          tipo: string
+          token_validado_em?: string | null
+          token_valido_ate?: string | null
+          token_verificacao?: string | null
+          user_agent: string
+        }
+        Update: {
+          assinado_em?: string | null
+          certificado_dados?: Json | null
+          certificado_valido_ate?: string | null
+          contrato_id?: string
+          criado_em?: string | null
+          id?: string
+          ip_address?: string
+          signatario_documento?: string
+          signatario_email?: string
+          signatario_nome?: string
+          status?: string | null
+          timestamp_assinatura?: string
+          tipo?: string
+          token_validado_em?: string | null
+          token_valido_ate?: string | null
+          token_verificacao?: string | null
+          user_agent?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_contratos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contratos_comerciais: {
+        Row: {
+          assinante_externo_documento: string
+          assinante_externo_email: string
+          assinante_externo_nome: string
+          assinante_interno_id: string | null
+          atualizado_em: string | null
+          conteudo: string
+          criado_em: string | null
+          criado_por: string | null
+          dados_variaveis: Json | null
+          finalizado_em: string | null
+          hash_documento: string | null
+          id: string
+          modelo_id: string
+          pdf_url: string | null
+          status: string | null
+          titulo: string
+        }
+        Insert: {
+          assinante_externo_documento: string
+          assinante_externo_email: string
+          assinante_externo_nome: string
+          assinante_interno_id?: string | null
+          atualizado_em?: string | null
+          conteudo: string
+          criado_em?: string | null
+          criado_por?: string | null
+          dados_variaveis?: Json | null
+          finalizado_em?: string | null
+          hash_documento?: string | null
+          id?: string
+          modelo_id: string
+          pdf_url?: string | null
+          status?: string | null
+          titulo: string
+        }
+        Update: {
+          assinante_externo_documento?: string
+          assinante_externo_email?: string
+          assinante_externo_nome?: string
+          assinante_interno_id?: string | null
+          atualizado_em?: string | null
+          conteudo?: string
+          criado_em?: string | null
+          criado_por?: string | null
+          dados_variaveis?: Json | null
+          finalizado_em?: string | null
+          hash_documento?: string | null
+          id?: string
+          modelo_id?: string
+          pdf_url?: string | null
+          status?: string | null
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_comerciais_assinante_interno_id_fkey"
+            columns: ["assinante_interno_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_comerciais_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_comerciais_modelo_id_fkey"
+            columns: ["modelo_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logs_auditoria_contratos_comerciais: {
+        Row: {
+          contrato_id: string
+          dados_evento: Json | null
+          descricao: string
+          evento: string
+          id: string
+          ip_address: string | null
+          timestamp_evento: string | null
+          user_agent: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          contrato_id: string
+          dados_evento?: Json | null
+          descricao: string
+          evento: string
+          id?: string
+          ip_address?: string | null
+          timestamp_evento?: string | null
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          contrato_id?: string
+          dados_evento?: Json | null
+          descricao?: string
+          evento?: string
+          id?: string
+          ip_address?: string | null
+          timestamp_evento?: string | null
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logs_auditoria_contratos_comerciais_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos_comerciais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logs_auditoria_contratos_comerciais_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       baixas_estoque: {
         Row: {
           atualizado_em: string | null

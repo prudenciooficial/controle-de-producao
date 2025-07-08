@@ -1,6 +1,26 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.analises_amostras (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  coleta_id uuid NOT NULL,
+  numero_amostra integer NOT NULL,
+  umidade numeric,
+  ph numeric,
+  aspecto character varying,
+  cor character varying,
+  odor character varying,
+  sabor character varying,
+  embalagem character varying,
+  umidade_conforme boolean DEFAULT ((umidade >= (40)::numeric) AND (umidade <= (45)::numeric)),
+  ph_conforme boolean DEFAULT ((ph >= 3.6) AND (ph <= 5.6)),
+  observacoes text,
+  data_analise timestamp with time zone DEFAULT now(),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT analises_amostras_pkey PRIMARY KEY (id),
+  CONSTRAINT analises_amostras_coleta_id_fkey FOREIGN KEY (coleta_id) REFERENCES public.coletas_amostras(id)
+);
 CREATE TABLE public.analises_contra_provas (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   contra_prova_id uuid NOT NULL,
@@ -24,6 +44,19 @@ CREATE TABLE public.baixas_estoque (
   atualizado_em timestamp with time zone DEFAULT now(),
   CONSTRAINT baixas_estoque_pkey PRIMARY KEY (id),
   CONSTRAINT baixas_estoque_lote_material_id_fkey FOREIGN KEY (lote_material_id) REFERENCES public.material_batches(id)
+);
+CREATE TABLE public.coletas_amostras (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  lote_producao character varying NOT NULL,
+  data_coleta date NOT NULL,
+  quantidade_total_produzida numeric NOT NULL,
+  quantidade_amostras integer NOT NULL DEFAULT 13,
+  responsavel_coleta character varying NOT NULL,
+  observacoes text,
+  status character varying DEFAULT 'em_andamento'::character varying CHECK (status::text = ANY (ARRAY['em_andamento'::character varying, 'finalizada'::character varying, 'aprovada'::character varying, 'reprovada'::character varying]::text[])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT coletas_amostras_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.configuracoes_empresa (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -51,6 +84,36 @@ CREATE TABLE public.contra_provas (
   quantidade_amostras integer NOT NULL DEFAULT 1,
   CONSTRAINT contra_provas_pkey PRIMARY KEY (id),
   CONSTRAINT contra_provas_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
+);
+CREATE TABLE public.contratos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  numero_contrato character varying NOT NULL UNIQUE,
+  modelo_id uuid,
+  titulo character varying NOT NULL,
+  conteudo text NOT NULL,
+  dados_variaveis jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status character varying NOT NULL DEFAULT 'rascunho'::character varying,
+  url_pdf text,
+  hash_documento character varying,
+  assinante_interno_id uuid,
+  assinante_interno_nome character varying,
+  assinante_interno_email character varying,
+  assinado_internamente_em timestamp with time zone,
+  dados_assinatura_interna jsonb,
+  assinante_externo_nome character varying,
+  assinante_externo_email character varying NOT NULL,
+  assinante_externo_documento character varying,
+  assinado_externamente_em timestamp with time zone,
+  token_assinatura_externa character varying,
+  token_expira_em timestamp with time zone,
+  dados_assinatura_externa jsonb,
+  criado_em timestamp with time zone DEFAULT now(),
+  atualizado_em timestamp with time zone DEFAULT now(),
+  criado_por uuid,
+  CONSTRAINT contratos_pkey PRIMARY KEY (id),
+  CONSTRAINT contratos_assinante_interno_id_fkey FOREIGN KEY (assinante_interno_id) REFERENCES auth.users(id),
+  CONSTRAINT contratos_criado_por_fkey FOREIGN KEY (criado_por) REFERENCES auth.users(id),
+  CONSTRAINT contratos_modelo_id_fkey FOREIGN KEY (modelo_id) REFERENCES public.modelos_contratos(id)
 );
 CREATE TABLE public.feriados (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -97,6 +160,39 @@ CREATE TABLE public.jornadas_trabalho (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT jornadas_trabalho_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.laudos_liberacao (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  coleta_id uuid NOT NULL,
+  numero_laudo integer NOT NULL DEFAULT nextval('laudos_liberacao_numero_laudo_seq'::regclass),
+  marca_produto character varying NOT NULL,
+  gramatura character varying NOT NULL,
+  data_fabricacao date NOT NULL,
+  data_validade date NOT NULL,
+  resultado_geral character varying DEFAULT 'aprovado'::character varying CHECK (resultado_geral::text = ANY (ARRAY['aprovado'::character varying, 'reprovado'::character varying]::text[])),
+  responsavel_liberacao character varying NOT NULL,
+  observacoes text,
+  data_emissao timestamp with time zone DEFAULT now(),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  revisao text DEFAULT '7'::text,
+  link_publico text UNIQUE,
+  CONSTRAINT laudos_liberacao_pkey PRIMARY KEY (id),
+  CONSTRAINT laudos_liberacao_coleta_id_fkey FOREIGN KEY (coleta_id) REFERENCES public.coletas_amostras(id)
+);
+CREATE TABLE public.logs_auditoria_contratos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  contrato_id uuid,
+  tipo_evento character varying NOT NULL,
+  descricao_evento text NOT NULL,
+  dados_evento jsonb,
+  usuario_id uuid,
+  endereco_ip inet,
+  agente_usuario text,
+  data_hora timestamp with time zone DEFAULT now(),
+  CONSTRAINT logs_auditoria_contratos_pkey PRIMARY KEY (id),
+  CONSTRAINT logs_auditoria_contratos_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES auth.users(id),
+  CONSTRAINT logs_auditoria_contratos_contrato_id_fkey FOREIGN KEY (contrato_id) REFERENCES public.contratos(id)
 );
 CREATE TABLE public.losses (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -153,6 +249,19 @@ CREATE TABLE public.mix_batches (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT mix_batches_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.modelos_contratos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nome character varying NOT NULL,
+  descricao text,
+  conteudo text NOT NULL,
+  variaveis jsonb NOT NULL DEFAULT '[]'::jsonb,
+  ativo boolean DEFAULT true,
+  criado_em timestamp with time zone DEFAULT now(),
+  atualizado_em timestamp with time zone DEFAULT now(),
+  criado_por uuid,
+  CONSTRAINT modelos_contratos_pkey PRIMARY KEY (id),
+  CONSTRAINT modelos_contratos_criado_por_fkey FOREIGN KEY (criado_por) REFERENCES auth.users(id)
+);
 CREATE TABLE public.order_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   order_id uuid NOT NULL,
@@ -165,8 +274,8 @@ CREATE TABLE public.order_items (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT order_items_pkey PRIMARY KEY (id),
-  CONSTRAINT order_items_material_id_fkey FOREIGN KEY (material_id) REFERENCES public.materials(id),
-  CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
+  CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id),
+  CONSTRAINT order_items_material_id_fkey FOREIGN KEY (material_id) REFERENCES public.materials(id)
 );
 CREATE TABLE public.orders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -240,7 +349,17 @@ CREATE TABLE public.reclamacoes (
   valor_ressarcimento numeric,
   data_resolucao timestamp with time zone,
   lote character varying,
+  tipos_reclamacao ARRAY,
   CONSTRAINT reclamacoes_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.responsaveis_tecnicos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nome text NOT NULL,
+  funcao text NOT NULL,
+  carteira_tecnica text NOT NULL,
+  assinatura_url text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT responsaveis_tecnicos_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.sale_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -253,8 +372,8 @@ CREATE TABLE public.sale_items (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT sale_items_pkey PRIMARY KEY (id),
   CONSTRAINT sale_items_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES public.sales(id),
-  CONSTRAINT sale_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id),
-  CONSTRAINT sale_items_produced_item_id_fkey FOREIGN KEY (produced_item_id) REFERENCES public.produced_items(id)
+  CONSTRAINT sale_items_produced_item_id_fkey FOREIGN KEY (produced_item_id) REFERENCES public.produced_items(id),
+  CONSTRAINT sale_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
 CREATE TABLE public.sales (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -300,6 +419,19 @@ CREATE TABLE public.system_logs (
   CONSTRAINT system_logs_pkey PRIMARY KEY (id),
   CONSTRAINT system_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
+CREATE TABLE public.tokens_verificacao_contratos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  contrato_id uuid,
+  token character varying NOT NULL,
+  email character varying NOT NULL,
+  expira_em timestamp with time zone NOT NULL,
+  usado_em timestamp with time zone,
+  endereco_ip inet,
+  agente_usuario text,
+  criado_em timestamp with time zone DEFAULT now(),
+  CONSTRAINT tokens_verificacao_contratos_pkey PRIMARY KEY (id),
+  CONSTRAINT tokens_verificacao_contratos_contrato_id_fkey FOREIGN KEY (contrato_id) REFERENCES public.contratos(id)
+);
 CREATE TABLE public.used_materials (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   production_batch_id uuid NOT NULL,
@@ -310,8 +442,8 @@ CREATE TABLE public.used_materials (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   mix_count_used integer,
   CONSTRAINT used_materials_pkey PRIMARY KEY (id),
-  CONSTRAINT used_materials_material_batch_id_fkey FOREIGN KEY (material_batch_id) REFERENCES public.material_batches(id),
-  CONSTRAINT used_materials_production_batch_id_fkey FOREIGN KEY (production_batch_id) REFERENCES public.production_batches(id)
+  CONSTRAINT used_materials_production_batch_id_fkey FOREIGN KEY (production_batch_id) REFERENCES public.production_batches(id),
+  CONSTRAINT used_materials_material_batch_id_fkey FOREIGN KEY (material_batch_id) REFERENCES public.material_batches(id)
 );
 CREATE TABLE public.used_materials_mix (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -323,6 +455,6 @@ CREATE TABLE public.used_materials_mix (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT used_materials_mix_pkey PRIMARY KEY (id),
-  CONSTRAINT used_materials_mix_material_batch_id_fkey FOREIGN KEY (material_batch_id) REFERENCES public.material_batches(id),
-  CONSTRAINT used_materials_mix_mix_batch_id_fkey FOREIGN KEY (mix_batch_id) REFERENCES public.mix_batches(id)
+  CONSTRAINT used_materials_mix_mix_batch_id_fkey FOREIGN KEY (mix_batch_id) REFERENCES public.mix_batches(id),
+  CONSTRAINT used_materials_mix_material_batch_id_fkey FOREIGN KEY (material_batch_id) REFERENCES public.material_batches(id)
 );

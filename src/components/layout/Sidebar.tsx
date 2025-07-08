@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield, FileText } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield, FileText, FileImage, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,12 +56,13 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         { name: "Cadastro", path: "/cadastro", icon: Settings, module: "general_settings" }
       ]
     },
-    { 
-      name: "Comercial", 
-      icon: FileText, 
+    {
+      name: "Comercial",
+      icon: FileText,
       module: "commercial",
       subItems: [
-        { name: "Contratos", path: "/comercial/contratos", icon: FileText }
+        { name: "Contratos", path: "/comercial", icon: FileText },
+        { name: "Modelos", path: "/comercial/modelos", icon: FileImage }
       ]
     },
     { 
@@ -117,7 +118,10 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         '/estoque': 'estoque',
         '/perdas': 'perdas',
         '/cadastro': 'cadastro',
-        '/comercial/contratos': 'contratos',
+        '/comercial': 'comercial',
+        '/comercial/modelos': 'comercial',
+        '/comercial/novo-contrato': 'comercial',
+        '/comercial/contrato': 'comercial',
         '/recursos-humanos': 'recursos_humanos',
         '/qualidade/reclamacoes': 'reclamacoes',
         '/qualidade/contra-provas': 'contra_provas',
