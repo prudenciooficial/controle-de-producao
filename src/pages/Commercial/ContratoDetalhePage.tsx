@@ -11,10 +11,7 @@ import PDFViewer from '@/components/Commercial/PDFViewer';
 import AuditoriaViewer from '@/components/Commercial/AuditoriaViewer';
 import NotificacoesManager from '@/components/Commercial/NotificacoesManager';
 import ValidacaoJuridicaViewer from '@/components/Commercial/ValidacaoJuridicaViewer';
-import TesteCertificados from '@/components/Commercial/TesteCertificados';
-import EmailConfigViewer from '@/components/Commercial/EmailConfigViewer';
-import EmailTester from '@/components/Commercial/EmailTester';
-import GoogleWorkspaceSetup from '@/components/Commercial/GoogleWorkspaceSetup';
+// Componentes de teste removidos - movidos para Administrador > Configurações de Email
 // import SMTPTester from '@/components/Commercial/SMTPTester';
 
 import { TokenVerificacaoService } from '@/services/tokenVerificacaoService';
@@ -382,20 +379,7 @@ export default function ContratoDetalhePage() {
             status={contrato.status}
           />
 
-          {/* Teste de Certificados - TEMPORÁRIO */}
-          <TesteCertificados />
-
-          {/* Configuração de Email */}
-          <EmailConfigViewer />
-
-          {/* Teste SMTP Real */}
-          {/* <SMTPTester /> */}
-
-          {/* Configuração Google Workspace */}
-          <GoogleWorkspaceSetup />
-
-          {/* Teste de Email */}
-          <EmailTester />
+          {/* Seções de teste removidas - movidas para Administrador > Configurações de Email */}
 
           {/* Validação Jurídica */}
           <ValidacaoJuridicaViewer

@@ -191,8 +191,8 @@ export default function AssinaturaExterna() {
             <p className="text-gray-600 mb-4">
               Sua assinatura foi registrada com sucesso. O contrato foi concluído e todas as partes foram notificadas.
             </p>
-            <div className="bg-gray-100 rounded-lg p-4 text-sm text-gray-700">
-              <p><strong>Contrato:</strong> {contrato?.numeroContrato}</p>
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300">
+              <p><strong>Contrato:</strong> {contrato?.numero_contrato || contrato?.numeroContrato || 'N/A'}</p>
               <p><strong>Data:</strong> {new Date().toLocaleString('pt-BR')}</p>
               <p><strong>Status:</strong> Concluído</p>
             </div>
@@ -203,17 +203,17 @@ export default function AssinaturaExterna() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-8 h-8 text-blue-600" />
+          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Assinatura de Contrato
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Sistema de assinatura eletrônica segura
           </p>
         </div>
@@ -247,7 +247,7 @@ export default function AssinaturaExterna() {
                     maxLength={6}
                     className="text-center text-2xl tracking-widest font-mono"
                   />
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     Digite o código de 6 dígitos recebido por e-mail
                   </p>
                 </div>
@@ -284,38 +284,49 @@ export default function AssinaturaExterna() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Número do Contrato</Label>
-                    <p className="font-mono text-lg">{contrato.numeroContrato}</p>
+                    <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">Número do Contrato</Label>
+                    <p className="font-mono text-lg dark:text-gray-100">
+                      {contrato.numero_contrato || contrato.numeroContrato || 'N/A'}
+                    </p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Título</Label>
-                    <p className="font-medium">{contrato.titulo}</p>
+                    <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">Título</Label>
+                    <p className="font-medium dark:text-gray-100">{contrato.titulo}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Cliente</Label>
+                    <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">Cliente</Label>
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-gray-400" />
-                      <span>{contrato.assinanteExternoNome}</span>
+                      <span className="dark:text-gray-100">
+                        {contrato.assinante_externo_nome || contrato.assinanteExternoNome || 'N/A'}
+                      </span>
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">E-mail</Label>
+                    <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">E-mail</Label>
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-gray-400" />
-                      <span>{contrato.assinanteExternoEmail}</span>
+                      <span className="dark:text-gray-100">
+                        {contrato.assinante_externo_email || contrato.assinanteExternoEmail || 'N/A'}
+                      </span>
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Status</Label>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</Label>
+                    <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
                       Aguardando sua assinatura
                     </Badge>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Data de Criação</Label>
+                    <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Criação</Label>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-gray-400" />
-                      <span>{contrato.criadoEm.toLocaleDateString('pt-BR')}</span>
+                      <span className="dark:text-gray-100">
+                        {(contrato.criado_em || contrato.criadoEm)
+                          ? new Date(contrato.criado_em || contrato.criadoEm).toLocaleDateString('pt-BR')
+                          : 'Data não disponível'
+                        }
+                      </span>
                     </div>
                   </div>
                 </div>

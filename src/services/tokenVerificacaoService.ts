@@ -215,74 +215,67 @@ export class TokenVerificacaoService {
     }
   ): Promise<void> {
     try {
-      const timestamp = new Date().toISOString();
+      console.log('🔐 Registrando assinatura externa via Edge Function...');
 
-      // Registrar assinatura
-      const { error: assinaturaError } = await supabase
-        .from('assinaturas_contratos_comerciais')
-        .insert([{
-          contrato_id: contratoId,
-          tipo: 'externa_simples',
-          signatario_nome: dadosAssinatura.signatario_nome,
-          signatario_email: dadosAssinatura.signatario_email,
-          signatario_documento: dadosAssinatura.signatario_documento,
-          ip_address: dadosAssinatura.ip_address,
-          user_agent: dadosAssinatura.user_agent,
-          timestamp_assinatura: timestamp,
-          status: 'assinado',
-          assinado_em: timestamp,
-          token_verificacao: dadosAssinatura.token_validado,
-          token_validado_em: timestamp
-        }]);
-
-      if (assinaturaError) throw assinaturaError;
-
-      // Atualizar status do contrato
-      const { error: contratoError } = await supabase
-        .from('contratos_comerciais')
-        .update({
-          status: 'concluido',
-          finalizado_em: timestamp,
-          atualizado_em: timestamp
-        })
-        .eq('id', contratoId);
-
-      if (contratoError) throw contratoError;
-
-      // Coletar evidência jurídica da assinatura externa
-      await ValidacaoJuridicaService.coletarEvidenciaTokenVerificacao(contratoId, {
-        token_verificacao: token,
-        criado_em: tokenData.criado_em,
-        valido_ate: tokenData.valido_ate,
-        usado_em: timestamp,
-        ip_uso: evidencias.ip_address,
-        user_agent_uso: evidencias.user_agent,
-        email_destinatario: tokenData.email_destinatario,
-        signatario_nome: dadosAssinatura.signatario_nome
+      // Usar Edge Function para registrar assinatura (bypassa RLS)
+      const { data, error } = await supabase.functions.invoke('register-external-signature', {
+        body: {
+          contratoId,
+          dadosAssinatura
+        }
       });
 
-      // Notificar finalização e cancelar lembretes
-      await NotificacaoAutomaticaService.notificarFinalizacaoContrato(contratoId);
+      if (error) {
+        console.error('Erro na Edge Function:', error);
+        throw new Error(`Erro ao registrar assinatura: ${error.message}`);
+      }
 
-      // Registrar log de auditoria
-      await supabase
-        .from('logs_auditoria_contratos_comerciais')
-        .insert([{
-          contrato_id: contratoId,
-          evento: 'assinado_externamente',
-          descricao: `Contrato assinado por ${dadosAssinatura.signatario_nome} via token de verificação`,
-          dados_evento: {
-            signatario: dadosAssinatura.signatario_nome,
-            email: dadosAssinatura.signatario_email,
-            documento: dadosAssinatura.signatario_documento,
-            token_usado: dadosAssinatura.token_validado,
-            ip: dadosAssinatura.ip_address,
-            user_agent: dadosAssinatura.user_agent
-          },
-          ip_address: dadosAssinatura.ip_address,
-          user_agent: dadosAssinatura.user_agent,
-          timestamp_evento: timestamp
-        }]);
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erro desconhecido ao registrar assinatura');
+      }
+
+      console.log('✅ Assinatura registrada com sucesso via Edge Function');
+
+      // A Edge Function já cuida de:
+      // - Registrar assinatura
+      // - Atualizar status do contrato
+      // - Registrar log de auditoria
+
+      // Ainda precisamos fazer algumas operações adicionais aqui:
+
+      // Buscar dados do token para evidências jurídicas
+      const { data: tokenData } = await supabase
+        .from('tokens_verificacao_contratos')
+        .select('*')
+        .eq('token', dadosAssinatura.token_validado)
+        .single();
+
+      if (tokenData) {
+        // Coletar evidência jurídica da assinatura externa
+        try {
+          await ValidacaoJuridicaService.coletarEvidenciaTokenVerificacao(contratoId, {
+            token_verificacao: dadosAssinatura.token_validado,
+            criado_em: tokenData.criado_em,
+            valido_ate: tokenData.valido_ate,
+            usado_em: new Date().toISOString(),
+            ip_uso: dadosAssinatura.ip_address,
+            user_agent_uso: dadosAssinatura.user_agent,
+            email_destinatario: tokenData.email_destinatario,
+            signatario_nome: dadosAssinatura.signatario_nome
+          });
+        } catch (evidenciaError) {
+          console.warn('Erro ao coletar evidência (não crítico):', evidenciaError);
+          // Não falhar a operação principal
+        }
+      }
+
+      // Notificar finalização e cancelar lembretes
+      try {
+        await NotificacaoAutomaticaService.notificarFinalizacaoContrato(contratoId);
+      } catch (notificacaoError) {
+        console.warn('Erro ao notificar finalização (não crítico):', notificacaoError);
+        // Não falhar a operação principal
+      }
 
     } catch (error) {
       console.error('Erro ao registrar assinatura externa:', error);

@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { UserDialog } from '@/components/users/UserDialog';
 import { UserPermissionsDialog } from '@/components/users/UserPermissionsDialog';
 import { logSystemEvent } from '@/services/logService';
+// TesteEmail removido - movido para Administrador > Configurações de Email
 
 interface UserData {
   id: string;
@@ -267,6 +268,8 @@ export default function Users() {
             Novo Usuário
           </Button>
         </div>
+
+        {/* TesteEmail removido - movido para Administrador > Configurações de Email */}
 
         <Card>
           <CardHeader>

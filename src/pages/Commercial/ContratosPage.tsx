@@ -25,7 +25,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
+import {
   buscarContratos,
   buscarModelosContratos,
   criarContrato,
@@ -35,6 +35,9 @@ import {
   finalizarContratoEIniciarAssinaturas,
   assinarInternamente
 } from '@/services/commercialService';
+import { PDFService } from '@/services/pdfService';
+import { MinIOService } from '@/services/minioService';
+import { supabase } from '@/integrations/supabase/client';
 import type { 
   Contrato, 
   StatusContrato, 
@@ -248,9 +251,54 @@ export default function ContratosPage() {
     window.open(printUrl, '_blank');
   };
 
-  const handleBaixarContrato = (contratoId: string) => {
-    const printUrl = `/print/contrato/${contratoId}`;
-    window.open(printUrl, '_blank');
+  const handleBaixarContrato = async (contratoId: string) => {
+    try {
+      // Buscar dados do contrato
+      const { data: contrato, error } = await supabase
+        .from('contratos_comerciais')
+        .select(`
+          *,
+          modelo:modelo_id(nome),
+          assinaturas:assinaturas_contratos_comerciais(*)
+        `)
+        .eq('id', contratoId)
+        .single();
+
+      if (error) throw error;
+      if (!contrato) throw new Error('Contrato não encontrado');
+
+      // Gerar PDF do contrato
+      const resultadoPDF = await PDFService.gerarPDFContrato(contrato);
+
+      // Baixar o arquivo
+      const fileName = resultadoPDF.pdfUrl.split('/').pop() || `contrato_${contratoId}.pdf`;
+      const blob = await MinIOService.downloadFile(fileName);
+
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `contrato_${contratoId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "Download iniciado",
+          description: "O arquivo PDF está sendo baixado.",
+        });
+      } else {
+        throw new Error('Não foi possível baixar o arquivo');
+      }
+    } catch (error) {
+      console.error('Erro ao baixar contrato:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro no download",
+        description: "Não foi possível baixar o contrato.",
+      });
+    }
   };
 
   const handleEditarContrato = (contrato: Contrato) => {

@@ -158,12 +158,102 @@ const ContraProvas = () => {
     }
   }, []);
 
+
+
+  // Criar análises manualmente (sem depender do trigger)
+  const criarAnalisesManuais = async (contraProvaId: string, dataFabricacao: string) => {
+    const diasAnalise = [30, 60, 90, 120, 150, 180];
+    const analises = [];
+
+    for (const dia of diasAnalise) {
+      const dataAnalise = new Date(dataFabricacao);
+      dataAnalise.setDate(dataAnalise.getDate() + dia);
+
+      analises.push({
+        contra_prova_id: contraProvaId,
+        dia_analise: dia,
+        data_analise: dataAnalise.toISOString().split('T')[0],
+        status_analise: 'pendente'
+      });
+    }
+
+    const { error } = await supabase
+      .from('analises_contra_provas')
+      .insert(analises);
+
+    if (error) {
+      console.error('Erro ao criar análises manuais:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${analises.length} análises criadas manualmente`);
+  };
+
+  // Verificar integridade do sistema de contra-provas
+  const verificarIntegridade = async () => {
+    try {
+      // Verificar contra-provas sem análises
+      const { data: contraProvas } = await supabase
+        .from('contra_provas')
+        .select('id, lote_produto');
+
+      const { data: analises } = await supabase
+        .from('analises_contra_provas')
+        .select('contra_prova_id');
+
+      if (contraProvas && analises) {
+        const contraProvaIds = contraProvas.map(cp => cp.id);
+        const analiseContraProvaIds = [...new Set(analises.map(a => a.contra_prova_id))];
+
+        const contraProvasSemAnalises = contraProvas.filter(cp =>
+          !analiseContraProvaIds.includes(cp.id)
+        );
+
+        if (contraProvasSemAnalises.length > 0) {
+          console.warn('⚠️ Contra-provas sem análises:', contraProvasSemAnalises.length);
+
+          // Criar análises para contra-provas órfãs
+          for (const contraProva of contraProvasSemAnalises) {
+            try {
+              const { data: cpCompleta } = await supabase
+                .from('contra_provas')
+                .select('data_fabricacao')
+                .eq('id', contraProva.id)
+                .single();
+
+              if (cpCompleta) {
+                await criarAnalisesManuais(contraProva.id, cpCompleta.data_fabricacao);
+              }
+            } catch (error) {
+              console.error(`Erro ao criar análises para ${contraProva.id}:`, error);
+            }
+          }
+        }
+
+        // Verificar análises órfãs
+        const analiseOrfas = analises.filter(a =>
+          !contraProvaIds.includes(a.contra_prova_id)
+        );
+
+        if (analiseOrfas.length > 0) {
+          console.warn('⚠️ Análises órfãs encontradas:', analiseOrfas.length);
+        }
+      }
+
+    } catch (error) {
+      console.error('Erro ao verificar integridade:', error);
+    }
+  };
+
   // Carregar contra-provas
   const loadContraProvas = useCallback(async () => {
     try {
       setIsLoading(true);
       setShowTableMissingAlert(false);
-      
+
+      // Verificar integridade do sistema
+      await verificarIntegridade();
+
       // Buscar as contra-provas
       const { data: contraProvasData, error: contraProvasError } = await supabase
         .from('contra_provas')
@@ -423,19 +513,136 @@ const ContraProvas = () => {
           description: "Contra-prova atualizada com sucesso!",
         });
       } else {
-        // Criar nova
-        const { error } = await supabase
-          .from('contra_provas')
-          .insert({
-            lote_produto: formData.lote_produto,
-            product_id: formData.product_id,
-            data_fabricacao: formData.data_fabricacao,
-            data_validade: formData.data_validade,
-            quantidade_amostras: parseInt(formData.quantidade_amostras),
-            observacoes: formData.observacoes || null
-          });
+        // Verificar se já existe uma contra-prova com o mesmo lote e produto
+        try {
+          const { data: existingContraProva, error: checkError } = await supabase
+            .from('contra_provas')
+            .select('id, lote_produto')
+            .eq('lote_produto', formData.lote_produto)
+            .eq('product_id', formData.product_id)
+            .maybeSingle(); // Use maybeSingle() em vez de single()
 
-        if (error) throw error;
+          if (checkError) {
+            console.warn('⚠️ Erro ao verificar duplicata (continuando):', checkError);
+          }
+
+          if (existingContraProva) {
+            toast({
+              variant: "destructive",
+              title: "Contra-prova já existe",
+              description: `Já existe uma contra-prova para o lote "${formData.lote_produto}" deste produto.`,
+            });
+            return;
+          }
+        } catch (checkError) {
+          console.warn('⚠️ Falha na verificação de duplicata, continuando:', checkError);
+        }
+
+        // Nota: Limpeza automática removida - use o botão "🧹 Limpar Dados" se necessário
+
+        // Criar nova
+        console.log('📝 Dados da contra-prova:', {
+          lote_produto: formData.lote_produto,
+          product_id: formData.product_id,
+          data_fabricacao: formData.data_fabricacao,
+          data_validade: formData.data_validade,
+          quantidade_amostras: parseInt(formData.quantidade_amostras),
+          observacoes: formData.observacoes || null
+        });
+
+        // Tentar inserção com tratamento específico para trigger duplicado
+        let data, error;
+
+        try {
+          // Primeira tentativa: inserção normal
+          const result = await supabase
+            .from('contra_provas')
+            .insert({
+              lote_produto: formData.lote_produto,
+              product_id: formData.product_id,
+              data_fabricacao: formData.data_fabricacao,
+              data_validade: formData.data_validade,
+              quantidade_amostras: parseInt(formData.quantidade_amostras),
+              observacoes: formData.observacoes || null
+            })
+            .select();
+
+          data = result.data;
+          error = result.error;
+
+        } catch (insertError: any) {
+          // Se der erro de constraint, tentar recuperar
+          if (insertError?.code === '23505' && insertError?.message?.includes('unique_analise_dia')) {
+            console.log('🔄 Erro de trigger detectado, tentando recuperação...');
+
+            // Buscar a contra-prova que pode ter sido criada
+            const { data: contraProvaExistente } = await supabase
+              .from('contra_provas')
+              .select('*')
+              .eq('lote_produto', formData.lote_produto)
+              .eq('product_id', formData.product_id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (contraProvaExistente) {
+              console.log('✅ Contra-prova encontrada após erro de trigger:', contraProvaExistente.id);
+              data = [contraProvaExistente];
+              error = null;
+            } else {
+              throw insertError;
+            }
+          } else {
+            throw insertError;
+          }
+        }
+
+        if (error) {
+          console.error('❌ Erro detalhado ao inserir contra-prova:', error);
+
+          // Se ainda der erro, tentar criação manual (sem trigger)
+          if (error?.code === '23505' && error?.message?.includes('unique_analise_dia')) {
+            console.log('🔄 Tentando criação manual sem trigger...');
+
+            try {
+              // Desabilitar trigger temporariamente não é possível via client
+              // Então vamos criar sem trigger e adicionar análises depois
+              const { data: manualData, error: manualError } = await supabase
+                .from('contra_provas')
+                .insert({
+                  lote_produto: formData.lote_produto + '_manual_' + Date.now(),
+                  product_id: formData.product_id,
+                  data_fabricacao: formData.data_fabricacao,
+                  data_validade: formData.data_validade,
+                  quantidade_amostras: parseInt(formData.quantidade_amostras),
+                  observacoes: (formData.observacoes || '') + ' [Criado manualmente devido a erro de trigger]'
+                })
+                .select();
+
+              if (manualError) throw manualError;
+
+              // Criar análises manualmente
+              if (manualData && manualData[0]) {
+                await criarAnalisesManuais(manualData[0].id, formData.data_fabricacao);
+                data = manualData;
+                error = null;
+
+                toast({
+                  title: "Contra-prova criada manualmente",
+                  description: "Devido a problemas com o trigger, a contra-prova foi criada manualmente com sucesso.",
+                });
+              }
+
+            } catch (manualError) {
+              console.error('❌ Erro na criação manual:', manualError);
+              throw error; // Usar erro original
+            }
+          } else {
+            throw error;
+          }
+        } else {
+          console.log('✅ Contra-prova criada:', data);
+        }
 
         toast({
           title: "Sucesso",
@@ -446,12 +653,41 @@ const ContraProvas = () => {
       setDialogOpen(false);
       resetForm();
       loadContraProvas();
-    } catch (error) {
-      // Erro ao salvar contra-prova
+    } catch (error: any) {
+      console.error('❌ Erro completo:', error);
+
+      let errorMessage = "Erro ao salvar contra-prova. Tente novamente.";
+      let shouldRetry = false;
+
+      // Tratar erros específicos
+      if (error?.code === '23505') {
+        if (error?.message?.includes('unique_analise_dia')) {
+          errorMessage = "Erro interno: análises duplicadas detectadas. Tentando limpar dados inconsistentes...";
+          shouldRetry = true;
+        } else {
+          errorMessage = "Já existe uma contra-prova com estes dados. Verifique o lote e produto.";
+        }
+      } else if (error?.code === '23503') {
+        errorMessage = "Produto selecionado não é válido. Selecione um produto da lista.";
+      } else if (error?.message?.includes('409')) {
+        errorMessage = "Conflito de dados. Verifique se não há duplicatas ou dados inconsistentes.";
+      } else if (error?.message) {
+        errorMessage = `Erro: ${error.message}`;
+      }
+
+      // Se for erro de análises duplicadas, sugerir limpeza manual
+      if (shouldRetry) {
+        toast({
+          title: "Dados inconsistentes detectados",
+          description: "Clique no botão '🧹 Limpar Dados' e tente novamente.",
+        });
+        return;
+      }
+
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: "Erro ao salvar contra-prova. Tente novamente.",
+        title: "Erro ao salvar contra-prova",
+        description: errorMessage,
       });
     }
   };

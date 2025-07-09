@@ -259,16 +259,21 @@ export class AuditoriaService {
   }
 
   static async registrarValidacaoToken(contratoId: string, token: string, sucesso: boolean, motivo?: string): Promise<void> {
-    await this.registrarEvento(
-      contratoId,
-      sucesso ? 'token_validado' : 'token_rejeitado',
-      sucesso ? 'Token validado com sucesso' : `Token rejeitado: ${motivo}`,
-      {
-        token_utilizado: token,
-        validacao_sucesso: sucesso,
-        motivo_rejeicao: motivo
-      }
-    );
+    try {
+      // Para assinaturas externas, apenas logar sem tentar inserir no banco
+      console.log(`[AUDITORIA EXTERNA] Token ${sucesso ? 'validado' : 'rejeitado'}:`, {
+        contrato: contratoId,
+        token: token.substring(0, 3) + '***', // Mascarar token
+        sucesso,
+        motivo,
+        timestamp: new Date().toISOString()
+      });
+
+      // Não tentar registrar no banco para usuários não autenticados
+      // O registro será feito pela Edge Function quando a assinatura for concluída
+    } catch (error) {
+      console.warn('Erro ao registrar validação de token (não crítico):', error);
+    }
   }
 
   static async registrarGeracaoPDF(contratoId: string, dadosPDF: any, usuarioId?: string): Promise<void> {
@@ -384,7 +389,7 @@ export class AuditoriaService {
         total_eventos: logs.length,
         eventos_por_tipo: eventosPorTipo,
         linha_tempo: logs,
-        evidencias_criticas,
+        evidencias_criticas: evidenciasCriticas,
         conformidade
       };
 

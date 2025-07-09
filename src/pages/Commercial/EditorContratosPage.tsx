@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { PDFService } from '@/services/pdfService';
 
 interface ModeloContrato {
   id: string;
@@ -250,6 +251,51 @@ export default function EditorContratosPage() {
 
       if (error) throw error;
 
+      // Gerar PDF automaticamente após criação
+      try {
+        console.log('🔄 Gerando PDF automaticamente para contrato:', contrato.id);
+
+        const dadosContratoPDF = {
+          id: contrato.id,
+          titulo: contrato.titulo,
+          conteudo: contrato.conteudo,
+          assinante_externo_nome: contrato.assinante_externo_nome,
+          assinante_externo_email: contrato.assinante_externo_email,
+          assinante_externo_documento: contrato.assinante_externo_documento,
+          criado_em: contrato.criado_em,
+          dados_variaveis: contrato.dados_variaveis,
+          modelo: { nome: modeloSelecionado!.nome }
+        };
+
+        const resultadoPDF = await PDFService.gerarPDFCompleto(contrato.id);
+
+        console.log('✅ PDF gerado automaticamente:', resultadoPDF.pdfUrl);
+
+        // Registrar log de PDF gerado
+        await supabase
+          .from('logs_auditoria_contratos_comerciais')
+          .insert([{
+            contrato_id: contrato.id,
+            evento: 'pdf_gerado_automaticamente',
+            descricao: 'PDF gerado automaticamente após criação do contrato',
+            dados_evento: {
+              pdf_url: resultadoPDF.pdfUrl,
+              hash_sha256: resultadoPDF.hashSHA256,
+              tamanho_bytes: resultadoPDF.tamanhoBytes
+            },
+            usuario_id: user.data.user?.id
+          }]);
+
+      } catch (pdfError) {
+        console.error('⚠️ Erro ao gerar PDF automaticamente:', pdfError);
+        // Não falhar o processo se o PDF não for gerado
+        toast({
+          title: 'Aviso',
+          description: 'Contrato criado, mas houve erro na geração automática do PDF. Você pode gerar manualmente.',
+          variant: 'default'
+        });
+      }
+
       // Registrar log de auditoria
       await supabase
         .from('logs_auditoria_contratos_comerciais')
@@ -263,7 +309,7 @@ export default function EditorContratosPage() {
 
       toast({
         title: 'Sucesso',
-        description: 'Contrato finalizado! Processo de assinatura iniciado.'
+        description: 'Contrato finalizado! PDF gerado automaticamente. Processo de assinatura iniciado.'
       });
 
       navigate('/comercial');

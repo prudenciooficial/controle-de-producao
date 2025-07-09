@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield, FileText, FileImage, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield, FileText, FileImage, BarChart3, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -91,6 +91,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       permissionCheck: () => hasRole('admin') || canViewSystemLogs(),
       subItems: [
         { name: "Usuários", path: "/usuarios", icon: Users },
+        { name: "Testes", path: "/admin/email-config", icon: Mail },
         { name: "Logs do Sistema", path: "/logs", icon: ScrollText },
         { name: "Debug Permissões", path: "/debug-permissions", icon: FileSearch }
       ]
@@ -129,6 +130,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         '/qualidade/laudos': 'laudos',
         '/rastreabilidade': 'rastreabilidade',
         '/usuarios': 'usuarios',
+        '/admin/email-config': 'admin',
         '/logs': 'logs',
         '/debug-permissions': 'debug_permissions'
       };

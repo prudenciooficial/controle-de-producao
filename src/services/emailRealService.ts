@@ -42,7 +42,7 @@ export class EmailRealService {
           html: emailData.html.substring(0, 200) + '...',
           timestamp: new Date().toISOString()
         });
-        
+
         return {
           success: true,
           messageId: `dev-${Date.now()}`
@@ -87,15 +87,29 @@ export class EmailRealService {
       };
 
       // Chamar Supabase Edge Function
+      console.log('🚀 Chamando Edge Function send-email...');
+      console.log('📦 Payload:', {
+        to: functionPayload.to,
+        subject: functionPayload.subject,
+        from: functionPayload.from,
+        smtp_host: functionPayload.smtp.host
+      });
+
       const { data, error } = await supabase.functions.invoke('send-email', {
         body: functionPayload
       });
 
       if (error) {
-        console.error('Erro na Edge Function:', error);
-        console.log('Detalhes do erro:', error);
+        console.error('❌ Erro na Edge Function:', error);
+        console.error('📋 Detalhes completos do erro:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
 
         // Fallback para envio via API externa
+        console.log('🔄 Tentando fallback...');
         return await this.enviarViaAPIExterna(emailData);
       }
 

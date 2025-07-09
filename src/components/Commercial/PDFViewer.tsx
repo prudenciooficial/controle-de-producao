@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { PDFService, type DadosContratoPDF } from '@/services/pdfService';
+import { MinIOService } from '@/services/minioService';
 
 interface PDFViewerProps {
   contrato: DadosContratoPDF;
@@ -50,12 +51,76 @@ export default function PDFViewer({
     PDFService.abrirParaImpressao(contrato);
   };
 
-  const handleBaixarPDF = () => {
-    if (pdfGerado?.pdfUrl) {
-      window.open(pdfGerado.pdfUrl, '_blank');
-    } else {
-      // Gerar e baixar
-      handleGerarPDF();
+  const handleBaixarPDF = async () => {
+    try {
+      let urlPDF = pdfGerado?.pdfUrl;
+
+      // Se não há PDF gerado, gerar primeiro
+      if (!urlPDF) {
+        const resultado = await PDFService.gerarPDFContrato(contrato);
+        setPdfGerado(resultado);
+        urlPDF = resultado.pdfUrl;
+      }
+
+      if (urlPDF) {
+        // Extrair nome do arquivo da URL
+        const fileName = urlPDF.split('/').pop() || `contrato_${contrato.id}.pdf`;
+
+        // Tentar baixar arquivo
+        const blob = await MinIOService.downloadFile(fileName);
+
+        if (blob) {
+          // Criar download
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          toast({
+            title: "Download iniciado",
+            description: "O arquivo está sendo baixado.",
+          });
+        } else {
+          // Fallback: gerar novo PDF e baixar diretamente
+          console.log('🔄 Fallback: gerando novo PDF para download...');
+          const resultado = await PDFService.gerarPDFContrato(contrato);
+
+          // Se o resultado tem uma URL local, usar diretamente
+          if (resultado.pdfUrl.includes('local-storage')) {
+            const localFileName = resultado.pdfUrl.split('/').pop() || fileName;
+            const localStorage = (window as any).localPDFStorage;
+            if (localStorage && localStorage[localFileName]) {
+              const link = document.createElement('a');
+              link.href = localStorage[localFileName];
+              link.download = fileName;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+
+              toast({
+                title: "Download iniciado",
+                description: "Arquivo baixado do storage local.",
+              });
+              return;
+            }
+          }
+
+          throw new Error('Não foi possível baixar o arquivo');
+        }
+      } else {
+        throw new Error('URL do PDF não disponível');
+      }
+    } catch (error) {
+      console.error('Erro ao baixar PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro no download",
+        description: "Não foi possível baixar o arquivo PDF.",
+      });
     }
   };
 

@@ -29,13 +29,27 @@ export default function AuditoriaViewer({
   const carregarDadosAuditoria = async () => {
     setLoading(true);
     try {
-      const [logsData, relatorioData] = await Promise.all([
-        AuditoriaService.buscarLogsContrato(contratoId),
-        mostrarRelatorio ? AuditoriaService.gerarRelatorioAuditoria(contratoId) : Promise.resolve(null)
-      ]);
-
+      // Carregar logs sempre
+      const logsData = await AuditoriaService.buscarLogsContrato(contratoId);
       setLogs(logsData);
-      setRelatorio(relatorioData);
+
+      // Carregar relatório apenas se solicitado
+      if (mostrarRelatorio) {
+        try {
+          const relatorioData = await AuditoriaService.gerarRelatorioAuditoria(contratoId);
+          setRelatorio(relatorioData);
+        } catch (relatorioError) {
+          console.error('Erro ao gerar relatório de auditoria:', relatorioError);
+          setRelatorio(null);
+          toast({
+            variant: "destructive",
+            title: "Erro no Relatório",
+            description: "Erro ao gerar relatório de auditoria. Logs carregados normalmente.",
+          });
+        }
+      } else {
+        setRelatorio(null);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados de auditoria:', error);
       toast({

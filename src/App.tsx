@@ -13,6 +13,8 @@ import { ThemeProvider } from "./components/theme/ThemeProvider";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
 import { initializeOfflineSystem } from "./services/initialization/OfflineInitializer";
+import { JobsPDFService } from "./services/jobsPDFService";
+import { supabase } from "./integrations/supabase/client";
 import Dashboard from "./pages/Dashboard";
 import Welcome from "./pages/Welcome";
 import PermissionsDebug from "./pages/PermissionsDebug";
@@ -40,6 +42,7 @@ import PrintableContratoPage from "./pages/print/PrintableContratoPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import { cn } from "./lib/utils";
 import SystemLogsPage from "./pages/SystemLogsPage/SystemLogsPage";
+import EmailConfigPage from "./pages/Admin/EmailConfigPage";
 import Reclamacoes from "./pages/Reclamacoes";
 import ContraProvas from "./pages/ContraProvas";
 import AnaliseQualidade from "./pages/AnaliseQualidade";
@@ -65,7 +68,7 @@ const AppContent = () => {
       try {
         // Inicializando sistema offline-first
         const success = await initializeOfflineSystem();
-        
+
         if (success) {
           // Sistema offline-first inicializado com sucesso
         } else {
@@ -76,7 +79,33 @@ const AppContent = () => {
       }
     };
 
+    const initJobsPDF = async () => {
+      try {
+        // Verificar se a tabela existe antes de iniciar
+        const { data, error } = await supabase
+          .from('jobs_pdf_contratos')
+          .select('id')
+          .limit(1);
+
+        if (!error) {
+          // Iniciar processamento automático de jobs PDF a cada 30 segundos
+          JobsPDFService.iniciarProcessamento(30000);
+          console.log('✅ Serviço de jobs PDF iniciado');
+        } else {
+          console.log('ℹ️ Tabela jobs_pdf_contratos não existe ainda. Execute o SQL para criá-la.');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao iniciar serviço de jobs PDF:', error);
+      }
+    };
+
     initOfflineSystem();
+    initJobsPDF();
+
+    // Cleanup ao desmontar o componente
+    return () => {
+      JobsPDFService.pararProcessamento();
+    };
   }, []);
   
   const toggleSidebar = () => {
@@ -133,6 +162,7 @@ const AppContent = () => {
                   <Route path="/comercial/novo-contrato" element={<EditorContratosPage />} />
                   <Route path="/comercial/contrato/:contratoId" element={<ContratoDetalhePage />} />
                   <Route path="/usuarios" element={<Users />} />
+                  <Route path="/admin/email-config" element={<EmailConfigPage />} />
                   <Route path="/logs" element={<SystemLogsPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>

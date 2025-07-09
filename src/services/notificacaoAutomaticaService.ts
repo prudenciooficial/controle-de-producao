@@ -220,7 +220,9 @@ export class NotificacaoAutomaticaService {
    */
   static async notificarFinalizacaoContrato(contratoId: string): Promise<void> {
     try {
-      // Buscar dados do contrato
+      console.log('📧 Notificando finalização do contrato:', contratoId);
+
+      // Buscar dados do contrato (incluindo contratos já concluídos)
       const { data: contrato, error } = await supabase
         .from('contratos_comerciais')
         .select('*')
@@ -228,7 +230,9 @@ export class NotificacaoAutomaticaService {
         .single();
 
       if (error || !contrato) {
-        throw new Error('Contrato não encontrado');
+        console.warn('Contrato não encontrado para notificação:', contratoId, error);
+        // Não falhar a operação principal por erro de notificação
+        return;
       }
 
       // Cancelar lembretes pendentes

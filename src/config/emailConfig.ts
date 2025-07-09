@@ -22,7 +22,7 @@ export interface EmailConfig {
   };
   
   // Configurações específicas
-  provider: 'gmail' | 'outlook' | 'custom';
+  provider: 'gmail' | 'outlook' | 'custom' | 'resend';
   enabled: boolean;
 }
 
@@ -31,15 +31,34 @@ export interface EmailConfig {
  * IMPORTANTE: Configure com suas credenciais reais
  */
 export const EMAIL_CONFIGS: Record<string, EmailConfig> = {
-// Configuração Google Workspace
+// Configuração Resend (Recomendado)
+resend: {
+  smtp: {
+    host: 'smtp.resend.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: 'resend',
+      pass: 're_3prTCCQc_BjCbjdYC7FoNLiWoGh1gj6ke' // Nova API Key do Resend
+    }
+  },
+  from: {
+    name: 'Sistema de Contratos - Nossa Goma',
+    email: 'contratos@nossagoma.com' // Domínio verificado no Resend
+  },
+  provider: 'resend',
+  enabled: true // IMPORTANTE: Configuração ativa
+},
+
+// Configuração Google Workspace (Fallback)
 gmail: {
   smtp: {
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false, // STARTTLS
+    secure: false, // STARTTLS para porta 587
     auth: {
       user: 'marketing@nossagoma.com.br',
-      pass: 'jwdb brja pkhb msee'
+      pass: 'jwdb brja pkhb msee' // Senha de aplicativo do Google
     }
   },
   from: {
@@ -47,7 +66,7 @@ gmail: {
     email: 'marketing@nossagoma.com.br'
   },
   provider: 'gmail',
-  enabled: true // IMPORTANTE: Configuração ativa
+  enabled: false // Desabilitado - usando Resend como principal
 },
 
   // Outlook/Hotmail
@@ -91,9 +110,9 @@ gmail: {
 
 /**
  * Configuração ativa (escolha qual usar)
- * Opções: 'gmail', 'outlook', 'custom'
+ * Opções: 'resend', 'gmail', 'outlook', 'custom'
  */
-export const ACTIVE_EMAIL_PROVIDER = 'gmail'; // CONFIGURE AQUI
+export const ACTIVE_EMAIL_PROVIDER = 'resend'; // CONFIGURE AQUI
 
 /**
  * Obtém a configuração de email ativa
@@ -130,6 +149,30 @@ export function validateEmailConfig(config: EmailConfig): boolean {
  * Instruções de configuração por provedor
  */
 export const EMAIL_SETUP_INSTRUCTIONS = {
+  resend: {
+    title: 'Configuração Resend',
+    steps: [
+      '1. Acesse https://resend.com e crie uma conta',
+      '2. Verifique seu domínio ou use o domínio de teste',
+      '3. Vá em "API Keys" no dashboard',
+      '4. Clique em "Create API Key"',
+      '5. Dê um nome (ex: "Sistema Contratos")',
+      '6. Copie a API Key gerada',
+      '7. Configure no arquivo emailConfig.ts:',
+      '   - user: "resend"',
+      '   - pass: sua-api-key-do-resend',
+      '   - from.email: email@seudominio.com.br',
+      '8. Mude enabled: true'
+    ],
+    notes: [
+      'Resend é mais confiável para emails transacionais',
+      'Melhor deliverability que SMTP tradicional',
+      'Gratuito até 3.000 emails/mês',
+      'Suporte a domínios personalizados',
+      'Logs detalhados de entrega'
+    ]
+  },
+
   gmail: {
     title: 'Configuração Google Workspace',
     steps: [
