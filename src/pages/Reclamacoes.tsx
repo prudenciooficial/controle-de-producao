@@ -658,7 +658,7 @@ const Reclamacoes: React.FC = () => {
             Reclamações
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Gerencie reclamações recebidas via WhatsApp.
+            Gerencie reclamações recebidas via WhatsApp, Site, Instagram e Facebook.
           </p>
         </div>
         <div className="flex gap-2">
@@ -671,7 +671,7 @@ const Reclamacoes: React.FC = () => {
             className="bg-[#2563eb] text-white hover:bg-[#1e40af]"
           >
             <a
-              href="https://chatwoot.nossagoma.com"
+              href="https://chat.nossagoma.com"
               target="_blank"
               rel="noopener noreferrer"
             >
