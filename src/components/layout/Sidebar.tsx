@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield, FileText } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield, FileText, FileImage, BarChart3, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,14 +56,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         { name: "Cadastro", path: "/cadastro", icon: Settings, module: "general_settings" }
       ]
     },
-    { 
-      name: "Comercial", 
-      icon: FileText, 
-      module: "commercial",
-      subItems: [
-        { name: "Contratos", path: "/comercial/contratos", icon: FileText }
-      ]
-    },
+
     { 
       name: "RH", 
       icon: UserCheck, 
@@ -90,6 +83,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       permissionCheck: () => hasRole('admin') || canViewSystemLogs(),
       subItems: [
         { name: "Usuários", path: "/usuarios", icon: Users },
+        { name: "Testes", path: "/admin/email-config", icon: Mail },
         { name: "Logs do Sistema", path: "/logs", icon: ScrollText },
         { name: "Debug Permissões", path: "/debug-permissions", icon: FileSearch }
       ]
@@ -117,7 +111,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         '/estoque': 'estoque',
         '/perdas': 'perdas',
         '/cadastro': 'cadastro',
-        '/comercial/contratos': 'contratos',
+
         '/recursos-humanos': 'recursos_humanos',
         '/qualidade/reclamacoes': 'reclamacoes',
         '/qualidade/contra-provas': 'contra_provas',
@@ -125,6 +119,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         '/qualidade/laudos': 'laudos',
         '/rastreabilidade': 'rastreabilidade',
         '/usuarios': 'usuarios',
+        '/admin/email-config': 'admin',
         '/logs': 'logs',
         '/debug-permissions': 'debug_permissions'
       };

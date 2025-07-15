@@ -391,7 +391,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const settings = await fetchGlobalSettings();
         setGlobalSettings(settings);
       } catch (error) {
-        // Error loading global settings
+        console.warn('Error loading global settings:', error);
+        // Usar configurações padrão se não conseguir carregar
+        setGlobalSettings(null);
       } finally {
         setIsLoading(prev => ({ ...prev, globalSettings: false }));
       }
@@ -568,7 +570,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await fetchGlobalSettings();
       setGlobalSettings(data);
     } catch (error) {
-      // Error refetching global settings
+      console.warn('Error refetching global settings:', error);
+      setGlobalSettings(null);
     } finally {
       setIsLoading(prev => ({ ...prev, globalSettings: false }));
     }

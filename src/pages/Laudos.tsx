@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Printer, Edit, Trash, CheckCircle, Search, Calendar, User, Package, ImagePlus, UserPlus } from 'lucide-react';
+import { FileText, Plus, Printer, Edit, Trash, CheckCircle, Search, Calendar, User, Package, ImagePlus, UserPlus, Share2, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
@@ -57,6 +57,7 @@ interface LaudoLiberacao {
   updated_at: string;
   revisao: string;
   lote_producao?: string;
+  link_publico?: string;
 }
 
 interface NovoLaudo {
@@ -184,6 +185,7 @@ export default function Laudos() {
         updated_at: laudo.updated_at,
         revisao: laudo.revisao,
         lote_producao: laudo.coleta?.lote_producao || '',
+        link_publico: laudo.link_publico,
       })) as LaudoLiberacao[]);
     } catch (error) {
       console.error('Erro ao carregar laudos:', error);
@@ -433,6 +435,35 @@ export default function Laudos() {
     window.open(`/print/laudo/${laudo.id}`, '_blank', 'width=800,height=600');
   };
 
+  const copiarLinkPublico = async (laudo: LaudoLiberacao) => {
+    if (!laudo.link_publico) {
+      toast({
+        title: 'Erro',
+        description: 'Link público não disponível para este laudo.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const linkCompleto = `${window.location.origin}/laudo-publico/${laudo.link_publico}`;
+
+    try {
+      await navigator.clipboard.writeText(linkCompleto);
+      toast({
+        title: 'Link copiado!',
+        description: '🔗 Link público do laudo copiado para a área de transferência.',
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Erro ao copiar link:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível copiar o link. Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const resetFormulario = () => {
     setNovoLaudo({
       coleta_id: '',
@@ -673,14 +704,25 @@ export default function Laudos() {
                           size="sm"
                           variant="outline"
                           className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
+                          title="Visualizar/Imprimir"
                         >
                           <Printer className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => copiarLinkPublico(laudo)}
+                          size="sm"
+                          variant="outline"
+                          className="p-2 text-blue-600 border-blue-300 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-900"
+                          title="Copiar link público"
+                        >
+                          <Share2 className="w-4 h-4" />
                         </Button>
                         <Button
                           onClick={() => abrirEdicaoLaudo(laudo)}
                           size="sm"
                           variant="outline"
                           className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
+                          title="Editar"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -766,14 +808,25 @@ export default function Laudos() {
                     size="sm"
                     variant="outline"
                     className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
+                    title="Visualizar/Imprimir"
                   >
                     <Printer className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={() => copiarLinkPublico(laudo)}
+                    size="sm"
+                    variant="outline"
+                    className="p-2 text-blue-600 border-blue-300 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-900"
+                    title="Copiar link público"
+                  >
+                    <Share2 className="w-4 h-4" />
                   </Button>
                   <Button
                     onClick={() => abrirEdicaoLaudo(laudo)}
                     size="sm"
                     variant="outline"
                     className="p-2 dark:border-gray-600 dark:hover:bg-gray-700"
+                    title="Editar"
                   >
                     <Edit className="w-4 h-4" />
                   </Button>

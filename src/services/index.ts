@@ -17,16 +17,26 @@ import { supabase } from "@/integrations/supabase/client";
 import type { GlobalSettings } from "../types";
 
 export const fetchGlobalSettings = async (): Promise<GlobalSettings | null> => {
-  const { data, error } = await supabase
-    .from("global_settings")
-    .select("*")
-    .single(); // Usamos single() assumindo que há apenas uma linha de configuração
+  try {
+    const { data, error } = await supabase
+      .from("global_settings")
+      .select("*")
+      .limit(1); // Usar limit(1) em vez de single() para evitar erro quando não há dados
 
-  if (error) {
-    console.error("Error fetching global settings:", error);
-    // Você pode querer lançar o erro ou retornar null/um objeto padrão
-    // dependendo de como você quer lidar com a ausência dessas configurações
+    if (error) {
+      console.warn("Error fetching global settings:", error);
+      return null;
+    }
+
+    // Se não há dados, retornar configurações padrão
+    if (!data || data.length === 0) {
+      console.info("No global settings found, using defaults");
+      return null;
+    }
+
+    return data[0] as GlobalSettings;
+  } catch (error) {
+    console.warn("Error in fetchGlobalSettings:", error);
     return null;
   }
-  return data as GlobalSettings;
 };
