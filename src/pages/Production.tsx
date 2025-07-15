@@ -143,6 +143,11 @@ const Production = () => {
       }
     }
   }, [isLoading.productionBatches, productionBatches, form]);
+
+  // useEffect para carregar mexidas disponíveis
+  React.useEffect(() => {
+    loadAvailableMixes();
+  }, [loadAvailableMixes]);
   
   const { fields: producedItemFields, append: appendProducedItem, remove: removeProducedItem } = 
     useFieldArray({
@@ -177,7 +182,7 @@ const Production = () => {
   }, [materialBatches]);
 
   const onSubmit = async (data: ProductionFormValues) => {
-    if (!hasPermission('production', 'create')) {
+    if (!hasPermission('producao', 'page')) {
       toast({ variant: "destructive", title: "Acesso Negado", description: "Você não tem permissão para registrar novas produções." });
       return;
     }
@@ -292,6 +297,18 @@ const Production = () => {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate("/mexida")}>
             <FlaskConical className="mr-2 h-4 w-4" /> Nova Mexida
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={loadAvailableMixes}
+            disabled={isLoadingMixes}
+          >
+            {isLoadingMixes ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FlaskConical className="mr-2 h-4 w-4" />
+            )}
+            Atualizar Mexidas
           </Button>
           <Button variant="outline" onClick={() => navigate("/producao/historico")}>
             <History className="mr-2 h-4 w-4" /> Histórico de Produção
