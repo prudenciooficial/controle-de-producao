@@ -114,6 +114,11 @@ const ContraProvas = () => {
   const [editingAnalise, setEditingAnalise] = useState<AnaliseContraProva | null>(null);
   const [notificacoes, setNotificacoes] = useState<NotificacaoAnalise[]>([]);
   
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  
   // Form states
   const [formData, setFormData] = useState({
     lote_produto: '',
@@ -137,6 +142,37 @@ const ContraProvas = () => {
     { value: 'alteracao_textura', label: 'Alteração de textura' },
     { value: 'outros', label: 'Outros problemas' }
   ];
+
+  // Calcular total de páginas
+  const totalPages = Math.ceil(totalRecords / itemsPerPage);
+  
+  // Funções de paginação
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Voltar para a primeira página
+  };
+
+  // Calcular informações de paginação
+  const startRecord = (currentPage - 1) * itemsPerPage + 1;
+  const endRecord = Math.min(currentPage * itemsPerPage, totalRecords);
 
   // Carregar produtos
   const loadProducts = useCallback(async () => {
@@ -254,11 +290,32 @@ const ContraProvas = () => {
       // Verificar integridade do sistema
       await verificarIntegridade();
 
-      // Buscar as contra-provas
+      // Primeiro, contar o total de registros
+      const { count: totalCount, error: countError } = await supabase
+        .from('contra_provas')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) {
+        // Verificar se o erro é devido à tabela não existir
+        if (countError.message?.includes('relation "contra_provas" does not exist') ||
+            countError.code === 'PGRST116') {
+          setShowTableMissingAlert(true);
+          setContraProvas([]);
+          setTotalRecords(0);
+          return;
+        }
+        throw countError;
+      }
+
+      setTotalRecords(totalCount || 0);
+
+      // Buscar as contra-provas com paginação
       const { data: contraProvasData, error: contraProvasError } = await supabase
         .from('contra_provas')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(itemsPerPage)
+        .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
 
       if (contraProvasError) {
         // Verificar se o erro é devido à tabela não existir
@@ -266,10 +323,14 @@ const ContraProvas = () => {
             contraProvasError.code === 'PGRST116') {
           setShowTableMissingAlert(true);
           setContraProvas([]);
+          setTotalRecords(0);
           return;
         }
         throw contraProvasError;
       }
+      
+      // Verificar se há mais registros além dos 10 mostrados
+      // setHasMoreRecords((totalCount || 0) > 10); // This line is no longer needed
       
       // Buscar os nomes dos produtos
       const { data: productsData, error: productsError } = await supabase
@@ -298,7 +359,7 @@ const ContraProvas = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentPage, itemsPerPage]);
 
   const loadAnalises = useCallback(async (contraProvaId: string) => {
     try {
@@ -570,9 +631,10 @@ const ContraProvas = () => {
           data = result.data;
           error = result.error;
 
-        } catch (insertError: any) {
+        } catch (insertError: unknown) {
           // Se der erro de constraint, tentar recuperar
-          if (insertError?.code === '23505' && insertError?.message?.includes('unique_analise_dia')) {
+          const insertErrorObj = insertError as { code?: string; message?: string };
+          if (insertErrorObj?.code === '23505' && insertErrorObj?.message?.includes('unique_analise_dia')) {
             console.log('🔄 Erro de trigger detectado, tentando recuperação...');
 
             // Buscar a contra-prova que pode ter sido criada
@@ -653,26 +715,27 @@ const ContraProvas = () => {
       setDialogOpen(false);
       resetForm();
       loadContraProvas();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Erro completo:', error);
 
       let errorMessage = "Erro ao salvar contra-prova. Tente novamente.";
       let shouldRetry = false;
 
       // Tratar erros específicos
-      if (error?.code === '23505') {
-        if (error?.message?.includes('unique_analise_dia')) {
+      const errorObj = error as { code?: string; message?: string };
+      if (errorObj?.code === '23505') {
+        if (errorObj?.message?.includes('unique_analise_dia')) {
           errorMessage = "Erro interno: análises duplicadas detectadas. Tentando limpar dados inconsistentes...";
           shouldRetry = true;
         } else {
           errorMessage = "Já existe uma contra-prova com estes dados. Verifique o lote e produto.";
         }
-      } else if (error?.code === '23503') {
+      } else if (errorObj?.code === '23503') {
         errorMessage = "Produto selecionado não é válido. Selecione um produto da lista.";
-      } else if (error?.message?.includes('409')) {
+      } else if (errorObj?.message?.includes('409')) {
         errorMessage = "Conflito de dados. Verifique se não há duplicatas ou dados inconsistentes.";
-      } else if (error?.message) {
-        errorMessage = `Erro: ${error.message}`;
+      } else if (errorObj?.message) {
+        errorMessage = `Erro: ${errorObj.message}`;
       }
 
       // Se for erro de análises duplicadas, sugerir limpeza manual
@@ -1270,6 +1333,90 @@ CREATE TABLE contra_provas (
                     )}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+            
+            {/* Componente de Paginação */}
+            {totalRecords > 0 && (
+              <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-6 py-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  {/* Informações da página */}
+                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                    <span>
+                      Mostrando {startRecord} a {endRecord} de {totalRecords} contra-provas
+                    </span>
+                    
+                    {/* Seletor de itens por página */}
+                    <div className="flex items-center gap-2">
+                      <span>Itens por página:</span>
+                      <Select 
+                        value={itemsPerPage.toString()} 
+                        onValueChange={(value) => handleItemsPerPageChange(parseInt(value))}
+                      >
+                        <SelectTrigger className="w-20 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Controles de navegação */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className="h-8 px-3"
+                    >
+                      Anterior
+                    </Button>
+                    
+                    {/* Números das páginas */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNumber;
+                        if (totalPages <= 5) {
+                          pageNumber = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNumber = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNumber = totalPages - 4 + i;
+                        } else {
+                          pageNumber = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNumber}
+                            variant={currentPage === pageNumber ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(pageNumber)}
+                            className="h-8 w-8 p-0"
+                          >
+                            {pageNumber}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="h-8 px-3"
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

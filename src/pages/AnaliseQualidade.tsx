@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
 import { logSystemEvent } from '@/services/logService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ColetaAmostra {
   id: string;
@@ -148,6 +149,11 @@ export default function AnaliseQualidade() {
   const [showAnalises, setShowAnalises] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+
   // Estados para nova coleta
   const [novaColeta, setNovaColeta] = useState({
     lote_producao: '',
@@ -164,6 +170,37 @@ export default function AnaliseQualidade() {
   const [editandoColeta, setEditandoColeta] = useState<ColetaAmostra | null>(null);
 
   const [coletasComLaudo, setColetasComLaudo] = useState<{ [key: string]: boolean }>({});
+
+  // Calcular total de páginas
+  const totalPages = Math.ceil(totalRecords / itemsPerPage);
+  
+  // Funções de paginação
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Voltar para a primeira página
+  };
+
+  // Calcular informações de paginação
+  const startRecord = (currentPage - 1) * itemsPerPage + 1;
+  const endRecord = Math.min(currentPage * itemsPerPage, totalRecords);
 
   useEffect(() => {
     carregarColetas();
@@ -202,11 +239,31 @@ export default function AnaliseQualidade() {
 
   const carregarColetas = async () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      // Primeiro, contar o total de registros
+      const { count: totalCount, error: countError } = await supabase
+        .from('coletas_amostras')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) {
+        console.error('Erro ao contar coletas:', countError);
+        if (countError.code === '42P01') {
+          toast({
+            title: 'Erro ao carregar coletas',
+            description: '⚠️ As tabelas de análise de qualidade ainda não foram criadas no banco de dados. Execute o SQL da migração primeiro.',
+            variant: 'destructive',
+          });
+        }
+        return;
+      }
+
+      setTotalRecords(totalCount || 0);
+
+      // Buscar as coletas com paginação
+      const { data, error } = await supabase
         .from('coletas_amostras')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
 
       if (error) {
         console.error('Erro ao carregar coletas:', error);
@@ -219,13 +276,20 @@ export default function AnaliseQualidade() {
         }
         return;
       }
-      setColetas(data || []);
+      setColetas((data || []).map(coleta => ({
+        ...coleta,
+        status: coleta.status as 'em_andamento' | 'finalizada' | 'aprovada' | 'reprovada'
+      })));
     } catch (error) {
       console.error('Erro ao carregar coletas:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    carregarColetas();
+  }, [currentPage, itemsPerPage]);
 
   const criarNovaColeta = async () => {
     if (!novaColeta.lote_producao || !novaColeta.quantidade_total_produzida || !novaColeta.responsavel_coleta) {
@@ -833,6 +897,92 @@ export default function AnaliseQualidade() {
           )}
         </div>
       </div>
+
+      {/* Componente de Paginação */}
+      {totalRecords > 0 && (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Informações da página */}
+              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                <span>
+                  Mostrando {startRecord} a {endRecord} de {totalRecords} coletas
+                </span>
+                
+                {/* Seletor de itens por página */}
+                <div className="flex items-center gap-2">
+                  <span>Itens por página:</span>
+                  <Select 
+                    value={itemsPerPage.toString()} 
+                    onValueChange={(value) => handleItemsPerPageChange(parseInt(value))}
+                  >
+                    <SelectTrigger className="w-20 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Controles de navegação */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                  className="h-8 px-3"
+                >
+                  Anterior
+                </Button>
+                
+                {/* Números das páginas */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNumber = totalPages - 4 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => goToPage(pageNumber)}
+                        className="h-8 w-8 p-0"
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                  className="h-8 px-3"
+                >
+                  Próxima
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Análises */}
       {showAnalises && coletaSelecionada && (
