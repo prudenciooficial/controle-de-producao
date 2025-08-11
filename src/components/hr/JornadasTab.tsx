@@ -28,6 +28,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const DIAS_SEMANA = [
   { key: 'segunda', label: 'Segunda-feira' },
@@ -42,6 +49,7 @@ const DIAS_SEMANA = [
 interface JornadaFormData {
   nome: string;
   descricao_impressao: string;
+  turno: 'manha' | 'noite';
   horarios: HorariosEstruturados;
 }
 
@@ -52,6 +60,7 @@ export function JornadasTab() {
   const [formData, setFormData] = useState<JornadaFormData>({
     nome: "",
     descricao_impressao: "",
+    turno: "manha",
     horarios: DIAS_SEMANA.reduce((acc, dia) => ({
       ...acc,
       [dia.key]: { entrada1: "", saida1: "", entrada2: "", saida2: "" }
@@ -73,6 +82,7 @@ export function JornadasTab() {
     setFormData({
       nome: "",
       descricao_impressao: "",
+      turno: "manha",
       horarios: DIAS_SEMANA.reduce((acc, dia) => ({
         ...acc,
         [dia.key]: { entrada1: "", saida1: "", entrada2: "", saida2: "" }
@@ -87,6 +97,7 @@ export function JornadasTab() {
       setFormData({
         nome: jornada.nome,
         descricao_impressao: jornada.descricao_impressao,
+        turno: jornada.turno || "manha",
         horarios: jornada.horarios_estruturados
       });
     } else {
@@ -173,6 +184,7 @@ export function JornadasTab() {
       const jornadaData = {
         nome: formData.nome.trim(),
         descricao_impressao: formData.descricao_impressao.trim(),
+        turno: formData.turno,
         horarios_estruturados: formData.horarios
       };
 
@@ -305,6 +317,24 @@ export function JornadasTab() {
                       />
                       <p className="text-xs text-muted-foreground">
                         Esta descrição aparecerá nas folhas de controle de ponto impressas.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="turno">Turno *</Label>
+                      <Select
+                        value={formData.turno}
+                        onValueChange={(value: 'manha' | 'noite') => setFormData(prev => ({ ...prev, turno: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o turno" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manha">Manhã (Almoço)</SelectItem>
+                          <SelectItem value="noite">Noite (Janta)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Define se na folha de ponto aparecerá "ALMOÇO" (manhã) ou "JANTA" (noite).
                       </p>
                     </div>
                   </div>

@@ -20,6 +20,7 @@ export interface JornadaTrabalho {
   nome: string;
   descricao_impressao: string;
   horarios_estruturados: HorariosEstruturados;
+  turno: 'manha' | 'noite';
   created_at: Date;
   updated_at: Date;
 }

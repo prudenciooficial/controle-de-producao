@@ -170,6 +170,17 @@ export function FolhaPontoPage() {
     return 'Não definido';
   };
 
+  const getTurnoJornada = (jornada: unknown): 'manha' | 'noite' => {
+    if (!jornada || typeof jornada !== 'object') return 'manha';
+    const jornadaObj = jornada as any;
+    return jornadaObj.turno || 'manha';
+  };
+
+  const getTextoRefeicao = (jornada: unknown): string => {
+    const turno = getTurnoJornada(jornada);
+    return turno === 'noite' ? 'JANTA' : 'ALMOÇO';
+  };
+
   const getHorarioAlmoco = (jornada: unknown, diaSemana: number) => {
     if (!jornada || typeof jornada !== 'object' || !(jornada as JornadaParcial).horarios_estruturados) {
       return { saida: '', retorno: '' };
@@ -282,7 +293,7 @@ export function FolhaPontoPage() {
                   <tr>
                     <th rowSpan={2} className="col-dia">DIA</th>
                     <th rowSpan={2} className="col-entrada">ENTRADA</th>
-                    <th colSpan={2} className="header-almoco">ALMOÇO</th>
+                    <th colSpan={2} className="header-almoco">{getTextoRefeicao(data.funcionario.jornada)}</th>
                     <th rowSpan={2} className="col-saida">SAÍDA</th>
                     <th colSpan={2} className="header-extras">EXTRAS</th>
                     <th rowSpan={2} className="col-assinatura">ASSINATURA</th>
