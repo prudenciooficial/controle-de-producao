@@ -1,6 +1,6 @@
 services:
   controle-producao:
-    build: .
+    image: ghcr.io/prudenciooficial/controle-de-producao:latest
     ports:
       - "8081:8081"
     environment:
