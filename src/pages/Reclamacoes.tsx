@@ -536,18 +536,26 @@ const Reclamacoes: React.FC = () => {
 
                   {/* Anexos */}
                   {(reclamacao.url_foto_lote || reclamacao.url_foto_problema) && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {reclamacao.url_foto_lote && (
-                        <Badge variant="outline" className="text-xs">
-                          <Image className="h-3 w-3 mr-1" />
-                          Foto Lote
-                        </Badge>
+                        /^(https?:\/\/|www\.)/i.test(String(reclamacao.url_foto_lote).trim()) ? (
+                          <Badge variant="outline" className="text-xs">
+                            <Image className="h-3 w-3 mr-1" />
+                            Foto Lote
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Lote: {reclamacao.url_foto_lote}</span>
+                        )
                       )}
                       {reclamacao.url_foto_problema && (
-                        <Badge variant="outline" className="text-xs">
-                          <Image className="h-3 w-3 mr-1" />
-                          Foto Problema
-                        </Badge>
+                        /^(https?:\/\/|www\.)/i.test(String(reclamacao.url_foto_problema).trim()) ? (
+                          <Badge variant="outline" className="text-xs">
+                            <Image className="h-3 w-3 mr-1" />
+                            Foto Problema
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Problema: {reclamacao.url_foto_problema}</span>
+                        )
                       )}
                     </div>
                   )}
@@ -887,7 +895,7 @@ const Reclamacoes: React.FC = () => {
                         >
                           <a href={selectedReclamacao.link_contato_wa} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-3 w-3 mr-1" />
-                            Abrir WhatsApp
+                            Abrir no Chatwoot
                           </a>
                         </Button>
                       )}
@@ -966,31 +974,39 @@ const Reclamacoes: React.FC = () => {
                     {selectedReclamacao.url_foto_lote && (
                       <div>
                         <p className="text-sm font-medium">Foto do Lote:</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                        >
-                          <a href={selectedReclamacao.url_foto_lote} target="_blank" rel="noopener noreferrer">
-                            <Image className="h-4 w-4 mr-1" />
-                            Ver Foto do Lote
-                          </a>
-                        </Button>
+                        {/^(https?:\/\/|www\.)/i.test(String(selectedReclamacao.url_foto_lote).trim()) ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <a href={selectedReclamacao.url_foto_lote} target="_blank" rel="noopener noreferrer">
+                              <Image className="h-4 w-4 mr-1" />
+                              Ver Foto do Lote
+                            </a>
+                          </Button>
+                        ) : (
+                          <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{selectedReclamacao.url_foto_lote}</p>
+                        )}
                       </div>
                     )}
                     {selectedReclamacao.url_foto_problema && (
                       <div>
                         <p className="text-sm font-medium">Foto do Problema:</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                        >
-                          <a href={selectedReclamacao.url_foto_problema} target="_blank" rel="noopener noreferrer">
-                            <Image className="h-4 w-4 mr-1" />
-                            Ver Foto do Problema
-                          </a>
-                        </Button>
+                        {/^(https?:\/\/|www\.)/i.test(String(selectedReclamacao.url_foto_problema).trim()) ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <a href={selectedReclamacao.url_foto_problema} target="_blank" rel="noopener noreferrer">
+                              <Image className="h-4 w-4 mr-1" />
+                              Ver Foto do Problema
+                            </a>
+                          </Button>
+                        ) : (
+                          <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{selectedReclamacao.url_foto_problema}</p>
+                        )}
                       </div>
                     )}
                   </div>
