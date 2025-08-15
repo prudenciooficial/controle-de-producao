@@ -124,9 +124,6 @@ DROP TABLE IF EXISTS public.modelos_contratos CASCADE;
 # Configuração do Supabase
 VITE_SUPABASE_URL=your_supabase_url_here
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-
-# Configuração de Email (opcional para testes)
-VITE_RESEND_API_KEY=your_resend_api_key_here
 ```
 
 ### **Funcionalidades Mantidas**
