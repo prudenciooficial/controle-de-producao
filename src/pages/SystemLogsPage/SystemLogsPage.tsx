@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, QueryKey } from '@tanstack/react-query';
+import { useQuery, QueryKey, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   fetchSystemLogs,
@@ -29,6 +29,7 @@ export default function SystemLogsPage() {
   const { canViewSystemLogs, user, loading: authLoading } = useAuth();
   const [filters, setFilters] = useState<LogFilters>({ page: 1, pageSize: ITEMS_PER_PAGE });
   const [currentDateRange, setCurrentDateRange] = useState<DateRange | undefined>(undefined);
+  const queryClient = useQueryClient();
 
   const logUsersQueryKey: QueryKey = ['logUsers'];
   const { data: logUsersData, isLoading: isLoadingUsers } = useQuery<
@@ -184,10 +185,10 @@ export default function SystemLogsPage() {
         title: "Log de teste criado",
         description: "Um log de teste foi registrado com sucesso!",
       });
-      
-      // Recarregar os logs automaticamente
-      window.location.reload();
-      
+
+      // Recarregar os logs automaticamente sem reload da página usando React Query
+      await queryClient.invalidateQueries({ queryKey: ['systemLogs'] });
+
     } catch (error) {
       toast({
         title: "Erro",

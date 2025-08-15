@@ -798,6 +798,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const newOrder = await createOrderApi(order, user?.id, getUserDisplayName());
       setOrders([...orders, newOrder]);
+      // Atualizar o estoque (lotes de materiais) após criar um pedido
+      await refetchMaterialBatches();
       toast({
         title: "Sucesso",
         description: "Pedido criado com sucesso",
@@ -811,10 +813,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await updateOrderApi(id, order, user?.id, getUserDisplayName());
       setOrders(
-        orders.map(o => 
+        orders.map(o =>
           o.id === id ? { ...o, ...order, updatedAt: new Date() } : o
         )
       );
+      // Atualizar o estoque (lotes de materiais) após editar um pedido
+      await refetchMaterialBatches();
       toast({
         title: "Sucesso",
         description: "Pedido atualizado com sucesso",
@@ -828,6 +832,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await deleteOrderApi(id, user?.id, getUserDisplayName());
       setOrders(orders.filter(o => o.id !== id));
+      // Atualizar o estoque (lotes de materiais) após excluir um pedido
+      await refetchMaterialBatches();
       toast({
         title: "Sucesso",
         description: "Pedido excluído com sucesso",

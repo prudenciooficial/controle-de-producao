@@ -681,9 +681,9 @@ const Dashboard = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
       </div>
-      <div className="flex flex-col gap-6 p-2 sm:p-4 md:p-6">
+      <div className="flex flex-col gap-4 p-2 sm:p-4 md:p-6">
         <div className="w-full sm:w-auto">
-          <SimpleDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+          <SimpleDateFilter compact dateRange={dateRange} onDateRangeChange={setDateRange} />
         </div>
 
         {/* Seção de estatísticas */}

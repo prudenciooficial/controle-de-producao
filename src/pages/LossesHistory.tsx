@@ -51,7 +51,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const LossesHistory = () => {
-  const { losses, deleteLoss, updateLoss, isLoading } = useData();
+  const { losses, deleteLoss, updateLoss, isLoading, refetchLosses } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
@@ -127,11 +127,9 @@ const LossesHistory = () => {
     try {
       setIsDeleting(true);
       await deleteLoss(id);
-      
-      // Refresh automático para sincronizar dados
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+
+      // Atualizar dados sem recarregar toda a aplicação
+      await refetchLosses();
     } catch (error) {
       console.error("Erro ao excluir perda:", error);
       toast({
@@ -165,11 +163,9 @@ const LossesHistory = () => {
       await updateLoss(selectedLoss.id, values);
       setShowEditDialog(false);
       setSelectedLoss(null);
-      
-      // Refresh automático para sincronizar dados
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+
+      // Atualizar dados sem recarregar toda a aplicação
+      await refetchLosses();
     } catch (error) {
       console.error("Erro ao atualizar perda:", error);
       toast({
@@ -236,9 +232,9 @@ const LossesHistory = () => {
   };
   
   const LossCard = ({ loss, index }: { loss: Loss; index: number }) => (
-    <Card 
-      key={loss.id} 
-      className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.01] border-l-4 border-l-red-500"
+    <Card
+      key={loss.id}
+      className="border-l-4 border-l-red-500"
     >
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="space-y-1 flex-1 min-w-0">
@@ -255,40 +251,39 @@ const LossesHistory = () => {
           >
                             {loss.machine}
                           </Badge>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-red-50 dark:hover:bg-red-900/20 ${
-                  isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                }`}
-              >
-                                <MoreVertical className="h-4 w-4" />
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDetailsDialog(loss)}
+                              aria-label="Ver Detalhes"
+                              className="hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {hasPermission('losses', 'update') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditDialog(loss)}
+                                aria-label="Editar"
+                                className="hover:bg-red-50 dark:hover:bg-red-900/20"
+                              >
+                                <PencilIcon className="h-4 w-4" />
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openDetailsDialog(loss)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                Ver Detalhes
-                              </DropdownMenuItem>
-                              {hasPermission('losses', 'update') && (
-                <DropdownMenuItem onClick={() => openEditDialog(loss)}>
-                                  <PencilIcon className="mr-2 h-4 w-4" />
-                                  Editar
-                                </DropdownMenuItem>
-                              )}
-                              {hasPermission('losses', 'delete') && (
-                                <DropdownMenuItem
-                                  onClick={() => openDeleteDialog(loss)}
-                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash className="mr-2 h-4 w-4" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                            )}
+                            {hasPermission('losses', 'delete') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openDeleteDialog(loss)}
+                                aria-label="Excluir"
+                                className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

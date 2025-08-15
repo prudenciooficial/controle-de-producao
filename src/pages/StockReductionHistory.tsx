@@ -284,34 +284,21 @@ const StockReductionHistory = () => {
               <Badge variant="outline">
                 {reduction.materialBatch?.materialType || "Tipo não identificado"}
               </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0 flex-shrink-0">
-                    <MoreVertical className="h-4 w-4" />
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => openDetailsDialog(reduction)} aria-label="Ver Detalhes" className="hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <Eye className="h-4 w-4" />
+                </Button>
+                {hasPermission('inventory', 'edit') && (
+                  <Button variant="ghost" size="sm" onClick={() => openEditDialog(reduction)} aria-label="Editar" className="hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <Edit className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => openDetailsDialog(reduction)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Ver Detalhes
-                  </DropdownMenuItem>
-                  {hasPermission('inventory', 'edit') && (
-                    <DropdownMenuItem onClick={() => openEditDialog(reduction)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Editar
-                    </DropdownMenuItem>
-                  )}
-                  {hasPermission('inventory', 'delete') && (
-                    <DropdownMenuItem 
-                      onClick={() => openDeleteDialog(reduction)}
-                      className="text-destructive"
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Excluir
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                )}
+                {hasPermission('inventory', 'delete') && (
+                  <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(reduction)} aria-label="Excluir" className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -507,34 +494,21 @@ const StockReductionHistory = () => {
                       {formatNumberBR(reduction.quantity)} {reduction.materialBatch?.unitOfMeasure || ""}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => openDetailsDialog(reduction)} aria-label="Ver Detalhes" className="hover:bg-gray-100 dark:hover:bg-gray-800">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {hasPermission('inventory', 'edit') && (
+                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(reduction)} aria-label="Editar" className="hover:bg-gray-100 dark:hover:bg-gray-800">
+                            <Edit className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openDetailsDialog(reduction)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Ver Detalhes
-                          </DropdownMenuItem>
-                          {hasPermission('inventory', 'edit') && (
-                            <DropdownMenuItem onClick={() => openEditDialog(reduction)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                          )}
-                          {hasPermission('inventory', 'delete') && (
-                            <DropdownMenuItem 
-                              onClick={() => openDeleteDialog(reduction)}
-                              className="text-destructive"
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        )}
+                        {hasPermission('inventory', 'delete') && (
+                          <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(reduction)} aria-label="Excluir" className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

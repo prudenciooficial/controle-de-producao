@@ -449,40 +449,39 @@ const ProductionHistory = () => {
               <Badge variant={status.variant} className="font-medium shadow-sm">
                 {status.label}
               </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-green-50 dark:hover:bg-green-900/20 ${
-                      isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openDetailsDialog(batch)}
+                  aria-label="Ver Detalhes"
+                  className="hover:bg-green-50 dark:hover:bg-green-900/20"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                {hasPermission('production', 'update') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openEditDialog(batch)}
+                    aria-label="Editar"
+                    className="hover:bg-green-50 dark:hover:bg-green-900/20"
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <Edit className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => openDetailsDialog(batch)} className="cursor-pointer">
-                    <Eye className="mr-2 h-4 w-4" />
-                    Ver Detalhes
-                  </DropdownMenuItem>
-                  {hasPermission('production', 'update') && (
-                    <DropdownMenuItem onClick={() => openEditDialog(batch)} className="cursor-pointer">
-                      <Edit className="mr-2 h-4 w-4" />
-                      Editar
-                    </DropdownMenuItem>
-                  )}
-                  {hasPermission('production', 'delete') && (
-                    <DropdownMenuItem 
-                      onClick={() => openDeleteDialog(batch)} 
-                      className="cursor-pointer text-red-600 dark:text-red-400"
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Excluir
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                )}
+                {hasPermission('production', 'delete') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openDeleteDialog(batch)}
+                    aria-label="Excluir"
+                    className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>

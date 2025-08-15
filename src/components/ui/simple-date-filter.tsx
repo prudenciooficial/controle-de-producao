@@ -12,12 +12,14 @@ interface SimpleDateFilterProps {
   dateRange: DateRange | undefined;
   onDateRangeChange: (range: DateRange | undefined) => void;
   className?: string;
+  compact?: boolean;
 }
 
 export function SimpleDateFilter({
   dateRange,
   onDateRangeChange,
   className,
+  compact = false,
 }: SimpleDateFilterProps) {
   const today = new Date();
 
@@ -107,41 +109,50 @@ export function SimpleDateFilter({
   };
 
   return (
-    <div className={cn("flex flex-col space-y-2 w-full border rounded-lg p-4 shadow-sm", className)}>
-      <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Filtro por Período</h3>
-      
-      <div className="flex flex-wrap gap-2">
-        <Button 
-          variant={activeCurrentMonth ? "default" : "outline"} 
+    <div className={cn(
+      compact
+        ? "flex flex-wrap items-center gap-2 w-full"
+        : "flex flex-col space-y-2 w-full border rounded-lg p-4 shadow-sm",
+      className
+    )}>
+      {compact ? (
+        <span className="text-sm font-medium text-muted-foreground">Período:</span>
+      ) : (
+        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Filtro por Período</h3>
+      )}
+
+      <div className={cn("flex flex-wrap gap-2", compact && "items-center")}>
+        <Button
+          variant={activeCurrentMonth ? "default" : "outline"}
           size="sm"
-          className="text-xs font-medium w-full sm:w-auto"
+          className={cn("text-xs font-medium", compact ? "" : "w-full sm:w-auto")}
           onClick={setCurrentMonth}
         >
           Mês Atual
         </Button>
-        
-        <Button 
+
+        <Button
           variant={activeLast3Months ? "default" : "outline"}
           size="sm"
-          className="text-xs font-medium w-full sm:w-auto"
+          className={cn("text-xs font-medium", compact ? "" : "w-full sm:w-auto")}
           onClick={setLast3Months}
         >
           Últimos 3 Meses
         </Button>
-        
-        <Button 
+
+        <Button
           variant={activeLast6Months ? "default" : "outline"}
           size="sm"
-          className="text-xs font-medium w-full sm:w-auto"
+          className={cn("text-xs font-medium", compact ? "" : "w-full sm:w-auto")}
           onClick={setLast6Months}
         >
           Últimos 6 Meses
         </Button>
-        
-        <Button 
+
+        <Button
           variant={activeLastYear ? "default" : "outline"}
           size="sm"
-          className="text-xs font-medium w-full sm:w-auto"
+          className={cn("text-xs font-medium", compact ? "" : "w-full sm:w-auto")}
           onClick={setLastYear}
         >
           Últimos 12 Meses
@@ -152,7 +163,7 @@ export function SimpleDateFilter({
             <Button
               variant={isCustomDateActive ? "default" : "outline"}
               size="sm"
-              className="text-xs font-medium w-full sm:w-auto sm:justify-start justify-center"
+              className={cn("text-xs font-medium sm:justify-start justify-center", compact ? "" : "w-full sm:w-auto")}
             >
               <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
               <span className="truncate">

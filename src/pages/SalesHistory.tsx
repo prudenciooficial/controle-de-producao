@@ -60,7 +60,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const SalesHistory = () => {
-  const { sales, products, getAvailableProducts, deleteSale, updateSale, isLoading } = useData();
+  const { sales, products, getAvailableProducts, deleteSale, updateSale, isLoading, refetchSales } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -170,10 +170,10 @@ const SalesHistory = () => {
       setIsDeleting(true);
       await deleteSale(id);
       setShowDeleteDialog(false);
-      
-      // Refresh automático para sincronizar dados
-      window.location.reload();
-      
+
+      // Atualizar dados sem recarregar toda a aplicação
+      await refetchSales();
+
     } catch (error) {
       console.error("Erro ao excluir venda no SalesHistory:", error);
       toast({
@@ -211,9 +211,9 @@ const SalesHistory = () => {
       await updateSale(selectedSale.id, updatedSale);
       setShowEditDialog(false);
       toast({ title: "Registro Atualizado", description: "O registro de venda foi atualizado com sucesso." });
-      
-      // Refresh automático para sincronizar dados
-      window.location.reload();
+
+      // Atualizar dados sem recarregar toda a aplicação
+      await refetchSales();
     } catch (error) {
       console.error("Erro ao atualizar venda:", error);
       toast({
@@ -331,24 +331,17 @@ const SalesHistory = () => {
     const saleDate = new Date(sale.date);
   
   return (
-      <Card className="group relative overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-xl hover:shadow-green-500/10 dark:hover:shadow-green-400/10 transition-all duration-500 hover:-translate-y-2">
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        
-        {/* Sparkle effect */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <Sparkles className="h-4 w-4 text-green-400 animate-pulse" />
-        </div>
+      <Card className="relative overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
 
         <CardHeader className="relative pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg group-hover:shadow-green-500/25 transition-shadow duration-300">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg">
                 <ShoppingCart className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle 
-                  className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-300 cursor-pointer hover:underline"
+                <CardTitle
+                  className="text-lg font-bold text-gray-900 dark:text-gray-100 cursor-pointer hover:underline"
                   onClick={() => { setSelectedSale(sale); setShowDetailsDialog(true); }}
                 >
                   {sale.customerName}
@@ -365,40 +358,39 @@ const SalesHistory = () => {
               <Badge variant={status.variant} className="font-medium shadow-sm">
                 {status.label}
               </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-green-50 dark:hover:bg-green-900/20 ${
-                      isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setSelectedSale(sale); setShowDetailsDialog(true); }}
+                  aria-label="Ver Detalhes"
+                  className="hover:bg-green-50 dark:hover:bg-green-900/20"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                {hasPermission('sales', 'update') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setSelectedSale(sale); setShowEditDialog(true); }}
+                    aria-label="Editar"
+                    className="hover:bg-green-50 dark:hover:bg-green-900/20"
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <Edit className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => { setSelectedSale(sale); setShowDetailsDialog(true); }} className="cursor-pointer">
-                    <Eye className="mr-2 h-4 w-4" />
-                    Ver Detalhes
-                  </DropdownMenuItem>
-                  {hasPermission('sales', 'update') && (
-                    <DropdownMenuItem onClick={() => { setSelectedSale(sale); setShowEditDialog(true); }} className="cursor-pointer">
-                      <Edit className="mr-2 h-4 w-4" />
-                      Editar
-                    </DropdownMenuItem>
-                  )}
-                  {hasPermission('sales', 'delete') && (
-                    <DropdownMenuItem 
-                      onClick={() => { setSelectedSale(sale); setShowDeleteDialog(true); }} 
-                      className="cursor-pointer text-red-600 dark:text-red-400"
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Excluir
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                )}
+                {hasPermission('sales', 'delete') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setSelectedSale(sale); setShowDeleteDialog(true); }}
+                    aria-label="Excluir"
+                    className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -487,7 +479,7 @@ const SalesHistory = () => {
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 NF: {sale.invoiceNumber}
               </span>
-              <div className="h-2 w-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="h-2 w-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full opacity-60" />
             </div>
           </div>
         </CardContent>
@@ -695,36 +687,39 @@ const SalesHistory = () => {
                       {calculateTotalWeightInKg(sale).toFixed(2)} kg
                     </TableCell>
                       <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-green-50 dark:hover:bg-green-900/20 ${
-                              isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                            }`}>
-                            <MoreVertical className="h-4 w-4" />
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setSelectedSale(sale); setShowDetailsDialog(true); }}
+                          aria-label="Ver Detalhes"
+                          className="hover:bg-green-50 dark:hover:bg-green-900/20"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {hasPermission('sales', 'update') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setSelectedSale(sale); setShowEditDialog(true); }}
+                            aria-label="Editar"
+                            className="hover:bg-green-50 dark:hover:bg-green-900/20"
+                          >
+                            <Edit className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => { setSelectedSale(sale); setShowDetailsDialog(true); }}>
-                            <Eye className="mr-2 h-4 w-4" />
-                              Ver Detalhes
-                          </DropdownMenuItem>
-                          {hasPermission('sales', 'update') && (
-                              <DropdownMenuItem onClick={() => { setSelectedSale(sale); setShowEditDialog(true); }}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                          )}
-                          {hasPermission('sales', 'delete') && (
-                            <DropdownMenuItem
-                                onClick={() => { setSelectedSale(sale); setShowDeleteDialog(true); }}
-                                className="text-red-600 dark:text-red-400"
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        )}
+                        {hasPermission('sales', 'delete') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setSelectedSale(sale); setShowDeleteDialog(true); }}
+                            aria-label="Excluir"
+                            className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                   ))}

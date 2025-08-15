@@ -43,7 +43,16 @@ export interface ReclamacaoUpdate {
   data_resolucao?: string;
   lote?: string;
   tipos_reclamacao?: string[];
-  // Outros campos podem ser atualizados se necessário
+  // Campos adicionais editáveis
+  protocolo?: string;
+  nome_cliente?: string;
+  supermercado?: string;
+  cidade_estado?: string;
+  url_foto_lote?: string;
+  url_foto_problema?: string;
+  descricao_reclamacao?: string;
+  contato_wa?: string;
+  link_contato_wa?: string;
 }
 
 export interface ReclamacaoFilters {

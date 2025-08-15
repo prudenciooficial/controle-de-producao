@@ -66,7 +66,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const OrdersHistory = () => {
-  const { orders, materials, suppliers, deleteOrder, updateOrder, isLoading } = useData();
+  const { orders, materials, suppliers, deleteOrder, updateOrder, isLoading, refetchOrders } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
@@ -240,12 +240,10 @@ const OrdersHistory = () => {
     try {
       setIsDeleting(true);
       await deleteOrder(id);
-    setShowDeleteDialog(false);
-      
-      // Refresh automático para sincronizar dados
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      setShowDeleteDialog(false);
+      setSelectedOrder(null);
+      // Atualizar dados sem recarregar toda a aplicação
+      await refetchOrders();
     } catch (error) {
       console.error("Erro ao excluir pedido:", error);
       toast({
@@ -282,11 +280,8 @@ const OrdersHistory = () => {
       
       await updateOrder(selectedOrder.id, updatedOrder);
       setShowEditDialog(false);
-      
-      // Refresh automático para sincronizar dados
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Atualizar dados sem recarregar toda a aplicação
+      await refetchOrders();
     } catch (error) {
       console.error("Erro ao atualizar pedido:", error);
       toast({
@@ -392,14 +387,8 @@ const OrdersHistory = () => {
     const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
   
   return (
-      <Card className="group relative overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/80 dark:to-gray-900 border border-gray-200/50 dark:border-gray-600/60 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 dark:hover:shadow-orange-400/20 transition-all duration-500 hover:-translate-y-2">
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-blue-500/5 dark:from-orange-400/10 dark:via-transparent dark:to-blue-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        
-        {/* Sparkle effect */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <Sparkles className="h-4 w-4 text-orange-400 dark:text-orange-300 animate-pulse" />
-        </div>
+      <Card className="relative overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/80 dark:to-gray-900 border border-gray-200/50 dark:border-gray-600/60 shadow-sm">
+        {/* Efeitos de hover removidos para melhorar clique */}
 
         <CardHeader className="relative pb-3">
           <div className="flex items-start justify-between">
@@ -427,40 +416,39 @@ const OrdersHistory = () => {
               <Badge variant={status.variant} className="font-medium shadow-sm dark:shadow-gray-800/50">
                 {status.label}
               </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className={`h-8 w-8 p-0 transition-all duration-300 hover:bg-orange-50 dark:hover:bg-orange-900/30 ${
-                      isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openDetailsDialog(order)}
+                  aria-label="Ver Detalhes"
+                  className="hover:bg-orange-50 dark:hover:bg-orange-900/30"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                {hasPermission('orders', 'update') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openEditDialog(order)}
+                    aria-label="Editar"
+                    className="hover:bg-orange-50 dark:hover:bg-orange-900/30"
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <Edit className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => openDetailsDialog(order)} className="cursor-pointer">
-                    <Eye className="mr-2 h-4 w-4" />
-                    Ver Detalhes
-                  </DropdownMenuItem>
-                  {hasPermission('orders', 'update') && (
-                    <DropdownMenuItem onClick={() => openEditDialog(order)} className="cursor-pointer">
-                      <Edit className="mr-2 h-4 w-4" />
-                      Editar
-                    </DropdownMenuItem>
-                  )}
-                  {hasPermission('orders', 'delete') && (
-                    <DropdownMenuItem 
-                      onClick={() => openDeleteDialog(order)} 
-                      className="cursor-pointer text-red-600 dark:text-red-400"
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Excluir
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                )}
+                {hasPermission('orders', 'delete') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openDeleteDialog(order)}
+                    aria-label="Excluir"
+                    className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -843,34 +831,39 @@ const OrdersHistory = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700">
-                            <MoreVertical className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openDetailsDialog(order)}
+                          aria-label="Ver Detalhes"
+                          className="hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {hasPermission('orders', 'update') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditDialog(order)}
+                            aria-label="Editar"
+                            className="hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <Edit className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openDetailsDialog(order)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                              Ver Detalhes
-                          </DropdownMenuItem>
-                          {hasPermission('orders', 'update') && (
-                              <DropdownMenuItem onClick={() => openEditDialog(order)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                          )}
-                          {hasPermission('orders', 'delete') && (
-                            <DropdownMenuItem
-                                onClick={() => openDeleteDialog(order)}
-                                className="text-red-600 dark:text-red-400"
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        )}
+                        {hasPermission('orders', 'delete') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDeleteDialog(order)}
+                            aria-label="Excluir"
+                            className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                   );

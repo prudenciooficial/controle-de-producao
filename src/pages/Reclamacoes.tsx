@@ -313,16 +313,22 @@ const Reclamacoes: React.FC = () => {
     if (!editingReclamacao) return;
 
     try {
-      const updateData: ReclamacaoUpdate = {
-        status: editingReclamacao.status
+      // Montar objeto de atualização com campos editáveis
+      const fieldsToUpdate: ReclamacaoUpdate = {
+        status: editingReclamacao.status,
+        protocolo: editingReclamacao.protocolo,
+        nome_cliente: editingReclamacao.nome_cliente,
+        supermercado: editingReclamacao.supermercado,
+        cidade_estado: editingReclamacao.cidade_estado,
+        url_foto_lote: editingReclamacao.url_foto_lote,
+        url_foto_problema: editingReclamacao.url_foto_problema,
+        descricao_reclamacao: editingReclamacao.descricao_reclamacao,
+        contato_wa: editingReclamacao.contato_wa,
+        link_contato_wa: editingReclamacao.link_contato_wa,
+        lote: editingReclamacao.lote,
+        tipos_reclamacao: editingReclamacao.tipos_reclamacao,
       };
 
-      // Só incluir campos que podem ser editados se foram alterados
-      const fieldsToUpdate: ReclamacaoUpdate = { ...updateData };
-      
-      // Como a API só permite atualizar status por enquanto, mantemos assim
-      // mas preparamos a estrutura para futuras expansões
-      
       const updatedReclamacao = await updateReclamacao(editingReclamacao.id, fieldsToUpdate);
 
       setReclamacoes(prev => 
@@ -452,44 +458,48 @@ const Reclamacoes: React.FC = () => {
                       )}
                     </div>
                     
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreVertical className="h-4 w-4" />
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDetails(reclamacao)}
+                        aria-label="Ver Detalhes"
+                        className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(reclamacao)}
+                        aria-label="Editar"
+                        className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      {reclamacao.status !== 'Resolvida' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleAction('resolver', reclamacao)}
+                          aria-label="Marcar como Resolvida"
+                          className="text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                        >
+                          <CheckCircle className="h-4 w-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleViewDetails(reclamacao)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Ver Detalhes
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(reclamacao)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {reclamacao.status !== 'Resolvida' && (
-                          <DropdownMenuItem 
-                            onClick={() => handleAction('resolver', reclamacao)}
-                            className="text-green-600"
-                          >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Marcar como Resolvida
-                          </DropdownMenuItem>
-                        )}
-                        {reclamacao.status !== 'Arquivada' && (
-                          <DropdownMenuItem 
-                            onClick={() => handleAction('arquivar', reclamacao)}
-                            className="text-gray-600"
-                          >
-                            <Archive className="mr-2 h-4 w-4" />
-                            Arquivar
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      )}
+                      {reclamacao.status !== 'Arquivada' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleAction('arquivar', reclamacao)}
+                          aria-label="Arquivar"
+                          className="text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
 
@@ -1153,7 +1163,7 @@ const Reclamacoes: React.FC = () => {
                     value={editingReclamacao.protocolo || ''}
                     onChange={(e) => setEditingReclamacao({...editingReclamacao, protocolo: e.target.value})}
                     placeholder="Protocolo da reclamação"
-                    disabled
+
                   />
                 </div>
               </div>
@@ -1164,7 +1174,7 @@ const Reclamacoes: React.FC = () => {
                   value={editingReclamacao.nome_cliente || ''}
                   onChange={(e) => setEditingReclamacao({...editingReclamacao, nome_cliente: e.target.value})}
                   placeholder="Nome completo do cliente"
-                  disabled
+
                 />
               </div>
 
@@ -1175,7 +1185,7 @@ const Reclamacoes: React.FC = () => {
                   <Input
                     value={editingReclamacao.lote || ''}
                     placeholder="Lote do produto"
-                    disabled
+
                   />
                 </div>
               )}
@@ -1187,7 +1197,7 @@ const Reclamacoes: React.FC = () => {
                     value={editingReclamacao.supermercado || ''}
                     onChange={(e) => setEditingReclamacao({...editingReclamacao, supermercado: e.target.value})}
                     placeholder="Nome do supermercado"
-                    disabled
+
                   />
                 </div>
                 
@@ -1197,7 +1207,7 @@ const Reclamacoes: React.FC = () => {
                     value={editingReclamacao.cidade_estado || ''}
                     onChange={(e) => setEditingReclamacao({...editingReclamacao, cidade_estado: e.target.value})}
                     placeholder="Localização"
-                    disabled
+
                   />
                 </div>
               </div>
@@ -1209,7 +1219,7 @@ const Reclamacoes: React.FC = () => {
                   onChange={(e) => setEditingReclamacao({...editingReclamacao, descricao_reclamacao: e.target.value})}
                   placeholder="Descrição detalhada do problema"
                   className="min-h-[100px]"
-                  disabled
+
                 />
               </div>
 
@@ -1219,7 +1229,7 @@ const Reclamacoes: React.FC = () => {
                   value={editingReclamacao.contato_wa || ''}
                   onChange={(e) => setEditingReclamacao({...editingReclamacao, contato_wa: e.target.value})}
                   placeholder="Número do WhatsApp"
-                  disabled
+
                 />
               </div>
 
@@ -1230,7 +1240,7 @@ const Reclamacoes: React.FC = () => {
                     value={editingReclamacao.url_foto_lote || ''}
                     onChange={(e) => setEditingReclamacao({...editingReclamacao, url_foto_lote: e.target.value})}
                     placeholder="Link da foto do lote"
-                    disabled
+
                   />
                 </div>
                 
@@ -1240,14 +1250,14 @@ const Reclamacoes: React.FC = () => {
                     value={editingReclamacao.url_foto_problema || ''}
                     onChange={(e) => setEditingReclamacao({...editingReclamacao, url_foto_problema: e.target.value})}
                     placeholder="Link da foto do problema"
-                    disabled
+
                   />
                 </div>
               </div>
 
               <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
                 <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                  <strong>Nota:</strong> Atualmente, apenas o status pode ser editado. Os demais campos são somente leitura pois vêm diretamente do ManyChat.
+                  <strong>Nota:</strong> Você pode editar todos os campos desta reclamação. Alguns dados podem ter sido importados do Chatwoot e podem ser ajustados conforme necessário.
                 </p>
               </div>
             </div>
