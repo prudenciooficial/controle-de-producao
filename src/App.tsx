@@ -49,6 +49,7 @@ import Laudos from "./pages/Laudos";
 import PrintableLaudoPage from "./pages/print/PrintableLaudoPage";
 
 import LaudoPublicoPage from "./pages/LaudoPublicoPage";
+import CronogramaMarketing from "./pages/Marketing/CronogramaMarketing";
 
 const queryClient = new QueryClient();
 
@@ -127,6 +128,8 @@ const AppContent = () => {
                   <Route path="/qualidade/contra-provas" element={<ContraProvas />} />
                   <Route path="/qualidade/analise" element={<AnaliseQualidade />} />
                   <Route path="/qualidade/laudos" element={<Laudos />} />
+
+                  <Route path="/marketing/cronograma" element={<CronogramaMarketing />} />
 
                   <Route path="/usuarios" element={<Users />} />
                   <Route path="/admin/email-config" element={<EmailConfigPage />} />

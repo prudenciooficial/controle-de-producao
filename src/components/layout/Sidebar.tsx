@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield, FileText, FileImage, BarChart3, Mail } from "lucide-react";
+import { LayoutDashboard, Factory, ShoppingCart, Truck, Package, PackageX, Search, Settings, Menu as MenuIcon, Users, ScrollText, FileSearch, FlaskConical, ChevronDown, ChevronRight, History, UserCheck, ShieldCheck, MessageSquare, Shield, FileText, FileImage, BarChart3, Mail, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -78,6 +78,14 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
       ]
     },
     {
+      name: "Marketing",
+      icon: BarChart3,
+      module: "marketing",
+      subItems: [
+        { name: "Cronograma", path: "/marketing/cronograma", icon: Calendar }
+      ]
+    },
+    {
       name: "Administrador",
       icon: Shield,
       permissionCheck: () => hasRole('admin') || canViewSystemLogs(),
@@ -88,6 +96,7 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         { name: "Debug Permissões", path: "/debug-permissions", icon: FileSearch }
       ]
     },
+
   ]);
 
   useEffect(() => {
@@ -121,7 +130,10 @@ export function Sidebar({ isMobileMenuOpen, onMobileMenuToggle }: SidebarProps) 
         '/usuarios': 'usuarios',
         '/admin/email-config': 'admin',
         '/logs': 'logs',
-        '/debug-permissions': 'debug_permissions'
+        '/debug-permissions': 'debug_permissions',
+
+        // Marketing
+        '/marketing/cronograma': 'marketing_cronograma'
       };
       
       for (const item of allMenuItems) {

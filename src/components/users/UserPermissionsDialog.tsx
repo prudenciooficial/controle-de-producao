@@ -85,6 +85,13 @@ const MAIN_MODULES: MainModule[] = [
     ]
   },
   {
+    key: 'marketing',
+    label: 'Marketing',
+    subPages: [
+      { key: 'marketing_cronograma', label: 'Cronograma', path: '/marketing/cronograma' }
+    ]
+  },
+  {
     key: 'administrator',
     label: 'Administrador',
     subPages: [
